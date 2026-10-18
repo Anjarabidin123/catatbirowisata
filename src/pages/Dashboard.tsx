@@ -396,7 +396,7 @@ const Dashboard = () => {
   return (
     <AuthGuard>
       <NotificationPermission />
-      <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 pb-24 safe-top font-sans">
+      <div className="min-h-screen bg-slate-50 pb-24 safe-top font-sans text-slate-900">
         <div className="max-w-md mx-auto p-4 sm:p-5">
           
           {/* Top Bar Header */}

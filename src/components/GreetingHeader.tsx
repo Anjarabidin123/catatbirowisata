@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar, MapPin, Sparkles } from "lucide-react";
+import { Calendar, Sparkles, MapPin } from "lucide-react";
 
 interface GreetingHeaderProps {
   userEmail?: string;
@@ -37,18 +37,18 @@ const GreetingHeader = ({ userEmail }: GreetingHeaderProps) => {
   const displayName = userEmail ? userEmail.split("@")[0] : "Rekan Biro";
 
   return (
-    <div className="relative overflow-hidden rounded-3xl shadow-xl mb-6 text-white min-h-[145px] flex flex-col justify-end p-5 sm:p-6 group">
-      {/* Background Photo: Real Indonesian Destination (Borobudur / Bromo) */}
+    <div className="relative overflow-hidden rounded-3xl shadow-lg shadow-sky-900/10 mb-6 text-white min-h-[145px] flex flex-col justify-end p-5 sm:p-6 group border border-white/60">
+      {/* Background Photo: Bright Tropical Indonesian Destination (Candi Borobudur / Tea Plantation) */}
       <div 
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
         style={{ backgroundImage: "url('/borobudur.jpg')" }}
       />
 
-      {/* Cinematic Dark & Pesona Blue Vignette Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-blue-950/40" />
+      {/* Fresh Sunny Sky & Ocean Gradient Overlay for high text contrast */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-sky-900/30" />
 
       {/* Pesona Colors Top Accent Ribbon */}
-      <div className="absolute top-0 left-0 right-0 h-1 flex">
+      <div className="absolute top-0 left-0 right-0 h-1.5 flex shadow-sm">
         <div className="flex-1 bg-[#0085CD]" />
         <div className="flex-1 bg-[#6CB42C]" />
         <div className="flex-1 bg-[#FF8000]" />
@@ -59,21 +59,21 @@ const GreetingHeader = ({ userEmail }: GreetingHeaderProps) => {
       {/* Content */}
       <div className="relative z-10">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-[11px] font-medium text-slate-200">
-            <Calendar className="w-3 h-3 text-cyan-400" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-[11px] font-semibold text-white shadow-sm">
+            <Calendar className="w-3.5 h-3.5 text-amber-300" />
             <span>{currentDate}</span>
           </div>
 
-          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-[10px] font-semibold text-emerald-300">
+          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/90 text-white shadow-sm text-[10px] font-bold">
             <Sparkles className="w-3 h-3" />
             <span>Pesona Indonesia</span>
           </div>
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-0.5 drop-shadow-sm">
-          {greeting}, <span className="capitalize text-cyan-300">{displayName}</span>!
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-0.5 drop-shadow-md">
+          {greeting}, <span className="capitalize text-amber-300">{displayName}</span>!
         </h2>
-        <p className="text-xs sm:text-sm text-slate-300 line-clamp-1 drop-shadow-sm">
+        <p className="text-xs sm:text-sm text-slate-100 font-medium line-clamp-1 drop-shadow-sm">
           Panel kendali armada, destinasi wisata, dan pembukuan trip biro Anda.
         </p>
       </div>
