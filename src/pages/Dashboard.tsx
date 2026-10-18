@@ -41,6 +41,7 @@ import { generateRundownPDF } from "@/utils/pdfGenerator";
 import { Capacitor } from "@capacitor/core";
 import { scheduleTripNotifications, setupNotificationListeners } from "@/utils/tripNotifications";
 import { findDestinationPhoto, getInstantDestinationPhoto, DestinationPhoto } from "@/utils/destinationPhotoFinder";
+import { AsistenWisataModal } from "@/components/AsistenWisataModal";
 
 interface Trip {
   id: string;
@@ -117,6 +118,7 @@ const Dashboard = () => {
     jenis: "pengeluaran",
   });
   const [showReminder, setShowReminder] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<DestinationPhoto | null>(null);
   const [isSearchingPhoto, setIsSearchingPhoto] = useState(false);
 
@@ -281,6 +283,17 @@ const Dashboard = () => {
     setShowAddTrip(true);
   };
 
+  const handleSelectAIRoute = (route: { nama: string; tujuan: string }) => {
+    const today = new Date().toISOString().split("T")[0];
+    setNewTripData({
+      nama_trip: route.nama,
+      tanggal: today,
+      tanggal_selesai: today,
+      tujuan: route.tujuan,
+    });
+    setShowAddTrip(true);
+  };
+
   const handleQuickExpense = async () => {
     if (!currentTrip) {
       toast.error("Pilih trip terlebih dahulu");
@@ -427,6 +440,15 @@ const Dashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => setShowAIModal(true)}
+                className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 via-sky-500 to-indigo-600 text-white shadow-md shadow-blue-500/25 hover:scale-105 transition-all"
+                title="Tanya Asisten AI Wisata"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={loadData}
                 className="w-9 h-9 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-sm text-slate-600 dark:text-slate-300 hover:text-blue-600"
                 title="Segarkan Data"
@@ -452,6 +474,28 @@ const Dashboard = () => {
           
           {/* Greeting Hero Card with Authentic Indonesian Destination */}
           <GreetingHeader userEmail={user?.email} currentDestination={currentTrip?.tujuan} />
+
+          {/* AI Tour Consultant Banner */}
+          <div 
+            onClick={() => setShowAIModal(true)}
+            className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-blue-500/10 via-sky-500/10 to-indigo-500/10 border border-blue-200/70 dark:border-blue-900/60 flex items-center justify-between cursor-pointer hover:border-blue-400 transition-all group shadow-sm active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <span>Asisten AI Wisata Nusantara</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-extrabold uppercase">Tanya Rute</span>
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  Konsultasi rute, HTM terkini, info bus besar & rundown acara
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-1 transition-transform" />
+          </div>
 
           {/* Quick Operations Strip (Menu Operasional Utama) */}
           <div className="grid grid-cols-4 gap-2 mb-6">
@@ -852,6 +896,11 @@ const Dashboard = () => {
         <BottomNav />
       </div>
       <ReminderDialog open={showReminder} onOpenChange={setShowReminder} />
+      <AsistenWisataModal
+        open={showAIModal}
+        onOpenChange={setShowAIModal}
+        onSelectTripRoute={handleSelectAIRoute}
+      />
     </AuthGuard>
   );
 };
