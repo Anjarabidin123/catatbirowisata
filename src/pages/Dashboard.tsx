@@ -40,6 +40,7 @@ import { RupiahInput } from "@/components/RupiahInput";
 import { generateRundownPDF } from "@/utils/pdfGenerator";
 import { Capacitor } from "@capacitor/core";
 import { scheduleTripNotifications, setupNotificationListeners } from "@/utils/tripNotifications";
+import { findDestinationPhoto, getInstantDestinationPhoto, DestinationPhoto } from "@/utils/destinationPhotoFinder";
 
 interface Trip {
   id: string;
@@ -116,6 +117,26 @@ const Dashboard = () => {
     jenis: "pengeluaran",
   });
   const [showReminder, setShowReminder] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<DestinationPhoto | null>(null);
+  const [isSearchingPhoto, setIsSearchingPhoto] = useState(false);
+
+  // Auto-detect & search destination photo in real time as user types
+  useEffect(() => {
+    if (!newTripData.tujuan || newTripData.tujuan.trim().length < 2) {
+      setPreviewPhoto(null);
+      setIsSearchingPhoto(false);
+      return;
+    }
+
+    setIsSearchingPhoto(true);
+    const timer = setTimeout(async () => {
+      const photo = await findDestinationPhoto(newTripData.tujuan);
+      setPreviewPhoto(photo);
+      setIsSearchingPhoto(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [newTripData.tujuan]);
 
   useEffect(() => {
     loadData();
@@ -430,7 +451,7 @@ const Dashboard = () => {
           </div>
           
           {/* Greeting Hero Card with Authentic Indonesian Destination */}
-          <GreetingHeader userEmail={user?.email} />
+          <GreetingHeader userEmail={user?.email} currentDestination={currentTrip?.tujuan} />
 
           {/* Quick Operations Strip (Menu Operasional Utama) */}
           <div className="grid grid-cols-4 gap-2 mb-6">
@@ -480,72 +501,97 @@ const Dashboard = () => {
           </div>
 
           {/* Active Trip vs Destination Route Inspiration */}
-          {currentTrip ? (
-            <div className="mb-6 space-y-4">
-              <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      AGENDA TRIP BERJALAN
+          {currentTrip ? (() => {
+            const tripPhoto = getInstantDestinationPhoto(currentTrip.tujuan);
+            return (
+              <div className="mb-6 space-y-4">
+                <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md shadow-sky-950/5 group">
+                  
+                  {/* Real Destination Photo Header Banner */}
+                  <div className="relative h-32 w-full overflow-hidden bg-slate-800">
+                    <img
+                      src={tripPhoto.url}
+                      alt={currentTrip.tujuan}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/borobudur.jpg";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-slate-950/20" />
+                    
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-md">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        AGENDA TRIP BERJALAN
+                      </div>
                     </div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{currentTrip.nama_trip}</h3>
-                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                        {format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id })}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-red-500" />
-                        {currentTrip.tujuan}
-                      </span>
+
+                    <div className="absolute bottom-3 left-4 right-4 text-white">
+                      <h3 className="text-base sm:text-lg font-black tracking-tight text-white drop-shadow-md truncate">
+                        {currentTrip.nama_trip}
+                      </h3>
+                      <div className="flex items-center gap-3 text-xs text-slate-200 font-medium drop-shadow mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-amber-300" />
+                          {format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id })}
+                          {currentTrip.tanggal_selesai ? ` - ${format(new Date(currentTrip.tanggal_selesai), "dd MMM yyyy", { locale: id })}` : ""}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-rose-400" />
+                          {currentTrip.tujuan}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <Button
-                    size="sm"
-                    onClick={() => setShowQuickExpense(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs h-8 px-3 shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Biaya
-                  </Button>
-                </div>
 
-                <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                  <Button
-                    onClick={handleExportRundownPDF}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700 font-medium"
-                    disabled={rundownData.length === 0}
-                  >
-                    <FileDown className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                    PDF Rundown
-                  </Button>
-                  <Button
-                    onClick={handleShareRundownPDF}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700 font-medium text-emerald-700 hover:text-emerald-800"
-                    disabled={rundownData.length === 0}
-                  >
-                    <Share2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-                    WhatsApp
-                  </Button>
-                  <Button
-                    onClick={() => navigate(`/trips/${currentTrip.id}`)}
-                    size="sm"
-                    className="h-8 text-xs rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900"
-                  >
-                    Detail
-                  </Button>
+                  {/* Actions Bar */}
+                  <div className="p-3.5 bg-white dark:bg-slate-900 flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
+                    <Button
+                      size="sm"
+                      onClick={() => setShowQuickExpense(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs h-8 px-3 shadow-sm font-semibold"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      + Biaya
+                    </Button>
+
+                    <div className="flex gap-1.5 flex-1 justify-end">
+                      <Button
+                        onClick={handleExportRundownPDF}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700 font-medium"
+                        disabled={rundownData.length === 0}
+                      >
+                        <FileDown className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                        PDF
+                      </Button>
+                      <Button
+                        onClick={handleShareRundownPDF}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700 font-medium text-emerald-700 hover:text-emerald-800"
+                        disabled={rundownData.length === 0}
+                      >
+                        <Share2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                        WA
+                      </Button>
+                      <Button
+                        onClick={() => navigate(`/trips/${currentTrip.id}`)}
+                        size="sm"
+                        className="h-8 text-xs rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold px-3"
+                      >
+                        Detail
+                      </Button>
+                    </div>
+                  </div>
+
                 </div>
+                
+                <RundownAcara key={rundownKey} tripId={currentTrip.id} />
               </div>
-              
-              <RundownAcara key={rundownKey} tripId={currentTrip.id} />
-            </div>
-          ) : (
+            );
+          })() : (
             /* Inspiring Route Catalog (Pesona Indonesia Real Experience) */
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3 px-1">
@@ -724,9 +770,44 @@ const Dashboard = () => {
                     onChange={(e) =>
                       setNewTripData({ ...newTripData, tujuan: e.target.value })
                     }
-                    placeholder="Contoh: Bromo, Malang & Batu"
+                    placeholder="Contoh: Semarang, Bromo, atau Yogyakarta"
                     className="rounded-xl mt-1"
                   />
+
+                  {/* Deteksi Foto Landmark / Destinasi Otomatis Saat Mengetik */}
+                  {newTripData.tujuan.trim().length >= 2 && (
+                    <div className="mt-2.5 rounded-2xl overflow-hidden border border-slate-200/90 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-2 transition-all">
+                      {isSearchingPhoto ? (
+                        <div className="flex items-center gap-2 p-2.5 text-xs text-slate-500">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                          <span>Mendeteksi foto landmark {newTripData.tujuan}...</span>
+                        </div>
+                      ) : previewPhoto ? (
+                        <div className="relative h-28 w-full rounded-xl overflow-hidden shadow-sm group">
+                          <img
+                            src={previewPhoto.url}
+                            alt={previewPhoto.nama}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/borobudur.jpg";
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+                          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/95 text-blue-700 shadow-sm backdrop-blur-sm">
+                            <Sparkles className="w-3 h-3 text-amber-500" />
+                            <span>Foto Terdeteksi Otomatis</span>
+                          </div>
+                          <div className="absolute bottom-2 left-2.5 right-2.5 text-white drop-shadow">
+                            <p className="text-xs font-bold truncate">{previewPhoto.nama}</p>
+                            <p className="text-[10px] text-slate-200 flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-2.5 h-2.5 text-rose-400" />
+                              <span>{previewPhoto.lokasi}</span>
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
                 <Button 
                   onClick={handleAddTrip} 

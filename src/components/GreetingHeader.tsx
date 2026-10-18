@@ -2,14 +2,17 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Calendar, Sparkles, MapPin } from "lucide-react";
+import { getInstantDestinationPhoto } from "@/utils/destinationPhotoFinder";
 
 interface GreetingHeaderProps {
   userEmail?: string;
+  currentDestination?: string;
 }
 
-const GreetingHeader = ({ userEmail }: GreetingHeaderProps) => {
+const GreetingHeader = ({ userEmail, currentDestination }: GreetingHeaderProps) => {
   const [greeting, setGreeting] = useState("");
   const [currentDate, setCurrentDate] = useState("");
+  const destPhoto = getInstantDestinationPhoto(currentDestination);
 
   useEffect(() => {
     const updateTime = () => {
@@ -38,10 +41,10 @@ const GreetingHeader = ({ userEmail }: GreetingHeaderProps) => {
 
   return (
     <div className="relative overflow-hidden rounded-3xl shadow-lg shadow-sky-900/10 mb-6 text-white min-h-[145px] flex flex-col justify-end p-5 sm:p-6 group border border-white/60">
-      {/* Background Photo: Bright Tropical Indonesian Destination (Candi Borobudur / Tea Plantation) */}
+      {/* Background Photo: Bright Tropical Indonesian Destination */}
       <div 
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-        style={{ backgroundImage: "url('/borobudur.jpg')" }}
+        style={{ backgroundImage: `url('${destPhoto.url}')` }}
       />
 
       {/* Fresh Sunny Sky & Ocean Gradient Overlay for high text contrast */}
@@ -57,8 +60,8 @@ const GreetingHeader = ({ userEmail }: GreetingHeaderProps) => {
           </div>
 
           <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/90 text-white shadow-sm text-[10px] font-bold">
-            <Sparkles className="w-3 h-3" />
-            <span>Pesona Indonesia</span>
+            <MapPin className="w-3 h-3 text-amber-300" />
+            <span className="truncate max-w-[150px]">{destPhoto.nama}</span>
           </div>
         </div>
 
