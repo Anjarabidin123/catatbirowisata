@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Eye, EyeOff, Fingerprint, Mail, Lock, Compass, ArrowRight, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Fingerprint, Mail, Lock, ArrowRight, ShieldCheck, MapPin } from "lucide-react";
 import { biometricAuth } from "@/utils/biometricAuth";
 import { Capacitor } from "@capacitor/core";
+import BusAnimation from "@/components/BusAnimation";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -22,14 +23,12 @@ const Auth = () => {
   const [biometricLoading, setBiometricLoading] = useState(false);
 
   useEffect(() => {
-    // Cek remembered email dari key baru atau fallback key lama
     const savedEmail = localStorage.getItem("app_remembered_email") || localStorage.getItem("malika_remembered_email");
     if (savedEmail) {
       setEmail(savedEmail);
       setRememberMe(true);
     }
 
-    // Check biometric availability
     if (Capacitor.isNativePlatform()) {
       biometricAuth.isAvailable().then(setBiometricAvailable);
     }
@@ -47,7 +46,6 @@ const Auth = () => {
         });
         if (error) throw error;
         
-        // Simpan email jika remember me aktif
         if (rememberMe) {
           localStorage.setItem("app_remembered_email", email.trim());
           if (biometricAvailable) {
@@ -61,7 +59,7 @@ const Auth = () => {
           }
         }
         
-        toast.success("Login berhasil! Selamat datang kembali.");
+        toast.success("Selamat datang! Berhasil masuk ke sistem.");
         navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signUp({
@@ -72,11 +70,11 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Akun berhasil dibuat! Silakan masuk.");
+        toast.success("Registrasi berhasil! Silakan masuk dengan akun Anda.");
         setIsLogin(true);
       }
     } catch (error: any) {
-      toast.error(error.message || "Terjadi kesalahan saat otentikasi");
+      toast.error(error.message || "Gagal masuk ke sistem");
     } finally {
       setLoading(false);
     }
@@ -109,39 +107,58 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-950 flex items-center justify-center p-4">
-      {/* Background Ambient Glow Effect */}
-      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-      
-      {/* Subtle Grid overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:3rem_3rem] pointer-events-none" />
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+      {/* Real Cinematic Indonesian Landscape Background (Gunung Bromo Sunrise) */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter brightness-[0.45] contrast-[1.05]"
+        style={{ backgroundImage: "url('/hero-bromo.jpg')" }}
+      />
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 backdrop-blur-2xl shadow-2xl p-7 sm:p-9 text-slate-100">
+      {/* Atmospheric Indonesian Tourism Color Gradients */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-blue-950/40 pointer-events-none" />
+
+      {/* Pesona Indonesia Top Ribbon Colors */}
+      <div className="absolute top-0 left-0 right-0 h-1.5 flex z-20">
+        <div className="flex-1 bg-[#0085CD]" /> {/* Blue */}
+        <div className="flex-1 bg-[#6CB42C]" /> {/* Green */}
+        <div className="flex-1 bg-[#FF8000]" /> {/* Orange */}
+        <div className="flex-1 bg-[#FFB800]" /> {/* Yellow */}
+        <div className="flex-1 bg-[#E6007E]" /> {/* Magenta */}
+      </div>
+
+      <div className="w-full max-w-md relative z-10 my-6">
+        
+        {/* Animated Executive Tourist Bus Graphic */}
+        <div className="w-48 sm:w-56 mx-auto mb-2 filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)]">
+          <BusAnimation />
+        </div>
+
+        {/* Main Card */}
+        <div className="rounded-3xl border border-white/15 bg-slate-900/85 backdrop-blur-xl shadow-2xl p-6 sm:p-8 text-white">
           
-          {/* Header Brand */}
-          <div className="text-center mb-7">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-lg shadow-blue-500/25 mb-4 group transition-transform hover:scale-105">
-              <Compass className="w-8 h-8 text-white transition-transform group-hover:rotate-45" />
+          {/* Header Branding */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-semibold text-emerald-300 mb-2.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Sistem Biro Perjalanan Wisata</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1.5">
-              Pencatatan Agen Biro
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-1">
+              Catat Trip Nusantara
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400">
-              Sistem Operasional Trip, Kendaraan & Keuangan
+            <p className="text-xs sm:text-sm text-slate-300">
+              Manajemen Armada Bus, Jadwal & Kas Operasional
             </p>
           </div>
 
-          {/* Segmented Tab Switcher (Masuk vs Daftar) */}
-          <div className="flex p-1 mb-6 rounded-xl bg-slate-800/80 border border-slate-700/60">
+          {/* Segmented Tab (Masuk vs Daftar) */}
+          <div className="flex p-1 mb-5 rounded-2xl bg-slate-800/90 border border-white/10">
             <button
               type="button"
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
                 isLogin
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-600/30"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               Masuk
@@ -149,13 +166,13 @@ const Auth = () => {
             <button
               type="button"
               onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
                 !isLogin
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-600/30"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
-              Daftar Akun Baru
+              Daftar Akun
             </button>
           </div>
 
@@ -166,15 +183,15 @@ const Auth = () => {
                 Alamat Email
               </Label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@agenbiro.id"
+                  placeholder="agen@birowisata.id"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-slate-950/60 border-slate-700/80 pl-10 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:border-blue-500 h-11 text-sm rounded-xl"
+                  className="bg-slate-950/70 border-white/15 pl-10 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 h-11 text-sm rounded-xl"
                 />
               </div>
             </div>
@@ -184,7 +201,7 @@ const Auth = () => {
                 Kata Sandi
               </Label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -192,12 +209,12 @@ const Auth = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-slate-950/60 border-slate-700/80 pl-10 pr-10 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:border-blue-500 h-11 text-sm rounded-xl"
+                  className="bg-slate-950/70 border-white/15 pl-10 pr-10 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 h-11 text-sm rounded-xl"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -215,18 +232,18 @@ const Auth = () => {
                     id="remember"
                     checked={rememberMe}
                     onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                    className="border-slate-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                    className="border-white/20 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                   />
                   <label
                     htmlFor="remember"
-                    className="text-slate-400 cursor-pointer select-none hover:text-slate-300"
+                    className="text-slate-300 cursor-pointer select-none hover:text-white"
                   >
                     Ingat email saya
                   </label>
                 </div>
-                <div className="flex items-center text-slate-500 text-[11px] gap-1">
+                <div className="flex items-center text-slate-400 text-[11px] gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Enkripsi Aman</span>
+                  <span>Aman & Terenkripsi</span>
                 </div>
               </div>
             )}
@@ -236,24 +253,24 @@ const Auth = () => {
                 type="button"
                 onClick={handleBiometricLogin}
                 variant="outline"
-                className="w-full bg-slate-800/40 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white h-11 rounded-xl"
+                className="w-full bg-white/5 border-white/15 text-slate-200 hover:bg-white/10 hover:text-white h-11 rounded-xl"
                 disabled={biometricLoading}
               >
-                <Fingerprint className="w-4 h-4 mr-2 text-blue-400" />
+                <Fingerprint className="w-4 h-4 mr-2 text-cyan-400" />
                 {biometricLoading ? "Memverifikasi..." : "Masuk dengan Sidik Jari"}
               </Button>
             )}
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold h-11 shadow-lg shadow-blue-600/25 transition-all active:scale-[0.99] rounded-xl flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold h-11 shadow-lg shadow-blue-600/30 transition-all active:scale-[0.99] rounded-xl flex items-center justify-center gap-2"
               disabled={loading}
             >
               {loading ? (
                 <span>Memproses...</span>
               ) : (
                 <>
-                  <span>{isLogin ? "Masuk ke Sistem" : "Buat Akun Sekarang"}</span>
+                  <span>{isLogin ? "Masuk ke Sistem" : "Buat Akun Biro"}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -261,10 +278,9 @@ const Auth = () => {
           </form>
 
           {/* Footer note */}
-          <div className="mt-7 pt-5 border-t border-slate-800/80 text-center">
-            <p className="text-[11px] text-slate-500">
-              Khusus Penggunaan Internal Agen Biro Perjalanan
-            </p>
+          <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-center gap-2 text-[11px] text-slate-400">
+            <MapPin className="w-3 h-3 text-red-400" />
+            <span>Jelajahi Pesona Pariwisata Indonesia</span>
           </div>
 
         </div>
