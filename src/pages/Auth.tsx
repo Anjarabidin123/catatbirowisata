@@ -117,14 +117,6 @@ const Auth = () => {
       {/* Fresh Sunny Daylight Overlay with Soft Gradient */}
       <div className="absolute inset-0 bg-gradient-to-t from-sky-950/80 via-white/40 to-sky-100/70 backdrop-blur-[2px] pointer-events-none" />
 
-      {/* Pesona Indonesia Top Ribbon Colors */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 flex z-20 shadow-sm">
-        <div className="flex-1 bg-[#0085CD]" /> {/* Blue */}
-        <div className="flex-1 bg-[#6CB42C]" /> {/* Green */}
-        <div className="flex-1 bg-[#FF8000]" /> {/* Orange */}
-        <div className="flex-1 bg-[#FFB800]" /> {/* Yellow */}
-        <div className="flex-1 bg-[#E6007E]" /> {/* Magenta */}
-      </div>
 
       <div className="w-full max-w-md relative z-10 my-6">
         

@@ -47,14 +47,6 @@ const GreetingHeader = ({ userEmail }: GreetingHeaderProps) => {
       {/* Fresh Sunny Sky & Ocean Gradient Overlay for high text contrast */}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-sky-900/30" />
 
-      {/* Pesona Colors Top Accent Ribbon */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 flex shadow-sm">
-        <div className="flex-1 bg-[#0085CD]" />
-        <div className="flex-1 bg-[#6CB42C]" />
-        <div className="flex-1 bg-[#FF8000]" />
-        <div className="flex-1 bg-[#FFB800]" />
-        <div className="flex-1 bg-[#E6007E]" />
-      </div>
 
       {/* Content */}
       <div className="relative z-10">

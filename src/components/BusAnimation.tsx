@@ -58,25 +58,18 @@ const BusAnimation = ({ className = "" }: { className?: string }) => {
           <line x1="105" y1="36" x2="105" y2="68" stroke="#334155" strokeWidth="1.5" />
           <line x1="138" y1="36" x2="138" y2="68" stroke="#334155" strokeWidth="1.5" />
 
-          {/* Pesona Indonesia Iconic Livery / Waves on Bus Body */}
+          {/* Elegant Executive Blue Livery */}
           <path
-            d="M 30 76 Q 70 73 110 78 Q 160 84 220 74"
+            d="M 30 76 Q 80 74 130 78 Q 175 82 220 74"
             fill="none"
-            stroke="url(#pesonaBlue)"
+            stroke="#0284c7"
             strokeWidth="3.5"
             strokeLinecap="round"
           />
           <path
-            d="M 34 81 Q 75 78 115 83 Q 165 89 218 79"
+            d="M 36 82 Q 85 80 135 84 Q 180 88 218 80"
             fill="none"
-            stroke="url(#pesonaGreen)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 40 85 Q 80 82 120 87 Q 160 92 210 83"
-            fill="none"
-            stroke="url(#pesonaOrange)"
+            stroke="#38bdf8"
             strokeWidth="2"
             strokeLinecap="round"
           />
