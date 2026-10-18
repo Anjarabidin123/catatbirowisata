@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Fingerprint, Mail, Lock, ArrowRight, ShieldCheck, MapPin, Sparkles } from "lucide-react";
 import { biometricAuth } from "@/utils/biometricAuth";
 import { Capacitor } from "@capacitor/core";
-import BusAnimation from "@/components/BusAnimation";
+import MiniRunningBus from "@/components/MiniRunningBus";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -120,10 +120,6 @@ const Auth = () => {
 
       <div className="w-full max-w-md relative z-10 my-6">
         
-        {/* Animated Executive Tourist Bus in Daylight */}
-        <div className="w-48 sm:w-56 mx-auto mb-2 filter drop-shadow-md">
-          <BusAnimation />
-        </div>
 
         {/* Main Clean Light Card */}
         <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-xl shadow-2xl shadow-sky-900/15 p-6 sm:p-8 text-slate-800">
@@ -252,6 +248,9 @@ const Auth = () => {
                 {biometricLoading ? "Memverifikasi..." : "Masuk dengan Sidik Jari"}
               </Button>
             )}
+
+            {/* Mini Animated Running Bus with Idling Smoke & Drive-off */}
+            <MiniRunningBus isDriving={loading} className="my-2" />
 
             <Button
               type="submit"
