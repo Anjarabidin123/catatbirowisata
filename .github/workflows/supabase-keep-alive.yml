@@ -13,8 +13,8 @@ jobs:
     steps:
       - name: Kirim Request ke Supabase REST API
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://nzsfrvgcyjedwiobctfq.supabase.co' }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56c2ZydmdjeWplZHdpb2JjdGZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NzM4NTMsImV4cCI6MjA3NzQ0OTg1M30.odhcglTTIo-axh9GzCm00CCiBK0948Kc-fi3rSPNXNU' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://xirxglkwojgbzjyhhdhm.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpcnhnbGt3b2pnYnpqeWhoZGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzc3MjgsImV4cCI6MjEwNzg1MzcyOH0.Jpete8y6K2AwmOiFeLCSzyWDv4rbKQctzQnaHtgMV3I' }}
         run: |
           echo "Memeriksa status Supabase di $SUPABASE_URL..."
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
