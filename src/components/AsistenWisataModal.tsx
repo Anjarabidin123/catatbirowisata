@@ -1,241 +1,421 @@
-import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Send, Bot, User, Trash2, ArrowRight, Bus, Compass, MapPin } from "lucide-react";
-import { askTourismAssistant, ChatMessage } from "@/utils/asistenWisataAI";
+import { Label } from "@/components/ui/label";
+import { 
+  Compass, 
+  MapPin, 
+  Bus, 
+  Clock, 
+  CheckCircle2, 
+  AlertTriangle, 
+  Utensils, 
+  Ticket, 
+  ArrowRight, 
+  RotateCcw, 
+  SlidersHorizontal,
+  ShieldAlert,
+  Users
+} from "lucide-react";
+import { 
+  TourConsultationParams, 
+  TourProposalResult, 
+  TargetRombonganType, 
+  TARGET_LABELS, 
+  generateTourProposal 
+} from "@/utils/asistenWisataAI";
 
 interface AsistenWisataModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectTripRoute?: (tripData: { nama: string; tujuan: string }) => void;
+  onSelectTripRoute?: (tripData: { nama: string; tujuan: string; rundown?: any[] }) => void;
 }
 
-const DEFAULT_SUGGESTIONS = [
-  "Rute Wisata 1 Hari Semarang untuk Bus",
-  "Estimasi HTM & Rundown Jogja",
-  "Akses Bus Besar ke Dieng",
-  "Rekomendasi Wisata Rombongan di Batu Malang",
-];
+const POPULAR_CITIES = ["Semarang", "Yogyakarta", "Demak & Ziarah Pantura", "Malang & Batu", "Bandung", "Dieng", "Solo"];
 
 export const AsistenWisataModal = ({
   open,
   onOpenChange,
   onSelectTripRoute,
 }: AsistenWisataModalProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: `Halo! Saya **Asisten AI Wisata Nusantara**. 🇮🇩\n\nSaya dapat membantu Anda mencari **rute wisata akurat**, **HTM objek wisata terkini**, **kantong parkir bus pariwisata**, **rumah makan rombongan**, dan **estimasi rundown acara**.\n\nAda rencana rute trip yang ingin Anda tanyakan hari ini?`,
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
+  // Step 1: Input Parameter Lapangan
+  const [params, setParams] = useState<TourConsultationParams>({
+    targetRombongan: "smp",
+    kotaTujuan: "Semarang",
+    durasiHari: "1",
+    armadaBus: "big_bus",
+    catatanKhusus: "",
+  });
+
   const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [result, setResult] = useState<TourProposalResult | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    if (open) {
-      setTimeout(scrollToBottom, 150);
-    }
-  }, [messages, open]);
-
-  const handleSend = async (textToSend?: string) => {
-    const query = (textToSend || input).trim();
-    if (!query || loading) return;
-
-    const userMsg: ChatMessage = {
-      id: "user-" + Date.now(),
-      role: "user",
-      content: query,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
+  const handleGenerate = () => {
+    if (!params.kotaTujuan.trim()) return;
     setLoading(true);
 
-    try {
-      const response = await askTourismAssistant(query);
-      const botMsg: ChatMessage = {
-        id: "bot-" + Date.now(),
-        role: "assistant",
-        content: response.text,
-        suggestedTrip: response.suggestedTrip,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMsg]);
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: "bot-err-" + Date.now(),
-          role: "assistant",
-          content: "Maaf, terjadi kendala saat memproses pertanyaan Anda: " + err.message,
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
+    setTimeout(() => {
+      const proposal = generateTourProposal(params);
+      setResult(proposal);
       setLoading(false);
-    }
+    }, 450);
   };
 
-  const handleApplyRoute = (route: { nama: string; tujuan: string }) => {
-    if (onSelectTripRoute) {
-      onSelectTripRoute(route);
+  const handleReset = () => {
+    setResult(null);
+  };
+
+  const handleApplyToTrip = () => {
+    if (result && onSelectTripRoute) {
+      onSelectTripRoute({
+        nama: result.judulTrip,
+        tujuan: result.kotaTujuan,
+        rundown: result.rundown,
+      });
       onOpenChange(false);
     }
   };
 
-  const handleClearChat = () => {
-    setMessages([
-      {
-        id: "welcome-reset",
-        role: "assistant",
-        content: "Riwayat percakapan telah dibersihkan. Silakan tanyakan rute destinasi yang ingin Anda rencanakan!",
-        timestamp: new Date(),
-      },
-    ]);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl h-[85vh] max-h-[700px] flex flex-col p-0 gap-0 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl overflow-hidden">
-        {/* Header */}
-        <DialogHeader className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md flex-shrink-0">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl overflow-hidden">
+        
+        {/* Header Bersih & Profesional */}
+        <DialogHeader className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                <Sparkles className="w-5 h-5 text-amber-300" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                <Compass className="w-5 h-5 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
-                  <span>Asisten AI Wisata Nusantara</span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                    Online & Akurat
-                  </span>
+                <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Konsultan Rute & Rundown Lapangan
                 </DialogTitle>
-                <p className="text-[11px] text-slate-500">
-                  Konsultasi rute bus, HTM objek wisata & rundown biro perjalanan
-                </p>
+                <DialogDescription className="text-xs text-slate-500">
+                  Menyusun itinerary akurat disesuaikan dengan karakter target rombongan & kapasitas bus.
+                </DialogDescription>
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClearChat}
-              className="w-8 h-8 rounded-xl text-slate-400 hover:text-red-600"
-              title="Bersihkan Percakapan"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {result && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                className="h-8 text-xs rounded-xl font-medium border-slate-200 dark:border-slate-700"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                Ubah Parameter
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
-        {/* Chat Messages List */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Bot className="w-4 h-4" />
+        {/* Content Body: Wizard Parameter vs Hasil Proposal */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+          {!result ? (
+            /* ============================================================ */
+            /* MODE 1: FORM PARAMETER LAPANGAN TERPERINCI                  */
+            /* ============================================================ */
+            <div className="space-y-5">
+              {/* 1. Pilih Target Rombongan (Segmentasi Lapangan) */}
+              <div>
+                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-2.5">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span>1. Siapa Target Rombongan Peserta Trip Ini?</span>
+                </Label>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(Object.keys(TARGET_LABELS) as TargetRombonganType[]).map((key) => {
+                    const item = TARGET_LABELS[key];
+                    const isSelected = params.targetRombongan === key;
+                    return (
+                      <div
+                        key={key}
+                        onClick={() => setParams({ ...params, targetRombongan: key })}
+                        className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                          isSelected
+                            ? "bg-blue-50/90 dark:bg-blue-950/40 border-blue-600 text-blue-950 dark:text-blue-100 shadow-sm ring-1 ring-blue-600"
+                            : "bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-300"
+                        }`}
+                      >
+                        <span className="text-xl flex-shrink-0">{item.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold truncate">{item.title}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                            {item.subtitle}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
-              <div
-                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-br-none shadow-md shadow-blue-500/15"
-                    : "bg-slate-100 dark:bg-slate-800/70 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-200/60 dark:border-slate-700/50"
-                }`}
-              >
-                <div className="whitespace-pre-wrap font-sans space-y-1">
-                  {msg.content}
-                </div>
-
-                {/* Direct Action: Buat Jadwal Trip Cepat */}
-                {msg.suggestedTrip && onSelectTripRoute && (
-                  <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApplyRoute(msg.suggestedTrip!)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs h-8 font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+              {/* 2. Kota Destinasi Tujuan */}
+              <div>
+                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
+                  <MapPin className="w-4 h-4 text-rose-500" />
+                  <span>2. Kota Destinasi Tujuan</span>
+                </Label>
+                <Input
+                  value={params.kotaTujuan}
+                  onChange={(e) => setParams({ ...params, kotaTujuan: e.target.value })}
+                  placeholder="Contoh: Semarang, Demak & Kudus, Yogyakarta, Malang..."
+                  className="rounded-xl h-10 text-xs sm:text-sm font-medium"
+                />
+                
+                {/* Quick Chips Destinasi */}
+                <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar pb-1">
+                  <span className="text-[10px] text-slate-400 font-semibold flex-shrink-0">Rute Cepat:</span>
+                  {POPULAR_CITIES.map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => setParams({ ...params, kotaTujuan: city })}
+                      className={`text-[11px] px-2.5 py-0.5 rounded-full border transition-all whitespace-nowrap ${
+                        params.kotaTujuan.toLowerCase() === city.toLowerCase()
+                          ? "bg-blue-600 text-white border-blue-600 font-bold"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                      }`}
                     >
-                      <Bus className="w-3.5 h-3.5" />
-                      <span>Buat Jadwal Trip Rute Ini</span>
-                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {msg.role === "user" && (
-                <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold">
-                  <User className="w-4 h-4" />
+                      {city}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex gap-3 items-center text-xs text-slate-400">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center">
-                <Bot className="w-4 h-4 animate-spin" />
               </div>
-              <span>Asisten AI sedang menyusun informasi akurat...</span>
+
+              {/* 3. Durasi & Armada Bus */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Durasi */}
+                <div>
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                    <span>3. Durasi Perjalanan</span>
+                  </Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: "1", label: "1 Hari" },
+                      { id: "2", label: "2H 1M" },
+                      { id: "3", label: "3H 2M" },
+                    ].map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setParams({ ...params, durasiHari: d.id as any })}
+                        className={`py-2 text-xs font-bold rounded-xl border text-center transition-all ${
+                          params.durasiHari === d.id
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                            : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Spesifikasi Armada Bus */}
+                <div>
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
+                    <Bus className="w-4 h-4 text-emerald-600" />
+                    <span>4. Armada Bus Yang Dipakai</span>
+                  </Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: "big_bus", label: "Big Bus", sub: "50 Seat" },
+                      { id: "medium_bus", label: "Medium", sub: "33 Seat" },
+                      { id: "microbus", label: "HiAce", sub: "15 Seat" },
+                    ].map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setParams({ ...params, armadaBus: a.id as any })}
+                        className={`p-1.5 rounded-xl border text-center transition-all flex flex-col justify-center items-center ${
+                          params.armadaBus === a.id
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                            : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        <span className="text-xs font-bold">{a.label}</span>
+                        <span className={`text-[9px] ${params.armadaBus === a.id ? "text-blue-100" : "text-slate-400"}`}>
+                          {a.sub}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tombol Buat Proposal */}
+              <div className="pt-2">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={loading || !params.kotaTujuan.trim()}
+                  className="w-full h-11 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span>{loading ? "Menyusun Rekomendasi Lapangan..." : "Susun Rundown & Rekomendasi Lapangan"}</span>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* ============================================================ */
+            /* MODE 2: HASIL PROPOSAL OPERASIONAL LAPANGAN                 */
+            /* ============================================================ */
+            <div className="space-y-6">
+              {/* Ringkasan Header Rute */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 mb-1">
+                    <span>Target: {result.targetLabel}</span>
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    {result.judulTrip}
+                  </h3>
+                  <p className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                    <span>⏱️ {result.durasiLabel}</span>
+                    <span>•</span>
+                    <span>🚌 {result.armadaLabel}</span>
+                  </p>
+                </div>
+
+                <Button
+                  size="sm"
+                  onClick={handleApplyToTrip}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  Terapkan ke Jadwal Trip
+                </Button>
+              </div>
+
+              {/* Peringatan Keselamatan & Karakteristik Rombongan */}
+              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>Catatan Khusus Lapangan untuk Tour Leader & Driver:</span>
+                </div>
+                <p className="text-[11px] leading-relaxed font-medium pl-6">
+                  {result.peringatanKeselamatan}
+                </p>
+                <div className="pl-6 space-y-1 pt-1 border-t border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800/90 dark:text-amber-300/90">
+                  {result.karakteristikTarget.map((k, idx) => (
+                    <div key={idx} className="flex items-start gap-1.5">
+                      <span>•</span>
+                      <span>{k}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Timeline Rundown Jam demi Jam (Format Bersih & Rapi) */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Rundown Operasional Jam demi Jam (Siap Pakai):</span>
+                </h4>
+
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                  {result.rundown.map((item, idx) => (
+                    <div key={idx} className="p-3 text-xs flex items-start gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <div className="w-24 flex-shrink-0 font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-1 rounded-lg text-center text-[11px]">
+                        {item.jamMulai} - {item.jamSelesai}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-bold text-slate-900 dark:text-slate-100">{item.kegiatan}</p>
+                          <span className="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex-shrink-0">
+                            {item.kategori}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-red-400 flex-shrink-0" />
+                          <span>{item.lokasi}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 italic mt-1 bg-slate-50 dark:bg-slate-800/40 p-1.5 rounded-md">
+                          ℹ️ {item.keterangan}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Objek Wisata Terpilih & Estimasi HTM */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
+                  <Ticket className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Objek Wisata Terpilih Sesuai Karakter Peserta:</span>
+                </h4>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {result.destinasiRekomendasi.map((d, idx) => (
+                    <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-slate-900 dark:text-slate-100">{d.nama}</p>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                          HTM: {d.htmPerOrang}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">Akses Bus:</span> {d.aksesBus}
+                      </p>
+                      <p className="text-[10px] text-slate-500 italic">
+                        Alasan rekomendasi: {d.alasanCocok}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Restoran Rombongan */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
+                  <Utensils className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Rekomendasi Resto Rombongan (Ramah Parkir Bus Besar):</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {result.restoRekomendasi.map((r, idx) => (
+                    <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 text-xs space-y-1">
+                      <p className="font-bold text-slate-900 dark:text-slate-100">{r.nama}</p>
+                      <p className="text-[11px] text-slate-500">
+                        Kapasitas: <span className="font-semibold text-slate-700 dark:text-slate-300">{r.kapasitas}</span> • {r.parkirBus}
+                      </p>
+                      <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                        Menu Favorit: {r.menuFavorit}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tombol Terapkan Utama */}
+              <div className="pt-2 flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  className="rounded-xl h-11 text-xs font-semibold flex-1 border-slate-200 dark:border-slate-700"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                  Ubah Parameter Rombongan
+                </Button>
+                <Button
+                  onClick={handleApplyToTrip}
+                  className="rounded-xl h-11 text-xs font-bold flex-[2] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                  <span>Terapkan ke Jadwal Trip Baru</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+
             </div>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestion Chips */}
-        <div className="px-4 py-2 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 overflow-x-auto flex gap-1.5 no-scrollbar flex-shrink-0">
-          {DEFAULT_SUGGESTIONS.map((sug, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSend(sug)}
-              disabled={loading}
-              className="text-[11px] font-medium px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:border-blue-300 whitespace-nowrap transition-all shadow-sm active:scale-95"
-            >
-              💡 {sug}
-            </button>
-          ))}
-        </div>
-
-        {/* Input Bar */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-          className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-2 flex-shrink-0"
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Tanyakan rute wisata, HTM, parkir bus, atau rundown..."
-            disabled={loading}
-            className="rounded-2xl h-11 text-xs sm:text-sm pl-4 pr-3 border-slate-200 dark:border-slate-700 focus-visible:ring-blue-600"
-          />
-          <Button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="w-11 h-11 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0 shadow-md shadow-blue-500/20"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
       </DialogContent>
     </Dialog>
   );
