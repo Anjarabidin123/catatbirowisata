@@ -16,19 +16,19 @@ const CURATED_DESTINATIONS: Record<string, DestinationPhoto> = {
   semarang: {
     nama: "Semarang (Lawang Sewu & Kota Lama)",
     lokasi: "Jawa Tengah",
-    url: "/destinations/semarang.jpg",
+    url: "/destinations/semarang.jpg?v=2",
     isCurated: true,
   },
   lawangsewu: {
     nama: "Lawang Sewu Semarang",
     lokasi: "Semarang, Jawa Tengah",
-    url: "/destinations/semarang.jpg",
+    url: "/destinations/semarang.jpg?v=2",
     isCurated: true,
   },
   kotalama: {
     nama: "Kota Lama Semarang",
     lokasi: "Semarang, Jawa Tengah",
-    url: "/destinations/semarang.jpg",
+    url: "/destinations/semarang.jpg?v=2",
     isCurated: true,
   },
   bromo: {
@@ -246,7 +246,7 @@ const DEFAULT_PHOTO: DestinationPhoto = {
 };
 
 // LocalStorage cache key
-const CACHE_KEY = "app_destination_photo_cache_v1";
+const CACHE_KEY = "app_destination_photo_cache_v2";
 
 const getCachedPhotos = (): Record<string, DestinationPhoto> => {
   try {

@@ -527,18 +527,21 @@ const Dashboard = () => {
                     </div>
 
                     <div className="absolute bottom-3 left-4 right-4 text-white">
-                      <h3 className="text-base sm:text-lg font-black tracking-tight text-white drop-shadow-md truncate">
-                        {currentTrip.nama_trip}
+                      <div className="flex items-center gap-1.5 text-xs text-amber-300 font-extrabold uppercase tracking-wide drop-shadow mb-0.5">
+                        <MapPin className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Destinasi Tujuan: {currentTrip.tujuan}</span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-md truncate capitalize">
+                        {currentTrip.tujuan}
                       </h3>
-                      <div className="flex items-center gap-3 text-xs text-slate-200 font-medium drop-shadow mt-0.5">
+                      <div className="flex items-center gap-2 text-xs text-slate-200 font-medium drop-shadow mt-1">
+                        <span className="bg-white/20 border border-white/30 backdrop-blur-md px-2 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm">
+                          Rombongan: {currentTrip.nama_trip}
+                        </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5 text-amber-300" />
                           {format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id })}
                           {currentTrip.tanggal_selesai ? ` - ${format(new Date(currentTrip.tanggal_selesai), "dd MMM yyyy", { locale: id })}` : ""}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-rose-400" />
-                          {currentTrip.tujuan}
                         </span>
                       </div>
                     </div>
