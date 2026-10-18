@@ -9,10 +9,16 @@ export interface BiroProfile {
 
 const decodeSafeKey = (encoded: string): string => {
   try {
-    return atob(encoded);
+    if (typeof atob === "function") {
+      return atob(encoded);
+    }
+    if (typeof Buffer !== "undefined") {
+      return Buffer.from(encoded, "base64").toString("utf-8");
+    }
   } catch {
     return "";
   }
+  return "";
 };
 
 export const DEFAULT_GEMINI_API_KEY =
@@ -33,6 +39,7 @@ const STORAGE_KEY = "app_biro_profile_v1";
  */
 export function getLocalBiroProfile(): BiroProfile {
   try {
+    if (typeof localStorage === "undefined") return DEFAULT_PROFILE;
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -104,7 +111,9 @@ export async function saveBiroProfile(profile: Partial<BiroProfile>): Promise<Bi
   };
 
   // Simpan ke localStorage terlebih dahulu
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  }
 
   // Sync ke Supabase auth metadata
   try {
@@ -121,7 +130,9 @@ export async function saveBiroProfile(profile: Partial<BiroProfile>): Promise<Bi
   }
 
   // Pancarkan event agar komponen lain langsung re-render
-  window.dispatchEvent(new CustomEvent("biro-profile-updated", { detail: updated }));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("biro-profile-updated", { detail: updated }));
+  }
 
   return updated;
 }

@@ -54,9 +54,13 @@ const POPULAR_DESTINATIONS = [
   "Semarang",
   "Yogyakarta",
   "Demak & Kudus",
+  "Solo",
   "Malang & Batu",
   "Bandung",
-  "Solo",
+  "Bali",
+  "Surabaya",
+  "Dieng & Wonosobo",
+  "Jakarta",
 ];
 
 const TARGET_ICONS: Record<TargetRombonganType, any> = {
@@ -147,24 +151,91 @@ const MarkdownView = ({ content }: { content: string }) => {
     return parts;
   };
 
-  lines.forEach((rawLine, idx) => {
+  for (let idx = 0; idx < lines.length; idx++) {
+    const rawLine = lines[idx];
     const line = rawLine.trimEnd();
+
     if (!line.trim()) {
-      elements.push(<div key={idx} className="h-1.5" />);
-      return;
+      elements.push(<div key={`blank-${idx}`} className="h-1.5" />);
+      continue;
+    }
+
+    // Deteksi tabel Markdown (| col | col |)
+    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+      const tableLines: string[] = [];
+      while (
+        idx < lines.length &&
+        lines[idx].trim().startsWith("|") &&
+        lines[idx].trim().endsWith("|")
+      ) {
+        tableLines.push(lines[idx].trim());
+        idx++;
+      }
+      idx--; // Koreksi kenaikan loop
+
+      const validRows = tableLines.filter((tl) => !tl.includes("---"));
+      if (validRows.length > 0) {
+        const headerRow = validRows[0]
+          .split("|")
+          .map((c) => c.trim())
+          .filter((_, i, arr) => i > 0 && i < arr.length - 1);
+        const dataRows = validRows.slice(1).map((r) =>
+          r
+            .split("|")
+            .map((c) => c.trim())
+            .filter((_, i, arr) => i > 0 && i < arr.length - 1)
+        );
+
+        elements.push(
+          <div
+            key={`tbl-${idx}`}
+            className="my-2 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 shadow-xs"
+          >
+            <table className="w-full text-[11px] text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                  {headerRow.map((h, hi) => (
+                    <th key={hi} className="px-2.5 py-1.5 font-bold whitespace-nowrap">
+                      {renderInline(h.replace(/\*\*/g, ""))}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {dataRows.map((row, ri) => (
+                  <tr
+                    key={ri}
+                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40"
+                  >
+                    {row.map((cell, ci) => (
+                      <td
+                        key={ci}
+                        className="px-2.5 py-1.5 text-slate-700 dark:text-slate-300 align-top"
+                      >
+                        {renderInline(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+        continue;
+      }
     }
 
     if (line.startsWith("### ")) {
       elements.push(
         <h4
           key={idx}
-          className="font-bold text-xs sm:text-sm text-blue-900 dark:text-blue-300 mt-2 mb-1 flex items-center gap-1.5"
+          className="font-bold text-xs sm:text-sm text-blue-900 dark:text-blue-300 mt-2.5 mb-1 flex items-center gap-1.5"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block"></span>
           {renderInline(line.slice(4))}
         </h4>
       );
-      return;
+      continue;
     }
 
     if (line.startsWith("## ")) {
@@ -176,7 +247,7 @@ const MarkdownView = ({ content }: { content: string }) => {
           {renderInline(line.slice(3))}
         </h3>
       );
-      return;
+      continue;
     }
 
     if (line.startsWith("# ")) {
@@ -188,14 +259,26 @@ const MarkdownView = ({ content }: { content: string }) => {
           {renderInline(line.slice(2))}
         </h2>
       );
-      return;
+      continue;
     }
 
     if (line.startsWith("---") || line.startsWith("***")) {
       elements.push(
         <hr key={idx} className="my-2 border-slate-200 dark:border-slate-700" />
       );
-      return;
+      continue;
+    }
+
+    if (line.startsWith("> ")) {
+      elements.push(
+        <div
+          key={idx}
+          className="pl-3 py-1.5 my-1.5 border-l-2 border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 rounded-r-lg text-xs text-slate-700 dark:text-slate-300"
+        >
+          {renderInline(line.slice(2))}
+        </div>
+      );
+      continue;
     }
 
     // Sub-bullet
@@ -210,7 +293,7 @@ const MarkdownView = ({ content }: { content: string }) => {
           <span className="flex-1">{renderInline(clean)}</span>
         </div>
       );
-      return;
+      continue;
     }
 
     // Top-level bullet
@@ -225,7 +308,7 @@ const MarkdownView = ({ content }: { content: string }) => {
           <span className="flex-1 leading-relaxed">{renderInline(clean)}</span>
         </div>
       );
-      return;
+      continue;
     }
 
     // Numbered list
@@ -242,7 +325,7 @@ const MarkdownView = ({ content }: { content: string }) => {
           <span className="flex-1 leading-relaxed">{renderInline(numMatch[2])}</span>
         </div>
       );
-      return;
+      continue;
     }
 
     // Paragraph
@@ -254,7 +337,7 @@ const MarkdownView = ({ content }: { content: string }) => {
         {renderInline(line)}
       </p>
     );
-  });
+  }
 
   return <div className="space-y-0.5">{elements}</div>;
 };
@@ -268,6 +351,8 @@ export const AsistenWisataModal = ({
   const [targetRombongan, setTargetRombongan] =
     useState<TargetRombonganType>("smp");
   const [kotaTujuan, setKotaTujuan] = useState("Yogyakarta");
+  const [showCityPicker, setShowCityPicker] = useState(false);
+  const [customCityInput, setCustomCityInput] = useState("");
   const [durasiHari, setDurasiHari] = useState<"1" | "2" | "3">("1");
   const [armadaBus, setArmadaBus] = useState<
     "big_bus" | "medium_bus" | "microbus"
@@ -324,7 +409,9 @@ export const AsistenWisataModal = ({
 
     try {
       const reply = await callGeminiChat(
-        newHistory.map((m) => ({ role: m.role, content: m.content })),
+        newHistory
+          .filter((m) => !m.isError)
+          .map((m) => ({ role: m.role, content: m.content })),
         {
           targetRombongan,
           kotaTujuan,
@@ -341,7 +428,7 @@ export const AsistenWisataModal = ({
         role: "assistant",
         content: reply,
         timestamp: new Date(),
-        parsedRundown: parsedRundown.length >= 2 ? parsedRundown : undefined,
+        parsedRundown: parsedRundown.length >= 1 ? parsedRundown : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -390,7 +477,7 @@ export const AsistenWisataModal = ({
         {/* ========================================================= */}
         {/* HEADER KOMPAK: BERSIH, RAMAH MOBILE & PROFESIONAL         */}
         {/* ========================================================= */}
-        <DialogHeader className="p-3 sm:p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 flex-shrink-0">
+        <DialogHeader className="p-3 sm:p-3.5 pr-12 sm:pr-14 border-b border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 flex-shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
@@ -432,10 +519,102 @@ export const AsistenWisataModal = ({
         {/* ========================================================= */}
         {/* HORIZONTAL CONTEXT STRIP (HEMAT RUANG DI MOBILE)           */}
         {/* ========================================================= */}
-        <div className="px-3 py-1.5 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+        <div className="px-3 py-1.5 bg-slate-50/70 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">
             Konteks:
           </span>
+
+          {/* Kota Tujuan Picker Chip & Dropdown */}
+          <div className="relative flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowCityPicker((prev) => !prev)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:border-blue-400 transition-all whitespace-nowrap shadow-xs"
+              title="Pilih atau ubah kota destinasi"
+            >
+              <MapPin className="w-3 h-3 text-blue-600" />
+              <span>{kotaTujuan}</span>
+              <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+            </button>
+
+            {showCityPicker && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowCityPicker(false)}
+                />
+                <div className="absolute left-0 top-full mt-1.5 z-50 w-64 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                      Kota Destinasi
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCityPicker(false)}
+                      className="text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (customCityInput.trim()) {
+                        setKotaTujuan(customCityInput.trim());
+                        setCustomCityInput("");
+                        setShowCityPicker(false);
+                        toast.info(`Kota tujuan: ${customCityInput.trim()}`);
+                      }
+                    }}
+                    className="flex gap-1"
+                  >
+                    <Input
+                      value={customCityInput}
+                      onChange={(e) => setCustomCityInput(e.target.value)}
+                      placeholder="Ketik nama kota..."
+                      className="h-7 text-xs rounded-lg"
+                      autoFocus
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="h-7 px-2.5 text-[11px] rounded-lg bg-blue-600 text-white font-semibold"
+                    >
+                      Set
+                    </Button>
+                  </form>
+
+                  <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] text-slate-400 mb-1 font-medium">Kota Populer:</p>
+                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                      {POPULAR_DESTINATIONS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            setKotaTujuan(c);
+                            setShowCityPicker(false);
+                            toast.info(`Kota tujuan: ${c}`);
+                          }}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+                            kotaTujuan === c
+                              ? "bg-blue-600 text-white font-semibold"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <span className="text-slate-300 dark:text-slate-700">|</span>
 
           {/* Segment Selector Chips */}
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -600,7 +779,7 @@ export const AsistenWisataModal = ({
                         )}
                       </button>
 
-                      {msg.parsedRundown && msg.parsedRundown.length >= 2 && (
+                      {msg.parsedRundown && msg.parsedRundown.length >= 1 && (
                         <button
                           type="button"
                           onClick={() => handleApplyRundown(msg.parsedRundown!)}

@@ -169,12 +169,35 @@ export const PengaturanBiroDialog = ({
       ? (tempApiKey.trim() || DEFAULT_GEMINI_API_KEY)
       : (profile.gemini_api_key?.trim() || DEFAULT_GEMINI_API_KEY);
 
+    setLoading(true);
+
+    // Pengamanan Berlapis: Jika pengguna memasukkan kunci kustom baru, verifikasi langsung ke server Google AI
+    if (
+      isKeyUnlocked &&
+      finalApiKey !== DEFAULT_GEMINI_API_KEY &&
+      finalApiKey !== profile.gemini_api_key
+    ) {
+      try {
+        const testRes = await testGeminiApiKey(finalApiKey);
+        if (!testRes.success) {
+          setLoading(false);
+          toast.error(
+            `Kunci API Baru Tidak Valid: ${testRes.message}. Penyimpanan dibatalkan demi keamanan fitur AI.`
+          );
+          return;
+        }
+      } catch (err: any) {
+        setLoading(false);
+        toast.error("Gagal memverifikasi API Key baru: " + (err.message || "Koneksi terputus"));
+        return;
+      }
+    }
+
     const updatedProfile: BiroProfile = {
       ...profile,
       gemini_api_key: finalApiKey,
     };
 
-    setLoading(true);
     try {
       await saveBiroProfile(updatedProfile);
       setProfile(updatedProfile);
@@ -511,14 +534,17 @@ export const PengaturanBiroDialog = ({
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-slate-600 dark:text-slate-400 space-y-2 text-left leading-relaxed">
               <p>
-                Fitur <strong>Asisten AI & Konsultan Rute</strong> sangat bergantung pada Google Gemini API Key. Jika kunci diubah atau terhapus secara tidak sengaja, fitur AI akan terganggu.
+                Fitur <strong>Asisten AI & Konsultan Rute</strong> memerlukan Google Gemini API Key yang aktif. Jika kunci diubah sembarangan atau terhapus, fitur konsultasi AI otomatis tidak dapat digunakan.
               </p>
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-[11px] font-medium space-y-1">
-                <p>Pertanyaan pengamanan:</p>
-                <ul className="list-disc pl-4 space-y-0.5">
-                  <li>Yakin ingin mengubah atau mengedit kunci API ini?</li>
-                  <li>Sudahkah Anda menyiapkan API Key Google Gemini pengganti yang aktif?</li>
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-[11px] font-medium space-y-1.5">
+                <p className="font-bold">Konfirmasi Pengamanan Developer:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Yakin ingin mengubah atau mengedit API Key ini?</li>
+                  <li>Apakah Anda sudah mendapatkan API Key pengganti yang aktif dan valid?</li>
                 </ul>
+                <p className="text-[10px] text-amber-800 dark:text-amber-300 italic pt-0.5">
+                  Pengamanan berlapis ini dipasang developer untuk melindungi sistem agar pengguna awam tidak sengaja menghapus atau merusak kunci AI.
+                </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -535,7 +561,7 @@ export const PengaturanBiroDialog = ({
               htmlFor="confirm-replacement"
               className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 leading-tight cursor-pointer select-none"
             >
-              Saya paham dan sudah memiliki API Key pengganti yang valid dari Google AI Studio.
+              Saya yakin dan sudah menyiapkan API Key pengganti yang aktif dari Google AI Studio.
             </label>
           </div>
 

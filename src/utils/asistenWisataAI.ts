@@ -118,7 +118,12 @@ export async function testGeminiApiKey(
     return { success: false, message: "API key tidak boleh kosong" };
   }
 
-  const models = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"];
+  const models = [
+    "gemini-3.8-flash",
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+  ];
   let lastError = "";
 
   for (const model of models) {
@@ -199,6 +204,7 @@ ${context?.armadaBus ? `Armada yang Digunakan: ${context.armadaBus === "big_bus"
 Aturan Komunikasi:
 - DILARANG menggunakan banyak emoji atau emoji yang tidak perlu. Tulis dengan gaya bahasa profesional, lugas, ramah, solutif, dan rapi ala konsultan biro wisata profesional.
 - Format Markdown rapi: gunakan heading (*###*), bullet points yang ringkas dan padat, serta format waktu yang jelas untuk rundown (contoh: * **08.00 – 10.00 | Nama Objek / Aktivitas** dengan sub-poin rincian).
+- Format Rundown: Wajib gunakan format bullet list (* **08.00 – 10.00 | Nama Kegiatan** dengan sub-poin * Lokasi: ... dan * Info: ...). JANGAN gunakan tabel Markdown (| col | col |) karena tabel tidak muat dan terpotong di layar smartphone (mobile).
 - Bersifat interaktif: Anda siap merevisi rute, mengubah durasi, mengganti tempat makan, memberi alternatif jika bus tidak muat, atau menjawab pertanyaan apa pun dari pengguna.`;
 
   const contents = history.map((m) => ({
@@ -206,7 +212,12 @@ Aturan Komunikasi:
     parts: [{ text: m.content }],
   }));
 
-  const models = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"];
+  const models = [
+    "gemini-3.8-flash",
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+  ];
   let lastErrorMsg = "";
 
   for (const model of models) {
@@ -289,7 +300,7 @@ function formatProposalAsMarkdown(p: TourProposalResult): string {
 export function parseRundownFromText(text: string): RundownItem[] {
   const lines = text.split("\n");
   const items: RundownItem[] = [];
-  const timeRegex = /(?:^|\*|\-|\b)(\d{1,2}[.:]\d{2})\s*(?:–|-|s\/d|to)\s*(\d{1,2}[.:]\d{2})\s*(?:\||:|-)?\s*([^\n*]+)/i;
+  const timeExtractRegex = /(\d{1,2}[.:]\d{2})\s*(?:–|-|s\/d|to)\s*(\d{1,2}[.:]\d{2})/i;
 
   let currentItem: RundownItem | null = null;
 
@@ -297,51 +308,142 @@ export function parseRundownFromText(text: string): RundownItem[] {
     const rawLine = lines[i].trim();
     if (!rawLine) continue;
 
-    const match = rawLine.match(timeRegex);
-    if (match) {
+    // 1. Ekstraksi dari baris tabel Markdown: | 08.00 - 10.00 | ... |
+    if (rawLine.startsWith("|") && rawLine.endsWith("|")) {
+      const cols = rawLine
+        .split("|")
+        .map((c) => c.trim())
+        .filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+
+      if (cols.length >= 2) {
+        const timeCol = cols.find((c) => timeExtractRegex.test(c));
+        if (timeCol) {
+          const tMatch = timeCol.match(timeExtractRegex);
+          const otherCols = cols.filter((c) => c !== timeCol && !c.includes("---"));
+          const actCol =
+            otherCols.find((c) => !/^\d+\s*(?:mnt|menit|jam)$/i.test(c)) ||
+            otherCols[0];
+          const locCol =
+            otherCols.length > 1 ? otherCols[otherCols.length - 1] : "";
+
+          if (tMatch && actCol) {
+            if (currentItem) items.push(currentItem);
+
+            const start = tMatch[1].replace(":", ".");
+            const end = tMatch[2].replace(":", ".");
+            const title = actCol
+              .replace(/\*\*/g, "")
+              .replace(/^[\s*|:\-]+|[\s*|:\-]+$/g, "")
+              .trim();
+            const location = locCol
+              ? locCol
+                  .replace(/\*\*/g, "")
+                  .replace(/^[\s*|:\-]+|[\s*|:\-]+$/g, "")
+                  .trim()
+              : title;
+
+            let kategori: RundownItem["kategori"] = "wisata";
+            const lower = (title + " " + location).toLowerCase();
+            if (lower.includes("ziarah") || lower.includes("makam")) kategori = "ziarah";
+            else if (
+              lower.includes("makan") ||
+              lower.includes("resto") ||
+              lower.includes("kuliner") ||
+              lower.includes("isoma") ||
+              lower.includes("sarapan") ||
+              lower.includes("lunch") ||
+              lower.includes("dinner")
+            )
+              kategori = "makan";
+            else if (lower.includes("sholat") || lower.includes("masjid"))
+              kategori = "sholat";
+            else if (
+              lower.includes("perjalanan") ||
+              lower.includes("otw") ||
+              lower.includes("pulang") ||
+              lower.includes("berangkat") ||
+              lower.includes("transit") ||
+              lower.includes("kumpul")
+            )
+              kategori = "perjalanan";
+            else if (
+              lower.includes("istirahat") ||
+              lower.includes("check in") ||
+              lower.includes("hotel")
+            )
+              kategori = "istirahat";
+
+            currentItem = {
+              jamMulai: start.length === 4 ? "0" + start : start,
+              jamSelesai: end.length === 4 ? "0" + end : end,
+              kegiatan: title,
+              lokasi: location,
+              kategori,
+              keterangan: locCol && locCol !== actCol ? locCol : "",
+            };
+            continue;
+          }
+        }
+      }
+    }
+
+    // 2. Ekstraksi dari bullet list, nomor list, atau teks biasa
+    const tMatch = rawLine.match(timeExtractRegex);
+    if (tMatch) {
       if (currentItem) items.push(currentItem);
 
-      const start = match[1].replace(":", ".");
-      const end = match[2].replace(":", ".");
-      let title = match[3].replace(/^[\s*|:\-]+|[\s*|:\-]+$/g, "").trim();
+      const start = tMatch[1].replace(":", ".");
+      const end = tMatch[2].replace(":", ".");
 
-      let kategori: RundownItem["kategori"] = "wisata";
-      const lower = (title + " " + rawLine).toLowerCase();
-      if (lower.includes("ziarah") || lower.includes("makam")) kategori = "ziarah";
-      else if (
-        lower.includes("makan") ||
-        lower.includes("resto") ||
-        lower.includes("kuliner") ||
-        lower.includes("isoma") ||
-        lower.includes("lunch") ||
-        lower.includes("dinner")
-      )
-        kategori = "makan";
-      else if (lower.includes("sholat") || lower.includes("masjid"))
-        kategori = "sholat";
-      else if (
-        lower.includes("perjalanan") ||
-        lower.includes("otw") ||
-        lower.includes("pulang") ||
-        lower.includes("berangkat") ||
-        lower.includes("kumpul")
-      )
-        kategori = "perjalanan";
-      else if (
-        lower.includes("istirahat") ||
-        lower.includes("check in") ||
-        lower.includes("hotel")
-      )
-        kategori = "istirahat";
+      const afterTime = rawLine.slice(rawLine.indexOf(tMatch[0]) + tMatch[0].length);
+      const title = afterTime
+        .replace(/^\s*\*\*/, "")
+        .replace(/^[\s*|:\-]+/, "")
+        .replace(/[\s*|:\-]+$/, "")
+        .replace(/\*\*/g, "")
+        .trim();
 
-      currentItem = {
-        jamMulai: start.length === 4 ? "0" + start : start,
-        jamSelesai: end.length === 4 ? "0" + end : end,
-        kegiatan: title,
-        lokasi: title,
-        kategori,
-        keterangan: "",
-      };
+      if (title.length > 1) {
+        let kategori: RundownItem["kategori"] = "wisata";
+        const lower = (title + " " + rawLine).toLowerCase();
+        if (lower.includes("ziarah") || lower.includes("makam")) kategori = "ziarah";
+        else if (
+          lower.includes("makan") ||
+          lower.includes("resto") ||
+          lower.includes("kuliner") ||
+          lower.includes("isoma") ||
+          lower.includes("sarapan") ||
+          lower.includes("lunch") ||
+          lower.includes("dinner")
+        )
+          kategori = "makan";
+        else if (lower.includes("sholat") || lower.includes("masjid"))
+          kategori = "sholat";
+        else if (
+          lower.includes("perjalanan") ||
+          lower.includes("otw") ||
+          lower.includes("pulang") ||
+          lower.includes("berangkat") ||
+          lower.includes("transit") ||
+          lower.includes("kumpul")
+        )
+          kategori = "perjalanan";
+        else if (
+          lower.includes("istirahat") ||
+          lower.includes("check in") ||
+          lower.includes("hotel")
+        )
+          kategori = "istirahat";
+
+        currentItem = {
+          jamMulai: start.length === 4 ? "0" + start : start,
+          jamSelesai: end.length === 4 ? "0" + end : end,
+          kegiatan: title,
+          lokasi: title,
+          kategori,
+          keterangan: "",
+        };
+      }
     } else if (
       currentItem &&
       (rawLine.startsWith("*") || rawLine.startsWith("-") || rawLine.startsWith("•"))

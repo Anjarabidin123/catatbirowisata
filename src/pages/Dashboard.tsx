@@ -268,7 +268,9 @@ const Dashboard = () => {
           jam_mulai: item.jamMulai,
           jam_selesai: item.jamSelesai,
           judul_acara: item.kegiatan,
-          keterangan: `${item.lokasi} - ${item.keterangan}`,
+          keterangan: item.keterangan && item.keterangan !== item.lokasi
+            ? `${item.lokasi} • ${item.keterangan}`
+            : item.lokasi,
         }));
         await supabase.from("rundown_acara").insert(rundownInserts);
         setPendingRundown(null);

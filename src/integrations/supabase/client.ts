@@ -2,8 +2,12 @@
 import { createClient } from '@supabase/supabase-js';
 // import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL) ||
+  "https://placeholder.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY) ||
+  "placeholder-key";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -11,8 +15,8 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Temporarily disable strict Database typing to avoid 'never' errors while external DB types are not generated yet
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
+    storage: typeof localStorage !== "undefined" ? localStorage : undefined,
+    persistSession: typeof localStorage !== "undefined",
+    autoRefreshToken: typeof localStorage !== "undefined",
+  },
 });
