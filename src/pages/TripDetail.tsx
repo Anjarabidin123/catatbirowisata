@@ -351,7 +351,12 @@ const TripDetail = () => {
             {/* Tab 4: Rundown */}
             <TabsContent value="rundown">
               <Suspense fallback={<div className="flex justify-center py-8"><div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>}>
-                <RundownAcara tripId={tripId!} />
+                <RundownAcara
+                  tripId={tripId!}
+                  tripName={trip?.nama_trip}
+                  tripDestination={trip?.tujuan}
+                  tripDate={trip?.tanggal ? format(new Date(trip.tanggal), "dd MMM yyyy", { locale: id }) : undefined}
+                />
               </Suspense>
             </TabsContent>
 

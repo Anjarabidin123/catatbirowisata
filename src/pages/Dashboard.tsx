@@ -96,12 +96,62 @@ const POPULAR_DESTINATIONS = [
   },
 ];
 
+/**
+ * Logika Pemilihan Trip Aktif di Dashboard:
+ * 1. Jika preferredTripId valid (dipilih manual oleh pengguna), utamakan trip tersebut.
+ * 2. Prioritas 1: Trip Sedang Berjalan / Hari Ini (tanggal <= today <= tanggal_selesai).
+ * 3. Prioritas 2: Trip Mendatang Terdekat (tanggal > today, ASCENDING agar tanggal terdekat di depan).
+ * 4. Prioritas 3: Trip Riwayat Terakhir (tanggal < today, DESCENDING).
+ */
+export const determineActiveTrip = (trips: Trip[], preferredTripId?: string): Trip | null => {
+  if (!trips || trips.length === 0) return null;
+
+  if (preferredTripId) {
+    const matched = trips.find(t => t.id === preferredTripId);
+    if (matched) return matched;
+  }
+
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  // 1. Hari Ini / Sedang Berjalan
+  const ongoing = trips.filter(t => {
+    const start = t.tanggal;
+    const end = t.tanggal_selesai || t.tanggal;
+    return start <= todayStr && end >= todayStr;
+  });
+  if (ongoing.length > 0) {
+    ongoing.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    return ongoing[0];
+  }
+
+  // 2. Mendatang Terdekat (ASCENDING)
+  const upcoming = trips
+    .filter(t => t.tanggal > todayStr)
+    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+  if (upcoming.length > 0) {
+    return upcoming[0];
+  }
+
+  // 3. Riwayat Terakhir (DESCENDING)
+  const past = trips
+    .filter(t => t.tanggal < todayStr)
+    .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+  if (past.length > 0) {
+    return past[0];
+  }
+
+  return trips[0];
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [currentTrip, setCurrentTrip] = useState<Trip | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string | undefined>(() => {
+    return localStorage.getItem("active_trip_id") || undefined;
+  });
   const [showAddTrip, setShowAddTrip] = useState(false);
   const [showQuickExpense, setShowQuickExpense] = useState(false);
   const [rundownData, setRundownData] = useState<RundownItem[]>([]);
@@ -196,7 +246,8 @@ const Dashboard = () => {
       setTrips(tripsData || []);
 
       if (tripsData && tripsData.length > 0) {
-        setCurrentTrip(tripsData[0]);
+        const activeTrip = determineActiveTrip(tripsData, selectedTripId || currentTrip?.id);
+        setCurrentTrip(activeTrip);
       } else {
         setCurrentTrip(null);
       }
@@ -214,6 +265,53 @@ const Dashboard = () => {
       }
     } catch (error: any) {
       toast.error(error.message || "Gagal memuat data");
+    }
+  };
+
+  const handleSelectActiveTrip = (tripId: string) => {
+    const selected = trips.find(t => t.id === tripId);
+    if (selected) {
+      setSelectedTripId(selected.id);
+      setCurrentTrip(selected);
+      localStorage.setItem("active_trip_id", selected.id);
+      toast.info(`Beralih ke trip: ${selected.nama_trip}`);
+    }
+  };
+
+  const handleApplyRundownToCurrentTrip = async (rundownItems: any[]) => {
+    if (!currentTrip) {
+      toast.error("Pilih trip aktif terlebih dahulu");
+      return;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Sesi pengguna berakhir");
+      return;
+    }
+
+    try {
+      const inserts = rundownItems.map((item) => ({
+        trip_id: currentTrip.id,
+        user_id: user.id,
+        hari_ke: item.hariKe || 1,
+        jam_mulai: item.jamMulai,
+        jam_selesai: item.jamSelesai,
+        judul_acara: item.kegiatan,
+        keterangan: item.keterangan && item.keterangan !== item.lokasi
+          ? `${item.lokasi} • ${item.keterangan}`
+          : item.lokasi || item.keterangan || null,
+      }));
+
+      const { error } = await supabase.from("rundown_acara").insert(inserts);
+      if (error) throw error;
+
+      toast.success(`${rundownItems.length} jadwal rundown berhasil disimpan ke trip "${currentTrip.nama_trip}"!`);
+      await loadRundownData();
+      setRundownKey(prev => prev + 1);
+    } catch (err: any) {
+      console.error("Gagal menyimpan rundown:", err);
+      toast.error("Gagal menyimpan rundown: " + (err.message || "Terjadi kesalahan"));
+      throw err;
     }
   };
 
@@ -556,9 +654,62 @@ const Dashboard = () => {
             </button>
           </div>
 
+          {/* Trip Switcher Bar (Jika user memiliki lebih dari 1 trip) */}
+          {trips.length > 1 && currentTrip && (
+            <div className="mb-3 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 pl-1 min-w-0">
+                <Bus className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                  Pilih Trip Aktif:
+                </span>
+              </div>
+              <Select
+                value={currentTrip.id}
+                onValueChange={handleSelectActiveTrip}
+              >
+                <SelectTrigger className="h-8 text-xs font-semibold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl max-w-[210px] shadow-none">
+                  <SelectValue placeholder="Pilih Trip" />
+                </SelectTrigger>
+                <SelectContent className="max-w-[280px]">
+                  {trips.map((t) => {
+                    const todayStr = format(new Date(), "yyyy-MM-dd");
+                    const isTOnGoing = t.tanggal <= todayStr && (!t.tanggal_selesai || t.tanggal_selesai >= todayStr);
+                    const isTUpcoming = t.tanggal > todayStr;
+                    return (
+                      <SelectItem key={t.id} value={t.id} className="text-xs py-1.5">
+                        <div className="flex flex-col text-left">
+                          <div className="flex items-center gap-1 font-bold">
+                            <span className="truncate max-w-[130px]">{t.nama_trip}</span>
+                            {isTOnGoing && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 font-extrabold uppercase">
+                                Hari Ini
+                              </span>
+                            )}
+                            {isTUpcoming && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-blue-100 text-blue-700 font-bold">
+                                Mendatang
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400 capitalize truncate max-w-[160px]">
+                            {t.tujuan} • {format(new Date(t.tanggal), "dd MMM yyyy", { locale: id })}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Active Trip vs Destination Route Inspiration */}
           {currentTrip ? (() => {
             const tripPhoto = getInstantDestinationPhoto(currentTrip.tujuan);
+            const todayStr = format(new Date(), "yyyy-MM-dd");
+            const isTOnGoing = currentTrip.tanggal <= todayStr && (!currentTrip.tanggal_selesai || currentTrip.tanggal_selesai >= todayStr);
+            const isTUpcoming = currentTrip.tanggal > todayStr;
+
             return (
               <div className="mb-6 space-y-4">
                 <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md shadow-sky-950/5 group">
@@ -576,10 +727,21 @@ const Dashboard = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-slate-950/20" />
                     
                     <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        AGENDA TRIP BERJALAN
-                      </div>
+                      {isTOnGoing ? (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                          AGENDA TRIP HARI INI
+                        </div>
+                      ) : isTUpcoming ? (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-600 text-white shadow-md">
+                          <Calendar className="w-3 h-3 text-white" />
+                          TRIP MENDATANG
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-700 text-slate-200 shadow-md">
+                          RIWAYAT TRIP
+                        </div>
+                      )}
                     </div>
 
                     <div className="absolute bottom-3 left-4 right-4 text-white">
@@ -647,7 +809,14 @@ const Dashboard = () => {
 
                 </div>
                 
-                <RundownAcara key={rundownKey} tripId={currentTrip.id} />
+                <RundownAcara
+                  key={`${rundownKey}-${currentTrip.id}`}
+                  tripId={currentTrip.id}
+                  tripName={currentTrip.nama_trip}
+                  tripDestination={currentTrip.tujuan}
+                  tripDate={format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id })}
+                  onOpenAIForTrip={() => setShowAIModal(true)}
+                />
               </div>
             );
           })() : (
@@ -912,6 +1081,8 @@ const Dashboard = () => {
         open={showAIModal}
         onOpenChange={setShowAIModal}
         onSelectTripRoute={handleSelectAIRoute}
+        currentTrip={currentTrip}
+        onApplyRundownToCurrentTrip={handleApplyRundownToCurrentTrip}
       />
     </AuthGuard>
   );

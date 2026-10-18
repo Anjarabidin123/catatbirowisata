@@ -19,6 +19,30 @@ const CURATED_DESTINATIONS: Record<string, DestinationPhoto> = {
     url: "/destinations/semarang.jpg?v=2",
     isCurated: true,
   },
+  kudus: {
+    nama: "Kudus (Menara Kudus & Wisata Religi)",
+    lokasi: "Jawa Tengah",
+    url: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=900&auto=format&fit=crop&q=80",
+    isCurated: true,
+  },
+  menarakudus: {
+    nama: "Menara Kudus & Makam Sunan Kudus",
+    lokasi: "Kudus, Jawa Tengah",
+    url: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=900&auto=format&fit=crop&q=80",
+    isCurated: true,
+  },
+  demak: {
+    nama: "Demak (Masjid Agung & Sunan Kalijaga)",
+    lokasi: "Jawa Tengah",
+    url: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=900&auto=format&fit=crop&q=80",
+    isCurated: true,
+  },
+  jepara: {
+    nama: "Jepara & Pantai Bandengan",
+    lokasi: "Jawa Tengah",
+    url: "/bali-beach.jpg",
+    isCurated: true,
+  },
   lawangsewu: {
     nama: "Lawang Sewu Semarang",
     lokasi: "Semarang, Jawa Tengah",

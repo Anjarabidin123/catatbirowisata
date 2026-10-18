@@ -48,6 +48,13 @@ interface AsistenWisataModalProps {
     tujuan: string;
     rundown?: RundownItem[];
   }) => void;
+  currentTrip?: {
+    id: string;
+    nama_trip: string;
+    tujuan: string;
+    tanggal?: string;
+  } | null;
+  onApplyRundownToCurrentTrip?: (rundown: RundownItem[]) => Promise<void> | void;
 }
 
 const POPULAR_DESTINATIONS = [
@@ -346,11 +353,15 @@ export const AsistenWisataModal = ({
   open,
   onOpenChange,
   onSelectTripRoute,
+  currentTrip,
+  onApplyRundownToCurrentTrip,
 }: AsistenWisataModalProps) => {
   // State Parameter Konteks
   const [targetRombongan, setTargetRombongan] =
     useState<TargetRombonganType>("smp");
-  const [kotaTujuan, setKotaTujuan] = useState("Yogyakarta");
+  const [kotaTujuan, setKotaTujuan] = useState(
+    currentTrip?.tujuan || "Yogyakarta"
+  );
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [customCityInput, setCustomCityInput] = useState("");
   const [durasiHari, setDurasiHari] = useState<"1" | "2" | "3">("1");
@@ -362,10 +373,18 @@ export const AsistenWisataModal = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-sync kota tujuan jika trip aktif berubah
+  useEffect(() => {
+    if (open && currentTrip?.tujuan) {
+      setKotaTujuan(currentTrip.tujuan);
+    }
+  }, [open, currentTrip?.tujuan]);
 
   // Auto scroll saat pesan baru tiba
   const scrollToBottom = () => {
@@ -457,8 +476,27 @@ export const AsistenWisataModal = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Terapkan rundown AI langsung ke Jadwal Trip
-  const handleApplyRundown = (rundown: RundownItem[]) => {
+  // Terapkan rundown AI langsung ke Trip Aktif yang sedang dikelola
+  const handleApplyToActiveTrip = async (rundown: RundownItem[]) => {
+    if (!onApplyRundownToCurrentTrip || !currentTrip) return;
+    setIsApplying(true);
+    try {
+      await onApplyRundownToCurrentTrip(rundown);
+      toast.success(
+        `Berhasil menyimpan ${rundown.length} jadwal rundown ke trip "${currentTrip.nama_trip}"!`
+      );
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(
+        "Gagal menyimpan rundown: " + (err.message || "Terjadi kesalahan")
+      );
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  // Buat trip baru dengan rundown AI
+  const handleApplyAsNewTrip = (rundown: RundownItem[]) => {
     if (!onSelectTripRoute) return;
 
     const tripName = `${TARGET_LABELS[targetRombongan].title}: ${kotaTujuan}`;
@@ -467,7 +505,7 @@ export const AsistenWisataModal = ({
       tujuan: kotaTujuan,
       rundown,
     });
-    toast.success("Rundown AI berhasil diterapkan ke form Trip Baru!");
+    toast.success("Rundown AI berhasil dimuat ke formulir Trip Baru!");
     onOpenChange(false);
   };
 
@@ -523,6 +561,13 @@ export const AsistenWisataModal = ({
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">
             Konteks:
           </span>
+
+          {currentTrip && (
+            <div className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              <Bus className="w-2.5 h-2.5 text-blue-600" />
+              <span>Trip: {currentTrip.nama_trip}</span>
+            </div>
+          )}
 
           {/* Kota Tujuan Picker Chip & Dropdown */}
           <div className="relative flex-shrink-0">
@@ -780,14 +825,31 @@ export const AsistenWisataModal = ({
                       </button>
 
                       {msg.parsedRundown && msg.parsedRundown.length >= 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleApplyRundown(msg.parsedRundown!)}
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-2 py-0.5 rounded-md hover:bg-emerald-100 transition-colors shadow-xs"
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Terapkan Rundown ({msg.parsedRundown.length} Jadwal)</span>
-                        </button>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          {currentTrip && onApplyRundownToCurrentTrip && (
+                            <button
+                              type="button"
+                              disabled={isApplying}
+                              onClick={() => handleApplyToActiveTrip(msg.parsedRundown!)}
+                              className="inline-flex items-center gap-1.5 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-lg transition-all shadow-xs active:scale-95 disabled:opacity-50"
+                              title={`Simpan ${msg.parsedRundown.length} kegiatan langsung ke rundown trip ${currentTrip.nama_trip}`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Simpan ke Trip: "{currentTrip.nama_trip}" ({msg.parsedRundown.length} Jadwal)</span>
+                            </button>
+                          )}
+
+                          {onSelectTripRoute && (
+                            <button
+                              type="button"
+                              onClick={() => handleApplyAsNewTrip(msg.parsedRundown!)}
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors shadow-2xs"
+                            >
+                              <Plus className="w-3 h-3 text-blue-600" />
+                              <span>{currentTrip ? "Jadikan Trip Baru" : `Terapkan Rundown (${msg.parsedRundown.length} Jadwal)`}</span>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
