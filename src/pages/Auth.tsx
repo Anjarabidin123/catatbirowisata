@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Eye, EyeOff, Fingerprint, Mail, Lock, ArrowRight, ShieldCheck, MapPin, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Fingerprint, Mail, Lock, ArrowRight, ShieldCheck, MapPin } from "lucide-react";
 import { biometricAuth } from "@/utils/biometricAuth";
 import { Capacitor } from "@capacitor/core";
 import MiniRunningBus from "@/components/MiniRunningBus";
@@ -126,10 +126,6 @@ const Auth = () => {
           
           {/* Header Branding */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/70 text-[11px] font-bold text-blue-700 mb-2.5 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Sistem Operasional Agen Biro</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mb-1">
               Catat Trip Nusantara
             </h1>
