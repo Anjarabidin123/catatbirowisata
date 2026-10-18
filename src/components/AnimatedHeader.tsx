@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
-import { MessageCircle, Settings, Building2 } from "lucide-react";
-import { FeedbackDialog } from "./FeedbackDialog";
+import { Settings } from "lucide-react";
 import { PengaturanBiroDialog } from "./PengaturanBiroDialog";
 import { getLocalBiroProfile, fetchBiroProfile, BiroProfile } from "@/utils/biroProfile";
 
 export const AnimatedHeader = () => {
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showPengaturan, setShowPengaturan] = useState(false);
   const [profile, setProfile] = useState<BiroProfile>(getLocalBiroProfile());
 
@@ -82,28 +80,18 @@ export const AnimatedHeader = () => {
           </div>
         </div>
 
-        {/* Action Buttons: Pengaturan & Feedback */}
-        <div className="flex items-center ml-1">
-          <button
-            onClick={() => setShowPengaturan(true)}
-            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-blue-600"
-            title="Pengaturan Logo & Nama Biro"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setShowFeedback(true)}
-            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-blue-600"
-            title="Kritik & Saran"
-          >
-            <MessageCircle className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Action Button: Pengaturan */}
+        <button
+          onClick={() => setShowPengaturan(true)}
+          className="ml-0.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-blue-600"
+          title="Pengaturan Logo & Nama Biro"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Dialog Pengaturan Profil Biro */}
       <PengaturanBiroDialog open={showPengaturan} onOpenChange={setShowPengaturan} />
-      <FeedbackDialog open={showFeedback} onOpenChange={setShowFeedback} />
     </>
   );
 };

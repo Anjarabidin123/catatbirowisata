@@ -440,15 +440,6 @@ const Dashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowAIModal(true)}
-                className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 via-sky-500 to-indigo-600 text-white shadow-md shadow-blue-500/25 hover:scale-105 transition-all"
-                title="Tanya Asisten AI Wisata"
-              >
-                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
                 onClick={loadData}
                 className="w-9 h-9 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-sm text-slate-600 dark:text-slate-300 hover:text-blue-600"
                 title="Segarkan Data"
