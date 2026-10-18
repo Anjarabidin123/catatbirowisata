@@ -73,7 +73,7 @@ export const ReminderDialog = ({ open, onOpenChange }: ReminderDialogProps) => {
           // Notify 5 minutes before or if time has passed
           if (diffMinutes <= 5 && diffMinutes >= -1) {
             if (Notification.permission === "granted") {
-              new Notification("🔔 Pengingat Malika Tour", {
+              new Notification("🔔 Pengingat Agenda Biro", {
                 body: `${reminder.judul}${reminder.trips ? ` - ${reminder.trips.nama_trip}` : ""}`,
                 icon: "/favicon.ico",
                 tag: reminder.id, // Prevent duplicate notifications

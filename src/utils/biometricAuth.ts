@@ -6,7 +6,7 @@ export interface BiometricCredentials {
   password: string;
 }
 
-const CREDENTIALS_KEY = "malika_biometric_credentials";
+const CREDENTIALS_KEY = "agency_biometric_credentials";
 
 export const biometricAuth = {
   async isAvailable(): Promise<boolean> {

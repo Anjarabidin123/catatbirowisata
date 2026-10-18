@@ -20,11 +20,8 @@ export const NotificationPermission = () => {
       localStorage.setItem("notification-permission-asked", "true");
       
       if (permission === "granted") {
-        // Show test notification
-        new Notification("Malika Tour", {
-          body: "Notifikasi pengingat berhasil diaktifkan! Anda akan menerima notifikasi H-2, H-1, dan H-5 jam sebelum trip.",
-          icon: "/malika-logo.png",
-          badge: "/malika-logo.png",
+        new Notification("Pencatatan Agen Biro", {
+          body: "Notifikasi berhasil diaktifkan! Anda akan menerima pengingat jadwal trip tepat waktu.",
         });
       }
     } catch (error) {
@@ -40,21 +37,21 @@ export const NotificationPermission = () => {
 
   return (
     <Dialog open={showDialog} onOpenChange={setShowDialog}>
-      <DialogContent>
+      <DialogContent className="rounded-2xl">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <Bell className="w-6 h-6 text-primary" />
-            <DialogTitle>Aktifkan Notifikasi</DialogTitle>
+            <Bell className="w-6 h-6 text-blue-600" />
+            <DialogTitle>Aktifkan Notifikasi Operasional</DialogTitle>
           </div>
-          <DialogDescription className="pt-4">
-            Izinkan notifikasi untuk mendapatkan pengingat jadwal trip Anda tepat waktu.
+          <DialogDescription className="pt-2">
+            Izinkan notifikasi agar sistem dapat mengirimkan pengingat jadwal trip dan jatuh tempo secara tepat waktu.
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-3 justify-end mt-4">
-          <Button variant="outline" onClick={handleDeny}>
+          <Button variant="outline" onClick={handleDeny} className="rounded-xl">
             Nanti Saja
           </Button>
-          <Button onClick={handleAllow}>
+          <Button onClick={handleAllow} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl">
             Izinkan Notifikasi
           </Button>
         </div>

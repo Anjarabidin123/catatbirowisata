@@ -105,7 +105,7 @@ export const generateRundownPDF = (
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.text(
-      `Malika Tour - Halaman ${i} dari ${totalPages}`,
+      `Pencatatan Agen Biro - Halaman ${i} dari ${totalPages}`,
       pageWidth / 2,
       doc.internal.pageSize.getHeight() - 10,
       { align: "center" }

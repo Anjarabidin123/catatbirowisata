@@ -72,7 +72,7 @@ const Laporan = () => {
         filterTripId: selectedTripId,
       });
 
-      const fileName = `Laporan_Malika_Tour_${format(new Date(), "yyyyMMdd")}.pdf`;
+      const fileName = `Laporan_Agen_Biro_${format(new Date(), "yyyyMMdd")}.pdf`;
       doc.save(fileName);
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -81,7 +81,7 @@ const Laporan = () => {
 
   const handleSharePDF = async () => {
     try {
-      const shareText = `*Laporan Malika Tour*\n\nTotal Trip: ${filteredTrips.length}\nPemasukan: Rp ${totalPemasukan.toLocaleString("id-ID")}\nPengeluaran: Rp ${totalPengeluaran.toLocaleString("id-ID")}\nSaldo: Rp ${(totalPemasukan - totalPengeluaran).toLocaleString("id-ID")}\n\nLaporan lengkap tersedia untuk diunduh.`;
+      const shareText = `*Laporan Operasional Agen Biro*\n\nTotal Trip: ${filteredTrips.length}\nPemasukan: Rp ${totalPemasukan.toLocaleString("id-ID")}\nPengeluaran: Rp ${totalPengeluaran.toLocaleString("id-ID")}\nSaldo: Rp ${(totalPemasukan - totalPengeluaran).toLocaleString("id-ID")}\n\nLaporan lengkap tersedia untuk diunduh.`;
       
       const encodedText = encodeURIComponent(shareText);
       const whatsappUrl = `whatsapp://send?text=${encodedText}`;

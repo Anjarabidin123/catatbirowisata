@@ -13,7 +13,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LogOut, Bell, Plus, DollarSign, FileDown, Share2, RefreshCw } from "lucide-react";
+import { 
+  LogOut, 
+  Bell, 
+  Plus, 
+  DollarSign, 
+  FileDown, 
+  Share2, 
+  RefreshCw, 
+  MapPin, 
+  Calendar, 
+  Briefcase, 
+  Wallet, 
+  FileText,
+  Compass,
+  ArrowRight
+} from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -21,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { RupiahInput } from "@/components/RupiahInput";
 import { generateRundownPDF } from "@/utils/pdfGenerator";
 import { Capacitor } from "@capacitor/core";
-import { scheduleTripNotifications, requestNotificationPermission, setupNotificationListeners } from "@/utils/tripNotifications";
+import { scheduleTripNotifications, setupNotificationListeners } from "@/utils/tripNotifications";
 
 interface Trip {
   id: string;
@@ -96,7 +111,7 @@ const Dashboard = () => {
           "postgres_changes",
           { event: "*", schema: "public", table: "rundown_acara", filter: `trip_id=eq.${currentTrip.id}` },
           () => {
-            loadRundownData(); // Reload data when changes occur
+            loadRundownData();
             setRundownKey(prev => prev + 1);
           }
         )
@@ -112,203 +127,213 @@ const Dashboard = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return navigate("/auth");
-
       setUser(user);
 
-      // Load ALL trips to check if any trips exist
-      const { data: allTripsData, error: allTripsError } = await supabase
+      // Load trips
+      const { data: tripsData, error: tripsError } = await supabase
         .from("trips")
         .select("*")
-        .eq("user_id", user.id)
         .order("tanggal", { ascending: false });
 
-      if (allTripsError) throw allTripsError;
+      if (tripsError) throw tripsError;
+      setTrips(tripsData || []);
 
-      const allTrips = allTripsData || [];
-      setTrips(allTrips);
-      
-      // Find upcoming or ongoing trips
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const upcomingTrips = allTrips.filter((trip) => {
-        const start = new Date(trip.tanggal);
-        const end = trip.tanggal_selesai ? new Date(trip.tanggal_selesai) : start;
-        return end >= today;
-      }).sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
-
-      // Find ongoing or upcoming trip
-      const ongoing = upcomingTrips.find((trip) => {
-        const start = new Date(trip.tanggal);
-        const end = trip.tanggal_selesai ? new Date(trip.tanggal_selesai) : start;
-        return today >= start && today <= end;
-      });
-
-      if (ongoing) {
-        setCurrentTrip(ongoing);
-      } else if (upcomingTrips.length > 0) {
-        setCurrentTrip(upcomingTrips[0]);
-      } else if (allTrips.length > 0) {
-        // If no upcoming trips, show the most recent past trip
-        setCurrentTrip(allTrips[0]);
+      // Set current trip to the most recent one or the first one
+      if (tripsData && tripsData.length > 0) {
+        setCurrentTrip(tripsData[0]);
+      } else {
+        setCurrentTrip(null);
       }
 
-      const { data: remindersData } = await supabase
+      // Load active reminders count
+      const { data: remindersData, error: remindersError } = await supabase
         .from("reminders")
         .select("id, is_done")
-        .eq("user_id", user.id)
         .eq("is_done", false);
 
+      if (remindersError) throw remindersError;
       setReminders(remindersData || []);
+
+      // Schedule notifications for upcoming trips (native only)
+      if (Capacitor.isNativePlatform() && tripsData && tripsData.length > 0) {
+        scheduleTripNotifications(tripsData);
+      }
     } catch (error: any) {
-      console.error("Error loading data:", error);
-      toast.error("Gagal memuat data");
+      toast.error(error.message || "Gagal memuat data");
     }
   };
 
   const loadRundownData = async () => {
-    if (!currentTrip || !user) return;
-
+    if (!currentTrip) return;
+    
     try {
       const { data, error } = await supabase
         .from("rundown_acara")
         .select("*")
         .eq("trip_id", currentTrip.id)
-        .eq("user_id", user.id)
         .order("hari_ke", { ascending: true })
         .order("jam_mulai", { ascending: true });
 
       if (error) throw error;
       setRundownData(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading rundown:", error);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      navigate("/auth");
-    } catch (error) {
-      console.error("Error signing out:", error);
-      toast.error("Gagal keluar");
     }
   };
 
   const handleAddTrip = async () => {
     if (!newTripData.nama_trip || !newTripData.tanggal || !newTripData.tujuan) {
-      toast.error("Mohon isi semua field yang wajib");
+      toast.error("Mohon lengkapi data trip");
       return;
     }
-    console.log("Adding trip from dashboard:", newTripData);
+
     try {
-      const { data: tripData, error } = await supabase.from("trips").insert({
-        user_id: user.id,
-        ...newTripData,
-      }).select().single();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("trips")
+        .insert({
+          user_id: user.id,
+          nama_trip: newTripData.nama_trip,
+          tanggal: newTripData.tanggal,
+          tanggal_selesai: newTripData.tanggal_selesai || null,
+          tujuan: newTripData.tujuan,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Schedule notifications for the new trip
-      if (tripData) {
-        const hasPermission = await requestNotificationPermission();
-        if (hasPermission) {
-          await scheduleTripNotifications({
-            id: tripData.id,
-            nama_trip: tripData.nama_trip,
-            tanggal: tripData.tanggal,
-            tujuan: tripData.tujuan,
-          });
-          toast.success("Trip berhasil ditambahkan! Notifikasi pengingat telah diatur.");
-        } else {
-          toast.success("Trip berhasil ditambahkan!");
-        }
-      }
-
-      setNewTripData({ nama_trip: "", tanggal: "", tanggal_selesai: "", tujuan: "" });
+      toast.success("Trip berhasil ditambahkan!");
       setShowAddTrip(false);
+      setNewTripData({
+        nama_trip: "",
+        tanggal: "",
+        tanggal_selesai: "",
+        tujuan: "",
+      });
       loadData();
     } catch (error: any) {
-      console.error("Error adding trip:", error);
-      toast.error("Gagal menambahkan trip");
+      toast.error(error.message || "Gagal menambahkan trip");
     }
   };
 
   const handleQuickExpense = async () => {
-    if (!currentTrip || !user) return;
-    if (!quickExpenseData.keterangan || !quickExpenseData.jumlah) {
-      toast.error("Mohon isi keterangan dan jumlah");
+    if (!currentTrip) {
+      toast.error("Pilih trip terlebih dahulu");
       return;
     }
 
-    console.log("Adding quick expense:", quickExpenseData);
+    if (!quickExpenseData.keterangan || !quickExpenseData.jumlah) {
+      toast.error("Mohon lengkapi data pengeluaran");
+      return;
+    }
 
     try {
-      const jumlahNumber = Number(quickExpenseData.jumlah.replace(/\./g, "").replace(/,/g, ".")) || 0;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
       const { error } = await supabase.from("keuangan").insert({
         trip_id: currentTrip.id,
         user_id: user.id,
         keterangan: quickExpenseData.keterangan,
+        jumlah: parseFloat(quickExpenseData.jumlah),
         jenis: quickExpenseData.jenis,
-        jumlah: jumlahNumber,
-        tanggal: new Date().toISOString(),
       });
 
       if (error) throw error;
 
-      toast.success("Pengeluaran berhasil ditambahkan!");
-      setQuickExpenseData({ keterangan: "", jumlah: "", jenis: "pengeluaran" });
+      toast.success("Transaksi berhasil dicatat!");
       setShowQuickExpense(false);
+      setQuickExpenseData({
+        keterangan: "",
+        jumlah: "",
+        jenis: "pengeluaran",
+      });
     } catch (error: any) {
-      console.error("Error adding expense:", error);
-      toast.error("Gagal menambahkan pengeluaran");
+      toast.error(error.message || "Gagal mencatat transaksi");
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      toast.success("Berhasil keluar dari akun");
+      navigate("/auth");
+    } catch (error: any) {
+      toast.error(error.message || "Gagal logout");
     }
   };
 
   const handleExportRundownPDF = async () => {
-    if (!currentTrip || rundownData.length === 0) {
-      toast.error("Tidak ada rundown untuk diekspor");
+    if (!currentTrip) {
+      toast.error("Trip tidak ditemukan");
+      return;
+    }
+
+    if (rundownData.length === 0) {
+      toast.error("Belum ada data rundown acara");
       return;
     }
 
     try {
-      const doc = generateRundownPDF(
-        {
-          nama_trip: currentTrip.nama_trip,
-          tanggal: format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id }),
-          tanggal_selesai: currentTrip.tanggal_selesai 
-            ? format(new Date(currentTrip.tanggal_selesai), "dd MMM yyyy", { locale: id })
-            : null,
-          tujuan: currentTrip.tujuan,
-        },
-        rundownData
-      );
+      toast.loading("Membuat PDF rundown...");
+      
+      const { data: destinationsData } = await supabase
+        .from("trip_destinations")
+        .select("*")
+        .eq("trip_id", currentTrip.id)
+        .order("urutan", { ascending: true });
 
-      const fileName = `Rundown_${currentTrip.nama_trip.replace(/\s+/g, "_")}.pdf`;
-      doc.save(fileName);
-      toast.success("PDF berhasil diunduh!");
+      await generateRundownPDF({
+        tripName: currentTrip.nama_trip,
+        tanggal: currentTrip.tanggal,
+        tanggalSelesai: currentTrip.tanggal_selesai || undefined,
+        tujuan: currentTrip.tujuan,
+        destinations: (destinationsData || []).map(d => ({
+          nama: d.nama_destinasi,
+          lokasi: d.lokasi || undefined,
+          catatan: d.catatan || undefined,
+        })),
+        rundown: rundownData.map(r => ({
+          hariKe: r.hari_ke,
+          jamMulai: r.jam_mulai,
+          jamSelesai: r.jam_selesai,
+          judulAcara: r.judul_acara,
+          keterangan: r.keterangan || undefined,
+        })),
+      });
+
+      toast.dismiss();
+      toast.success("PDF rundown berhasil diunduh!");
     } catch (error) {
+      toast.dismiss();
       console.error("Error generating PDF:", error);
       toast.error("Gagal membuat PDF");
     }
   };
 
-  const handleShareRundownPDF = async () => {
-    if (!currentTrip || rundownData.length === 0) {
-      toast.error("Tidak ada rundown untuk dibagikan");
+  const handleShareRundownPDF = () => {
+    if (!currentTrip) {
+      toast.error("Trip tidak ditemukan");
+      return;
+    }
+
+    if (rundownData.length === 0) {
+      toast.error("Belum ada data rundown acara");
       return;
     }
 
     try {
-      const shareText = `*Rundown Acara ${currentTrip.nama_trip}*\n\nTanggal: ${format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` - ${format(new Date(currentTrip.tanggal_selesai), "dd MMM yyyy", { locale: id })}` : ""}\nTujuan: ${currentTrip.tujuan}\n\nLihat detail rundown di attachment.`;
+      const shareText = `*Rundown Acara ${currentTrip.nama_trip}*\n\nTanggal: ${format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` - ${format(new Date(currentTrip.tanggal_selesai), "dd MMM yyyy", { locale: id })}` : ""}\nTujuan: ${currentTrip.tujuan}\n\nJadwal Rundown Operasional siap dijalankan.`;
       
       const encodedText = encodeURIComponent(shareText);
       const whatsappUrl = `whatsapp://send?text=${encodedText}`;
       const whatsappWebUrl = `https://wa.me/?text=${encodedText}`;
       
       if (Capacitor.isNativePlatform()) {
-        // Native: Open WhatsApp directly
         try {
           window.location.href = whatsappUrl;
           toast.success("Membuka WhatsApp...");
@@ -316,7 +341,6 @@ const Dashboard = () => {
           window.open(whatsappWebUrl, '_blank');
         }
       } else {
-        // Web: Open WhatsApp Web
         window.open(whatsappWebUrl, '_blank');
         toast.success("Membuka WhatsApp Web...");
       }
@@ -331,98 +355,161 @@ const Dashboard = () => {
   return (
     <AuthGuard>
       <NotificationPermission />
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-lg mx-auto p-4">
-          <div className="flex items-center justify-between mb-4">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 safe-top">
+        <div className="max-w-lg mx-auto p-4 sm:p-5">
+          
+          {/* Top Bar Header */}
+          <div className="flex items-center justify-between mb-5">
             <AnimatedHeader />
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={loadData}
-                className="rounded-2xl hover:bg-accent transition-all hover:scale-105"
-                title="Refresh"
+                className="w-9 h-9 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                title="Refresh Data"
               >
-                <RefreshCw className="w-6 h-6" />
+                <RefreshCw className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowReminder(true)}
-                className="relative rounded-2xl hover:bg-accent transition-all hover:scale-105"
-                title="Pengingat"
+                className="relative w-9 h-9 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                title="Pengingat Operasional"
               >
-                <Bell className="w-6 h-6" />
+                <Bell className="w-4 h-4" />
                 {activeRemindersCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs rounded-full animate-pulse">
+                  <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[10px] bg-red-600 text-white rounded-full animate-pulse border-2 border-white dark:border-slate-950">
                     {activeRemindersCount}
                   </Badge>
                 )}
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSignOut}
+                className="w-9 h-9 rounded-xl hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 text-slate-400"
+                title="Keluar"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
           
-          <GreetingHeader />
+          {/* Greeting Hero Card */}
+          <GreetingHeader userEmail={user?.email} />
 
+          {/* Quick Metrics Pills */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div 
+              onClick={() => navigate("/trips")}
+              className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm cursor-pointer hover:border-blue-400 transition-all flex items-center gap-3"
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">Total Agenda Trip</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{trips.length} Trip</p>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setShowReminder(true)}
+              className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm cursor-pointer hover:border-indigo-400 transition-all flex items-center gap-3"
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">Pengingat Jadwal</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{activeRemindersCount} Aktif</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Trip Section */}
           {currentTrip ? (
-            <div className="mb-6">
-              <div className="ios-card p-4 mb-4">
-                <div className="flex justify-between items-start mb-2">
+            <div className="mb-6 space-y-4">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h2 className="text-lg font-semibold mb-2">Trip Saat Ini</h2>
-                    <h3 className="font-semibold">{currentTrip.nama_trip}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(currentTrip.tanggal), "dd MMM", { locale: id })}
-                      {currentTrip.tanggal_selesai && (
-                        <> - {format(new Date(currentTrip.tanggal_selesai), "dd MMM yyyy", { locale: id })}</>
-                      )}
-                      {" • "}{currentTrip.tujuan}
-                    </p>
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/50 mb-1.5">
+                      Trip Aktif
+                    </span>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{currentTrip.nama_trip}</h3>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {format(new Date(currentTrip.tanggal), "dd MMM yyyy", { locale: id })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                        {currentTrip.tujuan}
+                      </span>
+                    </div>
                   </div>
+                  
                   <Button
                     size="sm"
                     onClick={() => setShowQuickExpense(true)}
-                    className="gradient-primary text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs h-8 px-3 shadow-sm"
                   >
-                    <Plus className="w-4 h-4 mr-1" />
+                    <Plus className="w-3.5 h-3.5 mr-1" />
                     Pengeluaran
                   </Button>
                 </div>
-              </div>
-              
-              <div className="mb-4 flex gap-2">
-                <Button
-                  onClick={handleExportRundownPDF}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={rundownData.length === 0}
-                >
-                  <FileDown className="w-4 h-4 mr-2" />
-                  Download PDF
-                </Button>
-                <Button
-                  onClick={handleShareRundownPDF}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={rundownData.length === 0}
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Bagikan
-                </Button>
+
+                <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <Button
+                    onClick={handleExportRundownPDF}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700"
+                    disabled={rundownData.length === 0}
+                  >
+                    <FileDown className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                    Unduh PDF
+                  </Button>
+                  <Button
+                    onClick={handleShareRundownPDF}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700"
+                    disabled={rundownData.length === 0}
+                  >
+                    <Share2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                    Kirim WA
+                  </Button>
+                  <Button
+                    onClick={() => navigate(`/trips/${currentTrip.id}`)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    Detail <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </div>
               </div>
               
               <RundownAcara key={rundownKey} tripId={currentTrip.id} />
             </div>
           ) : (
-            <div className="ios-card p-8 mb-6 text-center">
-              <div className="text-6xl mb-4">🗓️</div>
-              <h2 className="text-lg font-semibold mb-2">Belum Ada Trip</h2>
-              <p className="text-muted-foreground mb-6">Mulai rencanakan perjalanan impianmu sekarang!</p>
+            /* Modern Empty State Card */
+            <div className="p-8 mb-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-sm">
+                <Compass className="w-8 h-8" />
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">
+                Belum Ada Agenda Trip
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto mb-6">
+                Mulai catat jadwal perjalanan, rute wisata, dan operasional bus biro Anda.
+              </p>
               <Button
                 onClick={() => setShowAddTrip(true)}
-                className="gradient-primary text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 h-10 rounded-xl shadow-md shadow-blue-500/20"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Buat Trip Pertama
@@ -430,83 +517,131 @@ const Dashboard = () => {
             </div>
           )}
 
+          {/* Quick Shortcuts Grid */}
+          <div className="mb-6">
+            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 px-1">
+              Menu Cepat
+            </h4>
+            <div className="grid grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowAddTrip(true)}
+                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-left hover:border-blue-400 transition-all flex flex-col items-center text-center group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 mb-2 group-hover:scale-105 transition-transform">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Trip Baru</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/keuangan/new")}
+                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-left hover:border-emerald-400 transition-all flex flex-col items-center text-center group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 mb-2 group-hover:scale-105 transition-transform">
+                  <Wallet className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Keuangan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/notesnew")}
+                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-left hover:border-amber-400 transition-all flex flex-col items-center text-center group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 mb-2 group-hover:scale-105 transition-transform">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Catatan</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Expense Dialog */}
           <Dialog open={showQuickExpense} onOpenChange={setShowQuickExpense}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md rounded-2xl">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                  Tambah Pengeluaran Cepat
+                  <DollarSign className="w-5 h-5 text-blue-600" />
+                  Tambah Transaksi Cepat
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 pt-2">
                 <div>
-                  <Label htmlFor="keterangan">Keterangan</Label>
+                  <Label htmlFor="keterangan" className="text-xs font-medium">Keterangan</Label>
                   <Input
                     id="keterangan"
                     value={quickExpenseData.keterangan}
                     onChange={(e) =>
                       setQuickExpenseData({ ...quickExpenseData, keterangan: e.target.value })
                     }
-                    placeholder="Contoh: Parkir, Makan Sopir"
+                    placeholder="Contoh: Parkir, BBM, Makan Sopir"
                     required
+                    className="rounded-xl mt-1"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="jenis">Jenis</Label>
+                  <Label htmlFor="jenis" className="text-xs font-medium">Jenis Transaksi</Label>
                   <Select
                     value={quickExpenseData.jenis}
                     onValueChange={(value) =>
                       setQuickExpenseData({ ...quickExpenseData, jenis: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="rounded-xl mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pengeluaran">Pengeluaran</SelectItem>
-                      <SelectItem value="pemasukan">Pemasukan</SelectItem>
+                      <SelectItem value="pemasukan">Pemasukan (Uang Masuk)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <RupiahInput
-                    label="Jumlah"
+                    label="Jumlah (Rp)"
                     value={quickExpenseData.jumlah}
                     onChange={(value) =>
                       setQuickExpenseData({ ...quickExpenseData, jumlah: value })
                     }
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Waktu: {format(new Date(), "dd MMM yyyy, HH:mm", { locale: id })}
-                </p>
-                <Button onClick={handleQuickExpense} className="w-full gradient-primary text-white">
-                  Simpan
+                <Button 
+                  onClick={handleQuickExpense} 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium h-10 rounded-xl"
+                >
+                  Simpan Transaksi
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
 
+          {/* Add Trip Dialog */}
           <Dialog open={showAddTrip} onOpenChange={setShowAddTrip}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md rounded-2xl">
               <DialogHeader>
-                <DialogTitle>Tambah Trip Cepat</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <Compass className="w-5 h-5 text-blue-600" />
+                  Tambah Jadwal Trip Cepat
+                </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 pt-2">
                 <div>
-                  <Label htmlFor="nama_trip">Nama Trip</Label>
+                  <Label htmlFor="nama_trip" className="text-xs font-medium">Nama Trip</Label>
                   <Input
                     id="nama_trip"
                     value={newTripData.nama_trip}
                     onChange={(e) =>
                       setNewTripData({ ...newTripData, nama_trip: e.target.value })
                     }
-                    placeholder="Contoh: Liburan ke Bali"
+                    placeholder="Contoh: Tour Rombongan Jogja"
+                    className="rounded-xl mt-1"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="tanggal">Tanggal Mulai</Label>
+                    <Label htmlFor="tanggal" className="text-xs font-medium">Tanggal Mulai</Label>
                     <Input
                       type="date"
                       id="tanggal"
@@ -514,10 +649,11 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setNewTripData({ ...newTripData, tanggal: e.target.value })
                       }
+                      className="rounded-xl mt-1"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="tanggal_selesai">Tanggal Selesai</Label>
+                    <Label htmlFor="tanggal_selesai" className="text-xs font-medium">Tanggal Selesai</Label>
                     <Input
                       type="date"
                       id="tanggal_selesai"
@@ -525,35 +661,44 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setNewTripData({ ...newTripData, tanggal_selesai: e.target.value })
                       }
+                      className="rounded-xl mt-1"
                     />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="tujuan">Tujuan</Label>
+                  <Label htmlFor="tujuan" className="text-xs font-medium">Kota / Destinasi Tujuan</Label>
                   <Input
                     id="tujuan"
                     value={newTripData.tujuan}
                     onChange={(e) =>
                       setNewTripData({ ...newTripData, tujuan: e.target.value })
                     }
-                    placeholder="Contoh: Bali"
+                    placeholder="Contoh: Yogyakarta / Bali"
+                    className="rounded-xl mt-1"
                   />
                 </div>
-                <Button onClick={handleAddTrip} className="w-full gradient-primary text-white">
-                  Tambah Trip
+                <Button 
+                  onClick={handleAddTrip} 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium h-10 rounded-xl"
+                >
+                  Tambah Jadwal Trip
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
 
-          <Button
-            onClick={handleSignOut}
-            variant="destructive"
-            className="w-full mt-6"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Keluar
-          </Button>
+          {/* Sleek Logout Button at bottom */}
+          <div className="mt-8 pt-4 border-t border-slate-200/60 dark:border-slate-800 text-center">
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="w-full border-slate-200 dark:border-slate-800 text-slate-500 hover:text-red-600 hover:border-red-200 dark:hover:border-red-900/50 hover:bg-red-50/50 dark:hover:bg-red-950/20 rounded-xl h-10 text-xs font-medium"
+            >
+              <LogOut className="w-3.5 h-3.5 mr-2" />
+              Keluar dari Sistem
+            </Button>
+          </div>
+
         </div>
 
         <BottomNav />

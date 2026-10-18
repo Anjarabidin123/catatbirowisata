@@ -1,29 +1,30 @@
 import { useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Compass } from "lucide-react";
 import { FeedbackDialog } from "./FeedbackDialog";
-import BusAnimation from "@/components/BusAnimation";
 
 export const AnimatedHeader = () => {
   const [showFeedback, setShowFeedback] = useState(false);
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-10">
-            <BusAnimation />
-          </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
-            Malika Tour
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20">
+          <Compass className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+            Pencatatan Agen Biro
           </h1>
+          <p className="text-[10px] text-muted-foreground font-medium -mt-0.5">
+            Sistem Operasional Trip
+          </p>
         </div>
         <button
           onClick={() => setShowFeedback(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-accent transition-colors text-sm text-muted-foreground hover:text-primary group"
-          title="Kirim kritik & saran"
+          className="ml-1 p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-primary"
+          title="Bantuan / Feedback"
         >
-          <MessageCircle className="w-4 h-4 transition-transform group-hover:scale-110" />
-          <span className="hidden sm:inline">Feedback</span>
+          <MessageCircle className="w-4 h-4" />
         </button>
       </div>
       <FeedbackDialog open={showFeedback} onOpenChange={setShowFeedback} />

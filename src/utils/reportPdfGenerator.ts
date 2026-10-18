@@ -188,7 +188,7 @@ export const generateReportPDF = (data: ReportData): jsPDF => {
     doc.setFont("helvetica", "italic");
     doc.setTextColor(128, 128, 128);
     doc.text(
-      `Malika Tour - Halaman ${i} dari ${totalPages}`,
+      `Pencatatan Agen Biro - Halaman ${i} dari ${totalPages}`,
       pageWidth / 2,
       doc.internal.pageSize.getHeight() - 10,
       { align: "center" }

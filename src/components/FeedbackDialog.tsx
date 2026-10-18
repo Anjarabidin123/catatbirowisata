@@ -22,7 +22,7 @@ export const FeedbackDialog = ({ open, onOpenChange }: FeedbackDialogProps) => {
 
     const phoneNumber = "62895630183347"; // Format internasional
     const message = encodeURIComponent(
-      `*Kritik & Saran Malika Tour*\n\n${feedback}\n\n_Dikirim dari Aplikasi Malika Tour_`
+      `*Kritik & Saran Sistem Pencatatan Agen Biro*\n\n${feedback}\n\n_Dikirim dari Aplikasi Agen Biro_`
     );
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
 
@@ -48,14 +48,14 @@ export const FeedbackDialog = ({ open, onOpenChange }: FeedbackDialogProps) => {
               id="feedback"
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Tuliskan kritik, saran, atau laporkan bug di sini..."
+              placeholder="Tuliskan kritik, saran, atau laporkan kendala sistem di sini..."
               rows={6}
               className="mt-1 resize-none"
             />
           </div>
           <Button
             onClick={handleSendFeedback}
-            className="w-full gradient-primary text-white"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Kirim via WhatsApp
           </Button>

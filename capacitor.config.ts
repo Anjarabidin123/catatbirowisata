@@ -1,13 +1,13 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.malikatour.app',
-  appName: 'Malika Tour',
+  appId: 'com.agenbiro.catattrip',
+  appName: 'Pencatatan Agen Biro',
   webDir: 'dist',
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: "#0088FF",
+      backgroundColor: "#1e293b",
       showSpinner: true,
       androidSpinnerStyle: 'small',
       iosSpinnerStyle: 'small',
