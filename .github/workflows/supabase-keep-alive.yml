@@ -1,0 +1,32 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Berjalan setiap 3 hari sekali pukul 00:00 UTC (Supabase pause setelah 7 hari inaktif)
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Memungkinkan trigger manual dari tab Actions di GitHub
+
+jobs:
+  ping:
+    name: Ping Database Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kirim Request ke Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://nzsfrvgcyjedwiobctfq.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56c2ZydmdjeWplZHdpb2JjdGZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NzM4NTMsImV4cCI6MjA3NzQ0OTg1M30.odhcglTTIo-axh9GzCm00CCiBK0948Kc-fi3rSPNXNU' }}
+        run: |
+          echo "Memeriksa status Supabase di $SUPABASE_URL..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/trips?select=id&limit=1")
+          
+          echo "HTTP Response Status: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Berhasil! Supabase aktif dan tidak akan di-pause."
+          else
+            echo "Gagal atau respons tidak terduga: $HTTP_STATUS"
+            exit 1
+          fi

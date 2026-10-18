@@ -1,0 +1,193 @@
+name: Build Native Mobile App
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm cache clean --force
+          npm ci --legacy-peer-deps
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Verify resources icon exists
+        run: |
+          if [ ! -f resources/icon.png ]; then
+            echo "Error: resources/icon.png not found!"
+            exit 1
+          fi
+          echo "Icon file verified at resources/icon.png"
+          ls -lh resources/icon.png
+
+      - name: Install Capacitor Assets
+        run: npm install -g @capacitor/assets
+
+      - name: Generate app icons for Android
+        run: npx @capacitor/assets generate --iconBackgroundColor '#0088FF' --iconBackgroundColorDark '#003366' --android
+
+      - name: Create Capacitor config
+        run: |
+          cat > capacitor.config.ts << 'EOF'
+          import { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.malikatour.app',
+            appName: 'Malika Tour',
+            webDir: 'dist',
+            plugins: {
+              SplashScreen: {
+                launchShowDuration: 2000,
+                backgroundColor: "#0088FF",
+                showSpinner: false,
+              },
+            },
+          };
+
+          export default config;
+          EOF
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
+
+      - name: Clean Android folder
+        run: rm -rf android
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Update Gradle Wrapper
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew wrapper --gradle-version=8.11 --distribution-type=all
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build Android APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew clean
+          ./gradlew assembleDebug --no-daemon --stacktrace --info --warning-mode all
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: malika-tour-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm cache clean --force
+          npm ci --legacy-peer-deps
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Verify resources icon exists
+        run: |
+          if [ ! -f resources/icon.png ]; then
+            echo "Error: resources/icon.png not found!"
+            exit 1
+          fi
+          echo "Icon file verified at resources/icon.png"
+          ls -lh resources/icon.png
+
+      - name: Install Capacitor Assets
+        run: npm install -g @capacitor/assets
+
+      - name: Generate app icons for iOS
+        run: npx @capacitor/assets generate --iconBackgroundColor '#0088FF' --iconBackgroundColorDark '#003366' --ios
+
+      - name: Create Capacitor config
+        run: |
+          cat > capacitor.config.ts << 'EOF'
+          import { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.malikatour.app',
+            appName: 'Malika Tour',
+            webDir: 'dist',
+            plugins: {
+              SplashScreen: {
+                launchShowDuration: 2000,
+                backgroundColor: "#0088FF",
+                showSpinner: false,
+              },
+            },
+          };
+
+          export default config;
+          EOF
+
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
+
+      - name: Clean iOS folder
+        run: rm -rf ios
+
+      - name: Add iOS platform
+        run: npx cap add ios
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Build iOS
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -archivePath $PWD/build/App.xcarchive \
+            archive
+
+      - name: Upload iOS Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: malika-tour-ios.xcarchive
+          path: ios/App/build/App.xcarchive
