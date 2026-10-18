@@ -485,10 +485,10 @@ const Dashboard = () => {
           {/* Greeting Hero Card with Authentic Indonesian Destination */}
           <GreetingHeader userEmail={user?.email} currentDestination={currentTrip?.tujuan} />
 
-          {/* Tour Consultant Wizard Banner */}
+          {/* Asisten AI Wisata Banner */}
           <div 
             onClick={() => setShowAIModal(true)}
-            className="mb-5 p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 flex items-center justify-between cursor-pointer hover:border-blue-500 transition-all group shadow-sm active:scale-[0.99]"
+            className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-blue-50/90 to-indigo-50/60 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-900/60 flex items-center justify-between cursor-pointer hover:border-blue-500 transition-all group shadow-sm active:scale-[0.99]"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
@@ -496,11 +496,11 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                  <span>Konsultan Rute & Rundown Lapangan</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-extrabold uppercase">Rekomendasi</span>
+                  <span>Asisten AI Wisata Nusantara</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-extrabold uppercase">Gemini AI</span>
                 </p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Pilih segmen (TK, SD, SMP, SMA, Kantor, Ziarah) & susun jadwal akurat
+                  Chat konsultasi rute, rundown detail, resto rombongan & akses bus
                 </p>
               </div>
             </div>

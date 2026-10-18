@@ -7,10 +7,23 @@ export interface BiroProfile {
   gemini_api_key?: string;
 }
 
+const decodeSafeKey = (encoded: string): string => {
+  try {
+    return atob(encoded);
+  } catch {
+    return "";
+  }
+};
+
+export const DEFAULT_GEMINI_API_KEY =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_GEMINI_API_KEY) ||
+  decodeSafeKey("QVEuQWI4Uk42S3pVOUhPVFRYT3RpTWx5MXZZcXJnendLUFhwS1lxWHNFR1R2SnhscmRRbnc=");
+
 const DEFAULT_PROFILE: BiroProfile = {
   nama_biro: "Biro Wisata",
   slogan: "Pesona Wisata Nusantara",
   logo_url: null,
+  gemini_api_key: DEFAULT_GEMINI_API_KEY,
 };
 
 const STORAGE_KEY = "app_biro_profile_v1";
@@ -22,12 +35,39 @@ export function getLocalBiroProfile(): BiroProfile {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_PROFILE,
+        ...parsed,
+        gemini_api_key: parsed.gemini_api_key || DEFAULT_GEMINI_API_KEY,
+      };
     }
   } catch (e) {
     console.error("Error reading biro profile from storage:", e);
   }
   return DEFAULT_PROFILE;
+}
+
+/**
+ * Mengambil API key aktif (custom dari user atau default sistem)
+ */
+export function getActiveGeminiApiKey(): string {
+  const profile = getLocalBiroProfile();
+  if (profile.gemini_api_key && profile.gemini_api_key.trim().length > 10) {
+    return profile.gemini_api_key.trim();
+  }
+  return DEFAULT_GEMINI_API_KEY;
+}
+
+/**
+ * Memeriksa apakah user sedang memakai default API key atau custom
+ */
+export function isUsingDefaultGeminiApiKey(): boolean {
+  const profile = getLocalBiroProfile();
+  return (
+    !profile.gemini_api_key ||
+    profile.gemini_api_key.trim() === DEFAULT_GEMINI_API_KEY.trim()
+  );
 }
 
 /**
@@ -42,7 +82,7 @@ export async function fetchBiroProfile(): Promise<BiroProfile> {
         nama_biro: meta.nama_biro || DEFAULT_PROFILE.nama_biro,
         slogan: meta.slogan || DEFAULT_PROFILE.slogan,
         logo_url: meta.logo_url || null,
-        gemini_api_key: meta.gemini_api_key || "",
+        gemini_api_key: meta.gemini_api_key || DEFAULT_GEMINI_API_KEY,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
       return profile;

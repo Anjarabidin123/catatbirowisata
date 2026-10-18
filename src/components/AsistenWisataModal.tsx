@@ -1,421 +1,694 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useState, useEffect, useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  Compass, 
-  MapPin, 
-  Bus, 
-  Clock, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Utensils, 
-  Ticket, 
-  ArrowRight, 
-  RotateCcw, 
-  SlidersHorizontal,
-  ShieldAlert,
-  Users
+import { toast } from "sonner";
+import {
+  Compass,
+  Send,
+  RotateCcw,
+  Sparkles,
+  Copy,
+  Check,
+  CheckCircle2,
+  Calendar,
+  Bus,
+  Users,
+  MapPin,
+  Clock,
+  Loader2,
+  ChevronDown,
+  X,
+  Building2,
+  GraduationCap,
+  School,
+  Heart,
+  Landmark,
 } from "lucide-react";
-import { 
-  TourConsultationParams, 
-  TourProposalResult, 
-  TargetRombonganType, 
-  TARGET_LABELS, 
-  generateTourProposal 
+import {
+  TargetRombonganType,
+  TARGET_LABELS,
+  ChatMessage,
+  RundownItem,
+  callGeminiChat,
+  parseRundownFromText,
 } from "@/utils/asistenWisataAI";
 
 interface AsistenWisataModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectTripRoute?: (tripData: { nama: string; tujuan: string; rundown?: any[] }) => void;
+  onSelectTripRoute?: (tripData: {
+    nama: string;
+    tujuan: string;
+    rundown?: RundownItem[];
+  }) => void;
 }
 
-const POPULAR_CITIES = ["Semarang", "Yogyakarta", "Demak & Ziarah Pantura", "Malang & Batu", "Bandung", "Dieng", "Solo"];
+const POPULAR_DESTINATIONS = [
+  "Semarang",
+  "Yogyakarta",
+  "Demak & Kudus",
+  "Malang & Batu",
+  "Bandung",
+  "Solo",
+];
+
+const TARGET_ICONS: Record<TargetRombonganType, any> = {
+  tk_sd: School,
+  smp: GraduationCap,
+  sma_smk: Landmark,
+  univ: Building2,
+  kantoran: Building2,
+  ziarah: Heart,
+  keluarga_umum: Users,
+};
+
+const INITIAL_SUGGESTIONS = [
+  {
+    label: "Rundown 1 Hari Ziarah Demak & Kudus",
+    prompt: "Buatkan rundown lengkap 1 hari ziarah makam Sunan Kalijaga dan Sunan Kudus untuk rombongan Big Bus, termasuk jadwal sholat dan resto prasmanan.",
+    target: "ziarah" as TargetRombonganType,
+    kota: "Demak & Kudus",
+  },
+  {
+    label: "Study Tour SMP di Jogja (Big Bus)",
+    prompt: "Susun itinerary 1 hari study tour pelajar SMP di Yogyakarta dengan armada Big Bus, lengkap dengan jam, akses parkir bus, dan resto rombongan.",
+    target: "smp" as TargetRombonganType,
+    kota: "Yogyakarta",
+  },
+  {
+    label: "Resto Bus Besar & Wisata di Semarang",
+    prompt: "Rekomendasikan destinasi wisata ramah bus pariwisata besar serta restoran prasmanan kapasitas 200+ pax di Semarang dengan parkir luas.",
+    target: "keluarga_umum" as TargetRombonganType,
+    kota: "Semarang",
+  },
+  {
+    label: "Family Gathering Kantor di Malang/Batu",
+    prompt: "Buatkan rundown 2 hari 1 malam gathering kantor di Batu Malang untuk 60 orang karyawan, fokus team building santai dan kuliner khas.",
+    target: "kantoran" as TargetRombonganType,
+    kota: "Malang & Batu",
+  },
+];
+
+/**
+ * Komponen Markdown Ringkas & Bersih untuk Tampilan Mobile
+ */
+const MarkdownView = ({ content }: { content: string }) => {
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+
+  const renderInline = (text: string) => {
+    const parts: React.ReactNode[] = [];
+    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      const token = match[0];
+      if (token.startsWith("**") && token.endsWith("**")) {
+        parts.push(
+          <strong
+            key={match.index}
+            className="font-semibold text-slate-900 dark:text-slate-100"
+          >
+            {token.slice(2, -2)}
+          </strong>
+        );
+      } else if (token.startsWith("*") && token.endsWith("*")) {
+        parts.push(
+          <em key={match.index} className="italic">
+            {token.slice(1, -1)}
+          </em>
+        );
+      } else if (token.startsWith("`") && token.endsWith("`")) {
+        parts.push(
+          <code
+            key={match.index}
+            className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[11px]"
+          >
+            {token.slice(1, -1)}
+          </code>
+        );
+      }
+      lastIndex = match.index + token.length;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    return parts;
+  };
+
+  lines.forEach((rawLine, idx) => {
+    const line = rawLine.trimEnd();
+    if (!line.trim()) {
+      elements.push(<div key={idx} className="h-1.5" />);
+      return;
+    }
+
+    if (line.startsWith("### ")) {
+      elements.push(
+        <h4
+          key={idx}
+          className="font-bold text-xs sm:text-sm text-blue-900 dark:text-blue-300 mt-2 mb-1 flex items-center gap-1.5"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block"></span>
+          {renderInline(line.slice(4))}
+        </h4>
+      );
+      return;
+    }
+
+    if (line.startsWith("## ")) {
+      elements.push(
+        <h3
+          key={idx}
+          className="font-bold text-sm text-slate-900 dark:text-slate-100 mt-2.5 mb-1"
+        >
+          {renderInline(line.slice(3))}
+        </h3>
+      );
+      return;
+    }
+
+    if (line.startsWith("# ")) {
+      elements.push(
+        <h2
+          key={idx}
+          className="font-extrabold text-base text-slate-900 dark:text-white mt-3 mb-1.5"
+        >
+          {renderInline(line.slice(2))}
+        </h2>
+      );
+      return;
+    }
+
+    if (line.startsWith("---") || line.startsWith("***")) {
+      elements.push(
+        <hr key={idx} className="my-2 border-slate-200 dark:border-slate-700" />
+      );
+      return;
+    }
+
+    // Sub-bullet
+    if (/^\s{2,}[*•\-]\s/.test(rawLine)) {
+      const clean = rawLine.replace(/^\s+[*•\-]\s*/, "");
+      elements.push(
+        <div
+          key={idx}
+          className="pl-4 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-1.5 my-0.5"
+        >
+          <span className="text-slate-400 text-[10px] mt-0.5">•</span>
+          <span className="flex-1">{renderInline(clean)}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Top-level bullet
+    if (/^[*•\-]\s/.test(rawLine)) {
+      const clean = rawLine.replace(/^[*•\-]\s*/, "");
+      elements.push(
+        <div
+          key={idx}
+          className="pl-1 text-xs text-slate-700 dark:text-slate-200 flex items-start gap-2 my-0.5"
+        >
+          <span className="text-blue-500 font-bold text-xs leading-relaxed">•</span>
+          <span className="flex-1 leading-relaxed">{renderInline(clean)}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Numbered list
+    const numMatch = rawLine.match(/^(\d+)\.\s+(.*)/);
+    if (numMatch) {
+      elements.push(
+        <div
+          key={idx}
+          className="pl-1 text-xs text-slate-700 dark:text-slate-200 flex items-start gap-1.5 my-0.5"
+        >
+          <span className="font-semibold text-blue-600 dark:text-blue-400 text-xs w-4 flex-shrink-0">
+            {numMatch[1]}.
+          </span>
+          <span className="flex-1 leading-relaxed">{renderInline(numMatch[2])}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Paragraph
+    elements.push(
+      <p
+        key={idx}
+        className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed my-0.5"
+      >
+        {renderInline(line)}
+      </p>
+    );
+  });
+
+  return <div className="space-y-0.5">{elements}</div>;
+};
 
 export const AsistenWisataModal = ({
   open,
   onOpenChange,
   onSelectTripRoute,
 }: AsistenWisataModalProps) => {
-  // Step 1: Input Parameter Lapangan
-  const [params, setParams] = useState<TourConsultationParams>({
-    targetRombongan: "smp",
-    kotaTujuan: "Semarang",
-    durasiHari: "1",
-    armadaBus: "big_bus",
-    catatanKhusus: "",
-  });
+  // State Parameter Konteks
+  const [targetRombongan, setTargetRombongan] =
+    useState<TargetRombonganType>("smp");
+  const [kotaTujuan, setKotaTujuan] = useState("Yogyakarta");
+  const [durasiHari, setDurasiHari] = useState<"1" | "2" | "3">("1");
+  const [armadaBus, setArmadaBus] = useState<
+    "big_bus" | "medium_bus" | "microbus"
+  >("big_bus");
 
+  // State Obrolan Interaktif
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<TourProposalResult | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleGenerate = () => {
-    if (!params.kotaTujuan.trim()) return;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto scroll saat pesan baru tiba
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
+  // Fokus input saat modal dibuka
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 250);
+    }
+  }, [open]);
+
+  // Reset sesi chat
+  const handleResetChat = () => {
+    setMessages([]);
+    setInputText("");
+    toast.info("Sesi konsultasi AI diperbarui.");
+  };
+
+  // Kirim pesan ke Google Gemini
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || inputText).trim();
+    if (!text || loading) return;
+
+    const userMessage: ChatMessage = {
+      id: "u-" + Date.now(),
+      role: "user",
+      content: text,
+      timestamp: new Date(),
+    };
+
+    const newHistory = [...messages, userMessage];
+    setMessages(newHistory);
+    setInputText("");
     setLoading(true);
 
-    setTimeout(() => {
-      const proposal = generateTourProposal(params);
-      setResult(proposal);
+    try {
+      const reply = await callGeminiChat(
+        newHistory.map((m) => ({ role: m.role, content: m.content })),
+        {
+          targetRombongan,
+          kotaTujuan,
+          durasiHari,
+          armadaBus,
+        }
+      );
+
+      // Cek apakah ada jadwal rundown yang terdeteksi
+      const parsedRundown = parseRundownFromText(reply);
+
+      const assistantMessage: ChatMessage = {
+        id: "a-" + Date.now(),
+        role: "assistant",
+        content: reply,
+        timestamp: new Date(),
+        parsedRundown: parsedRundown.length >= 2 ? parsedRundown : undefined,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: any) {
+      const errorMessage: ChatMessage = {
+        id: "e-" + Date.now(),
+        role: "assistant",
+        content:
+          "Maaf, terjadi gangguan saat menghubungi Google Gemini AI: " +
+          (err.message || "Periksa koneksi internet Anda."),
+        timestamp: new Date(),
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      toast.error("Gagal mendapatkan balasan AI.");
+    } finally {
       setLoading(false);
-    }, 450);
-  };
-
-  const handleReset = () => {
-    setResult(null);
-  };
-
-  const handleApplyToTrip = () => {
-    if (result && onSelectTripRoute) {
-      onSelectTripRoute({
-        nama: result.judulTrip,
-        tujuan: result.kotaTujuan,
-        rundown: result.rundown,
-      });
-      onOpenChange(false);
     }
+  };
+
+  // Salin teks balasan ke clipboard
+  const handleCopyText = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Teks berhasil disalin ke clipboard!");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Terapkan rundown AI langsung ke Jadwal Trip
+  const handleApplyRundown = (rundown: RundownItem[]) => {
+    if (!onSelectTripRoute) return;
+
+    const tripName = `${TARGET_LABELS[targetRombongan].title}: ${kotaTujuan}`;
+    onSelectTripRoute({
+      nama: tripName,
+      tujuan: kotaTujuan,
+      rundown,
+    });
+    toast.success("Rundown AI berhasil diterapkan ke form Trip Baru!");
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl overflow-hidden">
-        
-        {/* Header Bersih & Profesional */}
-        <DialogHeader className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                <Compass className="w-5 h-5 text-white" />
+      <DialogContent className="w-full sm:max-w-2xl h-[94vh] sm:h-[88vh] flex flex-col p-0 gap-0 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl overflow-hidden">
+        {/* ========================================================= */}
+        {/* HEADER KOMPAK: BERSIH, RAMAH MOBILE & PROFESIONAL         */}
+        {/* ========================================================= */}
+        <DialogHeader className="p-3 sm:p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
+                <Compass className="w-4 h-4 text-white" />
               </div>
-              <div>
-                <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Konsultan Rute & Rundown Lapangan
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500">
-                  Menyusun itinerary akurat disesuaikan dengan karakter target rombongan & kapasitas bus.
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <DialogTitle className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                    Asisten Wisata AI
+                  </DialogTitle>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Gemini AI
+                  </span>
+                </div>
+                <DialogDescription className="text-[10px] text-slate-500 truncate">
+                  Konsultan rute, rundown lapangan, resto rombongan & akses bus
                 </DialogDescription>
               </div>
             </div>
 
-            {result && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                className="h-8 text-xs rounded-xl font-medium border-slate-200 dark:border-slate-700"
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1 text-slate-500" />
-                Ubah Parameter
-              </Button>
-            )}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetChat}
+                  className="h-7 px-2 text-[11px] rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-medium"
+                  title="Mulai obrolan baru"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  <span>Chat Baru</span>
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
-        {/* Content Body: Wizard Parameter vs Hasil Proposal */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {!result ? (
-            /* ============================================================ */
-            /* MODE 1: FORM PARAMETER LAPANGAN TERPERINCI                  */
-            /* ============================================================ */
-            <div className="space-y-5">
-              {/* 1. Pilih Target Rombongan (Segmentasi Lapangan) */}
-              <div>
-                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-2.5">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span>1. Siapa Target Rombongan Peserta Trip Ini?</span>
-                </Label>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {(Object.keys(TARGET_LABELS) as TargetRombonganType[]).map((key) => {
-                    const item = TARGET_LABELS[key];
-                    const isSelected = params.targetRombongan === key;
-                    return (
-                      <div
-                        key={key}
-                        onClick={() => setParams({ ...params, targetRombongan: key })}
-                        className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${
-                          isSelected
-                            ? "bg-blue-50/90 dark:bg-blue-950/40 border-blue-600 text-blue-950 dark:text-blue-100 shadow-sm ring-1 ring-blue-600"
-                            : "bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-300"
-                        }`}
-                      >
-                        <span className="text-xl flex-shrink-0">{item.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold truncate">{item.title}</p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-                            {item.subtitle}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+        {/* ========================================================= */}
+        {/* HORIZONTAL CONTEXT STRIP (HEMAT RUANG DI MOBILE)           */}
+        {/* ========================================================= */}
+        <div className="px-3 py-1.5 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">
+            Konteks:
+          </span>
 
-              {/* 2. Kota Destinasi Tujuan */}
-              <div>
-                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
-                  <MapPin className="w-4 h-4 text-rose-500" />
-                  <span>2. Kota Destinasi Tujuan</span>
-                </Label>
-                <Input
-                  value={params.kotaTujuan}
-                  onChange={(e) => setParams({ ...params, kotaTujuan: e.target.value })}
-                  placeholder="Contoh: Semarang, Demak & Kudus, Yogyakarta, Malang..."
-                  className="rounded-xl h-10 text-xs sm:text-sm font-medium"
-                />
-                
-                {/* Quick Chips Destinasi */}
-                <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar pb-1">
-                  <span className="text-[10px] text-slate-400 font-semibold flex-shrink-0">Rute Cepat:</span>
-                  {POPULAR_CITIES.map((city) => (
-                    <button
-                      key={city}
-                      type="button"
-                      onClick={() => setParams({ ...params, kotaTujuan: city })}
-                      className={`text-[11px] px-2.5 py-0.5 rounded-full border transition-all whitespace-nowrap ${
-                        params.kotaTujuan.toLowerCase() === city.toLowerCase()
-                          ? "bg-blue-600 text-white border-blue-600 font-bold"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400"
-                      }`}
-                    >
-                      {city}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 3. Durasi & Armada Bus */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Durasi */}
-                <div>
-                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
-                    <Clock className="w-4 h-4 text-blue-600" />
-                    <span>3. Durasi Perjalanan</span>
-                  </Label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: "1", label: "1 Hari" },
-                      { id: "2", label: "2H 1M" },
-                      { id: "3", label: "3H 2M" },
-                    ].map((d) => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => setParams({ ...params, durasiHari: d.id as any })}
-                        className={`py-2 text-xs font-bold rounded-xl border text-center transition-all ${
-                          params.durasiHari === d.id
-                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                            : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        {d.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Spesifikasi Armada Bus */}
-                <div>
-                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
-                    <Bus className="w-4 h-4 text-emerald-600" />
-                    <span>4. Armada Bus Yang Dipakai</span>
-                  </Label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: "big_bus", label: "Big Bus", sub: "50 Seat" },
-                      { id: "medium_bus", label: "Medium", sub: "33 Seat" },
-                      { id: "microbus", label: "HiAce", sub: "15 Seat" },
-                    ].map((a) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => setParams({ ...params, armadaBus: a.id as any })}
-                        className={`p-1.5 rounded-xl border text-center transition-all flex flex-col justify-center items-center ${
-                          params.armadaBus === a.id
-                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                            : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        <span className="text-xs font-bold">{a.label}</span>
-                        <span className={`text-[9px] ${params.armadaBus === a.id ? "text-blue-100" : "text-slate-400"}`}>
-                          {a.sub}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tombol Buat Proposal */}
-              <div className="pt-2">
-                <Button
-                  onClick={handleGenerate}
-                  disabled={loading || !params.kotaTujuan.trim()}
-                  className="w-full h-11 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
+          {/* Segment Selector Chips */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {(Object.keys(TARGET_LABELS) as TargetRombonganType[]).map((key) => {
+              const item = TARGET_LABELS[key];
+              const isSelected = targetRombongan === key;
+              const IconComp = TARGET_ICONS[key] || Users;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTargetRombongan(key)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                    isSelected
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 hover:border-slate-300"
+                  }`}
                 >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span>{loading ? "Menyusun Rekomendasi Lapangan..." : "Susun Rundown & Rekomendasi Lapangan"}</span>
-                </Button>
+                  <IconComp className="w-3 h-3" />
+                  <span>{item.tag}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+
+          {/* Armada Bus Chips */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {[
+              { id: "big_bus", label: "Big Bus" },
+              { id: "medium_bus", label: "Medium" },
+              { id: "microbus", label: "HiAce" },
+            ].map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setArmadaBus(a.id as any)}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                  armadaBus === a.id
+                    ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700"
+                }`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+
+          {/* Durasi Chips */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {[
+              { id: "1", label: "1 Hari" },
+              { id: "2", label: "2 Hari" },
+              { id: "3", label: "3 Hari" },
+            ].map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setDurasiHari(d.id as any)}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                  durasiHari === d.id
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700"
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* AREA PESAN CHAT: SCROLLABLE, MODERN & INTERAKTIF          */}
+        {/* ========================================================= */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+          {messages.length === 0 ? (
+            /* TAMPILAN AWAL SEBELUM ADA PESAN */
+            <div className="h-full flex flex-col justify-center items-center text-center py-4 px-2 space-y-4 max-w-lg mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center shadow-xs">
+                <Sparkles className="w-6 h-6" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+                  Konsultasi Rute & Operasional Lapangan
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Tanyakan rute wisata, susun rundown per jam, rekomendasi resto bus besar, atau minta revisi jadwal kapan saja.
+                </p>
+              </div>
+
+              {/* Quick Prompt Cards */}
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2">
+                {INITIAL_SUGGESTIONS.map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setTargetRombongan(item.target);
+                      setKotaTujuan(item.kota);
+                      handleSendMessage(item.prompt);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-blue-50/60 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-800 transition-all text-xs space-y-1 group"
+                  >
+                    <p className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 transition-colors">
+                      {item.label}
+                    </p>
+                    <p className="text-[10px] text-slate-400 line-clamp-2">
+                      {item.prompt}
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
-            /* ============================================================ */
-            /* MODE 2: HASIL PROPOSAL OPERASIONAL LAPANGAN                 */
-            /* ============================================================ */
-            <div className="space-y-6">
-              {/* Ringkasan Header Rute */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 mb-1">
-                    <span>Target: {result.targetLabel}</span>
+            /* DAFTAR PESAN PERCAKAPAN */
+            <div className="space-y-3">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col ${
+                    msg.role === "user" ? "items-end" : "items-start"
+                  }`}
+                >
+                  <div
+                    className={`rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-blue-600 text-white rounded-tr-xs px-3.5 py-2 max-w-[85%] shadow-xs"
+                        : msg.isError
+                        ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 rounded-tl-xs px-3.5 py-2.5 max-w-[95%] sm:max-w-[90%]"
+                        : "bg-slate-100 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100 border border-slate-200/70 dark:border-slate-700/60 rounded-tl-xs px-3.5 py-2.5 max-w-[95%] sm:max-w-[90%] shadow-xs"
+                    }`}
+                  >
+                    {msg.role === "user" ? (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    ) : (
+                      <MarkdownView content={msg.content} />
+                    )}
                   </div>
-                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                    {result.judulTrip}
-                  </h3>
-                  <p className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-                    <span>⏱️ {result.durasiLabel}</span>
-                    <span>•</span>
-                    <span>🚌 {result.armadaLabel}</span>
-                  </p>
-                </div>
 
-                <Button
-                  size="sm"
-                  onClick={handleApplyToTrip}
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20"
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                  Terapkan ke Jadwal Trip
-                </Button>
-              </div>
+                  {/* Footer Aksi Pesan AI */}
+                  {msg.role === "assistant" && !msg.isError && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1 ml-1">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(msg.id, msg.content)}
+                        className="inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-2 py-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {copiedId === msg.id ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-500" />
+                            <span className="text-emerald-500 font-semibold">Tersalin</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Salin Teks</span>
+                          </>
+                        )}
+                      </button>
 
-              {/* Peringatan Keselamatan & Karakteristik Rombongan */}
-              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
-                  <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                  <span>Catatan Khusus Lapangan untuk Tour Leader & Driver:</span>
-                </div>
-                <p className="text-[11px] leading-relaxed font-medium pl-6">
-                  {result.peringatanKeselamatan}
-                </p>
-                <div className="pl-6 space-y-1 pt-1 border-t border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800/90 dark:text-amber-300/90">
-                  {result.karakteristikTarget.map((k, idx) => (
-                    <div key={idx} className="flex items-start gap-1.5">
-                      <span>•</span>
-                      <span>{k}</span>
+                      {msg.parsedRundown && msg.parsedRundown.length >= 2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleApplyRundown(msg.parsedRundown!)}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-2 py-0.5 rounded-md hover:bg-emerald-100 transition-colors shadow-xs"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Terapkan Rundown ({msg.parsedRundown.length} Jadwal)</span>
+                        </button>
+                      )}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
+              ))}
 
-              {/* Timeline Rundown Jam demi Jam (Format Bersih & Rapi) */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Rundown Operasional Jam demi Jam (Siap Pakai):</span>
-                </h4>
-
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                  {result.rundown.map((item, idx) => (
-                    <div key={idx} className="p-3 text-xs flex items-start gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                      <div className="w-24 flex-shrink-0 font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-1 rounded-lg text-center text-[11px]">
-                        {item.jamMulai} - {item.jamSelesai}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-bold text-slate-900 dark:text-slate-100">{item.kegiatan}</p>
-                          <span className="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex-shrink-0">
-                            {item.kategori}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-red-400 flex-shrink-0" />
-                          <span>{item.lokasi}</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 italic mt-1 bg-slate-50 dark:bg-slate-800/40 p-1.5 rounded-md">
-                          ℹ️ {item.keterangan}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+              {/* Status Loading Pesan Sedang Digenerate */}
+              {loading && (
+                <div className="flex items-start gap-2">
+                  <div className="p-3 rounded-2xl rounded-tl-xs bg-slate-100 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/60 text-slate-500 text-xs flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                    <span>Menganalisis rute, rundown & logistik lapangan...</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Objek Wisata Terpilih & Estimasi HTM */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
-                  <Ticket className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Objek Wisata Terpilih Sesuai Karakter Peserta:</span>
-                </h4>
-
-                <div className="grid grid-cols-1 gap-2.5">
-                  {result.destinasiRekomendasi.map((d, idx) => (
-                    <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 text-xs space-y-1">
-                      <div className="flex items-center justify-between">
-                        <p className="font-bold text-slate-900 dark:text-slate-100">{d.nama}</p>
-                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                          HTM: {d.htmPerOrang}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                        <span className="font-semibold text-slate-700 dark:text-slate-200">Akses Bus:</span> {d.aksesBus}
-                      </p>
-                      <p className="text-[10px] text-slate-500 italic">
-                        Alasan rekomendasi: {d.alasanCocok}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Restoran Rombongan */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Rekomendasi Resto Rombongan (Ramah Parkir Bus Besar):</span>
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {result.restoRekomendasi.map((r, idx) => (
-                    <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 text-xs space-y-1">
-                      <p className="font-bold text-slate-900 dark:text-slate-100">{r.nama}</p>
-                      <p className="text-[11px] text-slate-500">
-                        Kapasitas: <span className="font-semibold text-slate-700 dark:text-slate-300">{r.kapasitas}</span> • {r.parkirBus}
-                      </p>
-                      <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
-                        Menu Favorit: {r.menuFavorit}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tombol Terapkan Utama */}
-              <div className="pt-2 flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleReset}
-                  className="rounded-xl h-11 text-xs font-semibold flex-1 border-slate-200 dark:border-slate-700"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                  Ubah Parameter Rombongan
-                </Button>
-                <Button
-                  onClick={handleApplyToTrip}
-                  className="rounded-xl h-11 text-xs font-bold flex-[2] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                  <span>Terapkan ke Jadwal Trip Baru</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-
+              <div ref={messagesEndRef} />
             </div>
           )}
         </div>
 
+        {/* ========================================================= */}
+        {/* QUICK FOLLOW-UP CHIPS (REVISI FLEKSIBEL TANPA HARDCODE)   */}
+        {/* ========================================================= */}
+        {messages.length > 0 && !loading && (
+          <div className="px-3 py-1 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+            <span className="text-[10px] text-slate-400 flex-shrink-0 font-medium">
+              Tanya Cepat:
+            </span>
+            {[
+              "Ganti resto dengan yang lebih murah",
+              "Kurangi waktu agar tidak kemalaman",
+              "Bisa masuk Big Bus SHD?",
+              "Estimasi tiket masuk & parkir",
+              "Rekomendasi pusat oleh-oleh terdekat",
+            ].map((chip, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSendMessage(chip)}
+                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400 whitespace-nowrap transition-colors"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* INPUT BAR BAWAH: COMPACT, NYAMAN DI MOBILE                */}
+        {/* ========================================================= */}
+        <div className="p-2.5 sm:p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            className="flex items-center gap-2"
+          >
+            <Input
+              ref={inputRef}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Tanya rute, minta revisi jam/resto, atau destinasi..."
+              disabled={loading}
+              className="h-9 sm:h-10 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex-1 font-medium"
+            />
+            <Button
+              type="submit"
+              disabled={loading || !inputText.trim()}
+              className="h-9 sm:h-10 w-9 sm:w-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-500/20 disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
