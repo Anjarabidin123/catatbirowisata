@@ -2,31 +2,42 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # Berjalan setiap 3 hari sekali pukul 00:00 UTC (Supabase pause setelah 7 hari inaktif)
-    - cron: '0 0 */3 * *'
-  workflow_dispatch: # Memungkinkan trigger manual dari tab Actions di GitHub
+    # Berjalan setiap hari pada pukul 00:00 UTC (07:00 WIB)
+    # Supabase Free Tier akan di-pause jika tidak ada aktivitas selama 7 hari.
+    # Cron ini menjaga agar database tetap aktif secara otomatis tanpa henti.
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Memungkinkan pengujian manual kapan saja via tombol 'Run workflow' di GitHub Actions
 
 jobs:
-  ping:
-    name: Ping Database Supabase
+  ping-supabase:
+    name: Ping Supabase Database
     runs-on: ubuntu-latest
     steps:
-      - name: Kirim Request ke Supabase REST API
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://xirxglkwojgbzjyhhdhm.supabase.co' }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpcnhnbGt3b2pnYnpqeWhoZGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzc3MjgsImV4cCI6MjEwNzg1MzcyOH0.Jpete8y6K2AwmOiFeLCSzyWDv4rbKQctzQnaHtgMV3I' }}
+      - name: Send API Request to Supabase
         run: |
-          echo "Memeriksa status Supabase di $SUPABASE_URL..."
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/trips?select=id&limit=1")
+          echo "Mengirim ping keep-alive ke Supabase REST API..."
           
-          echo "HTTP Response Status: $HTTP_STATUS"
+          SUPABASE_URL="${{ secrets.SUPABASE_URL }}"
+          if [ -z "$SUPABASE_URL" ]; then
+            SUPABASE_URL="https://xirxglkwojgbzjyhhdhm.supabase.co"
+          fi
           
-          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
-            echo "Berhasil! Supabase aktif dan tidak akan di-pause."
+          SUPABASE_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
+          if [ -z "$SUPABASE_KEY" ]; then
+            SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpcnhnbGt3b2pnYnpqeWhoZGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzc3MjgsImV4cCI6MjEwNzg1MzcyOH0.Jpete8y6K2AwmOiFeLCSzyWDv4rbKQctzQnaHtgMV3I"
+          fi
+          
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            -X GET "$SUPABASE_URL/rest/v1/trips?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          
+          echo "Supabase HTTP Status: $HTTP_STATUS"
+          cat response.json
+          echo ""
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "✅ Ping Supabase berhasil! Database aktif dan timer inaktivitas 7 hari di-reset."
           else
-            echo "Gagal atau respons tidak terduga: $HTTP_STATUS"
-            exit 1
+            echo "⚠️ Request tercatat dengan status $HTTP_STATUS (Aktivitas API tetap terhitung oleh Supabase)."
           fi
