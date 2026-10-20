@@ -1,0 +1,21 @@
+{
+  "name": "Pencatatan Agen Biro - Manajemen Trip & Keuangan",
+  "short_name": "Agen Biro",
+  "description": "Aplikasi operasional pencatatan trip, armada bus pariwisata, rundown acara, dan pembukuan keuangan agen biro perjalanan.",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

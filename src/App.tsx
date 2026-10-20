@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 
@@ -36,13 +37,17 @@ const App = () => {
     let backButtonListener: any;
     
     const setupListener = async () => {
-      backButtonListener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-        if (!canGoBack) {
-          CapacitorApp.exitApp();
-        } else {
-          window.history.back();
-        }
-      });
+      try {
+        backButtonListener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+          if (!canGoBack) {
+            CapacitorApp.exitApp();
+          } else {
+            window.history.back();
+          }
+        });
+      } catch (e) {
+        // Ignore on non-native platform
+      }
     };
 
     setupListener();
@@ -59,6 +64,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PWAInstallPrompt />
         <BrowserRouter>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
