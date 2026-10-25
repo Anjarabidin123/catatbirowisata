@@ -21,6 +21,7 @@ const Auth = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [signupMessage, setSignupMessage] = useState("");
 
   useEffect(() => {
     const savedEmail = localStorage.getItem("app_remembered_email") || localStorage.getItem("malika_remembered_email");
@@ -37,6 +38,7 @@ const Auth = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSignupMessage("");
 
     try {
       if (isLogin) {
@@ -70,11 +72,19 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Registrasi berhasil! Silakan masuk dengan akun Anda.");
-        setIsLogin(true);
+        setSignupMessage(
+          "Akun berhasil dibuat. Cek email Anda untuk konfirmasi sebelum masuk."
+        );
+        toast.success("Akun berhasil dibuat. Silakan cek email konfirmasi.");
+        setPassword("");
       }
     } catch (error: any) {
-      toast.error(error.message || "Gagal masuk ke sistem");
+      const message = error?.message || "Gagal memproses autentikasi";
+      const lowerMessage = message.toLowerCase();
+      const safeMessage = lowerMessage.includes("invalid login credentials")
+        ? "Email atau kata sandi salah. Jika baru mendaftar, konfirmasi email terlebih dahulu."
+        : message;
+      toast.error(safeMessage);
     } finally {
       setLoading(false);
     }
@@ -159,6 +169,12 @@ const Auth = () => {
               Daftar Akun
             </button>
           </div>
+
+          {signupMessage && !isLogin && (
+            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-medium text-emerald-800" role="status">
+              {signupMessage}
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleAuth} className="space-y-4">
