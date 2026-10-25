@@ -73,9 +73,9 @@ const Auth = () => {
         });
         if (error) throw error;
         setSignupMessage(
-          "Akun berhasil dibuat. Cek email Anda untuk konfirmasi sebelum masuk."
+          `Pendaftaran berhasil. Kami telah mengirim email konfirmasi ke ${email.trim()}. Buka inbox Anda, lalu klik tautan konfirmasi tersebut sebelum login. Jika belum terlihat, periksa folder Spam atau Promosi.`
         );
-        toast.success("Akun berhasil dibuat. Silakan cek email konfirmasi.");
+        toast.success("Pendaftaran berhasil. Silakan konfirmasi melalui email yang dikirim sebelum login.");
         setPassword("");
       }
     } catch (error: any) {
