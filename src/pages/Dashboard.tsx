@@ -30,7 +30,14 @@ import {
   ArrowRight,
   TrendingUp,
   Map,
-  Sparkles
+  Sparkles,
+  Users,
+  ShieldCheck,
+  BriefcaseBusiness,
+  Activity,
+  Settings2,
+  LockKeyhole,
+  ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -545,6 +552,10 @@ const Dashboard = () => {
   };
 
   const activeRemindersCount = reminders.length;
+  const userRole = user?.user_metadata?.role || "owner";
+  const roleLabel = userRole === "employee" ? "Karyawan" : userRole === "tl" ? "Team Leader" : "Pemilik";
+  const canManageFinance = userRole === "owner" || userRole === "tl";
+  const canManageTeam = userRole === "owner";
 
   return (
     <AuthGuard>
@@ -581,6 +592,38 @@ const Dashboard = () => {
               </Button>
             </div>
           </div>
+
+          {/* Desktop workspace: ringkas, operasional, dan tidak mengubah alur mobile */}
+          <section className="hidden lg:block mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-600">Workspace operasional</p>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Pusat kendali biro wisata</h1>
+                <p className="mt-1 text-sm text-slate-500">Kelola agenda, keuangan, dan tim dari satu tampilan.</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><ShieldCheck className="h-4 w-4" /></div>
+                <div><p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Akses saat ini</p><p className="text-xs font-bold text-slate-800">{roleLabel}</p></div>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-4 gap-3">
+              {[
+                { label: "Trip aktif", value: String(trips.length), icon: Bus, tone: "text-blue-700 bg-blue-50" },
+                { label: "Pengingat", value: String(activeRemindersCount), icon: Bell, tone: "text-amber-700 bg-amber-50" },
+                { label: "Rundown", value: String(rundownData.length), icon: Activity, tone: "text-emerald-700 bg-emerald-50" },
+                { label: "Status sistem", value: "Normal", icon: ShieldCheck, tone: "text-violet-700 bg-violet-50" },
+              ].map((item) => {
+                const Icon = item.icon;
+                return <div key={item.label} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.tone}`}><Icon className="h-4 w-4" /></div><div><p className="text-[11px] text-slate-500">{item.label}</p><p className="text-base font-bold text-slate-900">{item.value}</p></div></div>;
+              })}
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <button type="button" onClick={() => setShowAddTrip(true)} className="group flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"><span><span className="block text-xs font-bold text-slate-900">Buat trip baru</span><span className="mt-0.5 block text-[11px] text-slate-500">Susun agenda rombongan</span></span><ChevronRight className="h-4 w-4 text-blue-600 transition-transform group-hover:translate-x-1" /></button>
+              <button type="button" onClick={() => navigate("/laporan")} className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-50"><span><span className="block text-xs font-bold text-slate-900">Lihat laporan</span><span className="mt-0.5 block text-[11px] text-slate-500">Pantau performa biro</span></span><FileText className="h-4 w-4 text-slate-500" /></button>
+              <button type="button" onClick={() => toast.info(canManageTeam ? "Menu tim siap dikembangkan untuk undangan anggota." : "Akses menu tim hanya untuk pemilik.")} className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-50"><span><span className="block text-xs font-bold text-slate-900">Kelola tim</span><span className="mt-0.5 block text-[11px] text-slate-500">Atur akses karyawan & TL</span></span>{canManageTeam ? <Users className="h-4 w-4 text-slate-500" /> : <LockKeyhole className="h-4 w-4 text-slate-400" />}</button>
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-slate-500"><span className="flex items-center gap-1.5"><BriefcaseBusiness className="h-3.5 w-3.5" />Mode kerja: {roleLabel}</span><span className="flex items-center gap-1.5">{canManageFinance ? "Keuangan tersedia" : "Keuangan hanya baca"} <Settings2 className="h-3.5 w-3.5" /></span></div>
+          </section>
           
           {/* Greeting Hero Card with Authentic Indonesian Destination */}
           <GreetingHeader userEmail={user?.email} currentDestination={currentTrip?.tujuan} />
