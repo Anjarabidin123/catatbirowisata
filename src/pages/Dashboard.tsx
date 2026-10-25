@@ -514,7 +514,15 @@ const Dashboard = () => {
     }
 
     try {
-      const shareText = `*Rundown Operasional: ${currentTrip.nama_trip}*\n\n📅 Tanggal: ${format(new Date(currentTrip.tanggal), "dd MMMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` s/d ${format(new Date(currentTrip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}` : ""}\n📍 Tujuan: ${currentTrip.tujuan}\n\nJadwal operasional siap dilaksanakan. Salam pariwisata!`;
+      const rundownText = rundownData.reduce((message, item) => {
+        const dayLabel = `*Hari ${item.hari_ke}*`;
+        const dayHeader = message.endsWith(dayLabel) ? "" : `${message ? "\n\n" : ""}${dayLabel}`;
+        const time = `${item.jam_mulai} - ${item.jam_selesai}`;
+        const details = item.keterangan ? `\n   ${item.keterangan}` : "";
+        return `${message}${dayHeader}\n• ${time} — ${item.judul_acara}${details}`;
+      }, "");
+
+      const shareText = `*Rundown Operasional: ${currentTrip.nama_trip}*\n\n📅 Tanggal: ${format(new Date(currentTrip.tanggal), "dd MMMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` s/d ${format(new Date(currentTrip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}` : ""}\n📍 Tujuan: ${currentTrip.tujuan}\n\n${rundownText}\n\nJadwal operasional siap dilaksanakan.\nSalam pariwisata!`;
       
       const encodedText = encodeURIComponent(shareText);
       const whatsappUrl = `whatsapp://send?text=${encodedText}`;
