@@ -117,26 +117,30 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-sky-50/60 flex items-center justify-center p-4">
-      {/* Bright, Sunny Indonesian Landscape (Pantai Tropis Bali & Langit Cerah) */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter brightness-[0.9] saturate-[1.15]"
+    <div className="min-h-screen relative overflow-hidden bg-[#f6f7f3] flex items-center justify-center p-4 lg:p-8">
+      {/* Mobile keeps the original full-bleed travel backdrop; desktop gets a quieter split layout. */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 brightness-[0.9] saturate-[1.15] lg:inset-y-8 lg:left-8 lg:right-1/2 lg:scale-100 lg:rounded-[2rem] lg:brightness-[0.78]"
         style={{ backgroundImage: "url('/bali-beach.jpg')" }}
       />
+      <div className="absolute inset-0 bg-gradient-to-t from-sky-950/80 via-white/40 to-sky-100/70 backdrop-blur-[2px] pointer-events-none lg:inset-y-8 lg:left-8 lg:right-1/2 lg:rounded-[2rem] lg:bg-gradient-to-t lg:from-[#123d3a]/80 lg:via-transparent lg:to-[#123d3a]/10" />
 
-      {/* Fresh Sunny Daylight Overlay with Soft Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-sky-950/80 via-white/40 to-sky-100/70 backdrop-blur-[2px] pointer-events-none" />
+      <div className="w-full max-w-md relative z-10 my-6 lg:my-0 lg:max-w-6xl lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(380px,460px)] lg:items-center lg:gap-16">
+        <div className="hidden lg:flex lg:min-h-[620px] lg:flex-col lg:justify-end lg:px-12 lg:py-12 lg:text-white">
+          <div className="max-w-md">
+            <div className="mb-5 flex items-center gap-2 text-sm font-semibold tracking-wide text-white/85">
+              <MapPin className="h-4 w-4" /> Nusantara Travel Operations
+            </div>
+            <h2 className="text-5xl font-semibold leading-[1.05] tracking-[-0.04em]">Perjalanan yang rapi dimulai dari sini.</h2>
+            <p className="mt-5 max-w-sm text-base leading-7 text-white/80">Kelola armada, jadwal, dan kas biro wisata dalam satu ruang kerja yang tenang.</p>
+          </div>
+        </div>
 
-
-      <div className="w-full max-w-md relative z-10 my-6">
-        
-
-        {/* Main Clean Light Card */}
-        <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-xl shadow-2xl shadow-sky-900/15 p-6 sm:p-8 text-slate-800">
-          
+        <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-xl shadow-2xl shadow-sky-900/15 p-6 sm:p-8 text-slate-800 lg:rounded-[2rem] lg:border-slate-200/80 lg:p-10 lg:shadow-xl lg:shadow-slate-900/10">
           {/* Header Branding */}
-          <div className="text-center mb-6">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mb-1">
+          <div className="text-center mb-6 lg:text-left lg:mb-8">
+            <p className="mb-2 hidden text-xs font-bold uppercase tracking-[0.18em] text-[#34746a] lg:block">Catat Trip</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mb-1 lg:text-[2rem]">
               Catat Trip Nusantara
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 font-medium">
