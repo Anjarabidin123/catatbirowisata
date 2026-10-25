@@ -482,33 +482,19 @@ const Dashboard = () => {
     try {
       toast.loading("Membuat dokumen rundown...");
       
-      const { data: destinationsData } = await supabase
-        .from("trip_destinations")
-        .select("*")
-        .eq("trip_id", currentTrip.id)
-        .order("urutan", { ascending: true });
-
-      await generateRundownPDF({
-        tripName: currentTrip.nama_trip,
-        tanggal: currentTrip.tanggal,
-        tanggalSelesai: currentTrip.tanggal_selesai || undefined,
-        tujuan: currentTrip.tujuan,
-        destinations: (destinationsData || []).map(d => ({
-          nama: d.nama_destinasi,
-          lokasi: d.lokasi || undefined,
-          catatan: d.catatan || undefined,
-        })),
-        rundown: rundownData.map(r => ({
-          hariKe: r.hari_ke,
-          jamMulai: r.jam_mulai,
-          jamSelesai: r.jam_selesai,
-          judulAcara: r.judul_acara,
-          keterangan: r.keterangan || undefined,
-        })),
-      });
+      const pdf = generateRundownPDF(
+        {
+          nama_trip: currentTrip.nama_trip,
+          tanggal: currentTrip.tanggal,
+          tanggal_selesai: currentTrip.tanggal_selesai,
+          tujuan: currentTrip.tujuan,
+        },
+        rundownData,
+      );
+      pdf.save(`rundown-${currentTrip.nama_trip.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`);
 
       toast.dismiss();
-      toast.success("PDF rundown siap dibagikan!");
+      toast.success("PDF rundown berhasil diunduh");
     } catch (error) {
       toast.dismiss();
       console.error("Error generating PDF:", error);
@@ -535,16 +521,17 @@ const Dashboard = () => {
       const whatsappWebUrl = `https://wa.me/?text=${encodedText}`;
       
       if (Capacitor.isNativePlatform()) {
-        try {
-          window.location.href = whatsappUrl;
-          toast.success("Membuka WhatsApp...");
-        } catch {
-          window.open(whatsappWebUrl, '_blank');
-        }
-      } else {
-        window.open(whatsappWebUrl, '_blank');
+        window.location.href = whatsappUrl;
         toast.success("Membuka WhatsApp...");
+        return;
       }
+
+      const link = document.createElement("a");
+      link.href = whatsappWebUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.click();
+      toast.success("Membuka WhatsApp Web...");
     } catch (error) {
       console.error("Error opening WhatsApp:", error);
       toast.error("Gagal membuka WhatsApp");
