@@ -240,34 +240,39 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return navigate("/auth");
-      setUser(user);
+      // Session lokal lebih cepat dan tidak memicu redirect palsu saat jaringan lambat.
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user;
+      if (!currentUser) return;
+      setUser(currentUser);
 
-      const { data: tripsData, error: tripsError } = await supabase
-        .from("trips")
-        .select("*")
-        .order("tanggal", { ascending: false });
+      const [tripsResult, remindersResult] = await Promise.all([
+        supabase
+          .from("trips")
+          .select("*")
+          .order("tanggal", { ascending: false }),
+        supabase
+          .from("reminders")
+          .select("id, is_done")
+          .eq("is_done", false),
+      ]);
 
-      if (tripsError) throw tripsError;
-      setTrips(tripsData || []);
+      if (tripsResult.error) throw tripsResult.error;
+      if (remindersResult.error) throw remindersResult.error;
 
-      if (tripsData && tripsData.length > 0) {
+      const tripsData = tripsResult.data || [];
+      setTrips(tripsData);
+
+      if (tripsData.length > 0) {
         const activeTrip = determineActiveTrip(tripsData, selectedTripId || currentTrip?.id);
         setCurrentTrip(activeTrip);
       } else {
         setCurrentTrip(null);
       }
 
-      const { data: remindersData, error: remindersError } = await supabase
-        .from("reminders")
-        .select("id, is_done")
-        .eq("is_done", false);
+      setReminders(remindersResult.data || []);
 
-      if (remindersError) throw remindersError;
-      setReminders(remindersData || []);
-
-      if (Capacitor.isNativePlatform() && tripsData && tripsData.length > 0) {
+      if (Capacitor.isNativePlatform() && tripsData.length > 0) {
         scheduleTripNotifications(tripsData);
       }
     } catch (error: any) {
