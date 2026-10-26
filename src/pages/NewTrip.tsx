@@ -193,7 +193,7 @@ const NewTrip = () => {
                   </div>
 
                   <FormField
-                    label="Nama Driver"
+                    label="Nama Kru"
                     value={formData.nama_driver}
                     onChange={(value) => setFormData({ ...formData, nama_driver: value })}
                     placeholder="Contoh: Budi Santoso"

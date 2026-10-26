@@ -1,8 +1,24 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  .min-h-screen > .max-w-md,
+  .min-h-screen > .max-w-lg,
+  .min-h-screen > .max-w-xl {
+    width: min(100% - 8rem, 1180px);
+    max-width: none;
+    margin-left: 6rem;
+    margin-right: 2rem;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  .min-h-screen > .max-w-md > .grid,
+  .min-h-screen > .max-w-lg > .grid,
+  .min-h-screen > .max-w-xl > .grid {
+    align-items: start;
+  }
 }
 
 .logo {

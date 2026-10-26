@@ -30,7 +30,14 @@ import {
   ArrowRight,
   TrendingUp,
   Map,
-  Sparkles
+  Sparkles,
+  Users,
+  ShieldCheck,
+  BriefcaseBusiness,
+  Activity,
+  Settings2,
+  LockKeyhole,
+  ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -233,34 +240,46 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return navigate("/auth");
-      setUser(user);
+      // Session lokal lebih cepat dan tidak memicu redirect palsu saat jaringan lambat.
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user;
+      if (!currentUser) return;
+      setUser(currentUser);
 
-      const { data: tripsData, error: tripsError } = await supabase
-        .from("trips")
-        .select("*")
-        .order("tanggal", { ascending: false });
+      const [tripsResult, remindersResult] = await Promise.all([
+        supabase
+          .from("trips")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .order("tanggal", { ascending: false }),
+        supabase
+          .from("reminders")
+          .select("id, is_done")
+          .eq("user_id", currentUser.id)
+          .eq("is_done", false),
+      ]);
 
-      if (tripsError) throw tripsError;
-      setTrips(tripsData || []);
+      if (tripsResult.error) {
+        console.error("[v0] Gagal memuat trips:", tripsResult.error);
+        throw tripsResult.error;
+      }
+      if (remindersResult.error) {
+        console.warn("[v0] Gagal memuat reminders, dashboard tetap dilanjutkan:", remindersResult.error);
+      }
 
-      if (tripsData && tripsData.length > 0) {
+      const tripsData = tripsResult.data || [];
+      setTrips(tripsData);
+
+      if (tripsData.length > 0) {
         const activeTrip = determineActiveTrip(tripsData, selectedTripId || currentTrip?.id);
         setCurrentTrip(activeTrip);
       } else {
         setCurrentTrip(null);
       }
 
-      const { data: remindersData, error: remindersError } = await supabase
-        .from("reminders")
-        .select("id, is_done")
-        .eq("is_done", false);
+      setReminders(remindersResult.error ? [] : remindersResult.data || []);
 
-      if (remindersError) throw remindersError;
-      setReminders(remindersData || []);
-
-      if (Capacitor.isNativePlatform() && tripsData && tripsData.length > 0) {
+      if (Capacitor.isNativePlatform() && tripsData.length > 0) {
         scheduleTripNotifications(tripsData);
       }
     } catch (error: any) {
@@ -315,8 +334,8 @@ const Dashboard = () => {
     }
   };
 
-  const loadRundownData = async () => {
-    if (!currentTrip) return;
+  const loadRundownData = async (): Promise<RundownItem[]> => {
+    if (!currentTrip) return [];
     
     try {
       const { data, error } = await supabase
@@ -327,9 +346,12 @@ const Dashboard = () => {
         .order("jam_mulai", { ascending: true });
 
       if (error) throw error;
-      setRundownData(data || []);
+      const items = (data || []) as RundownItem[];
+      setRundownData(items);
+      return items;
     } catch (error: any) {
       console.error("Error loading rundown:", error);
+      return [];
     }
   };
 
@@ -475,33 +497,19 @@ const Dashboard = () => {
     try {
       toast.loading("Membuat dokumen rundown...");
       
-      const { data: destinationsData } = await supabase
-        .from("trip_destinations")
-        .select("*")
-        .eq("trip_id", currentTrip.id)
-        .order("urutan", { ascending: true });
-
-      await generateRundownPDF({
-        tripName: currentTrip.nama_trip,
-        tanggal: currentTrip.tanggal,
-        tanggalSelesai: currentTrip.tanggal_selesai || undefined,
-        tujuan: currentTrip.tujuan,
-        destinations: (destinationsData || []).map(d => ({
-          nama: d.nama_destinasi,
-          lokasi: d.lokasi || undefined,
-          catatan: d.catatan || undefined,
-        })),
-        rundown: rundownData.map(r => ({
-          hariKe: r.hari_ke,
-          jamMulai: r.jam_mulai,
-          jamSelesai: r.jam_selesai,
-          judulAcara: r.judul_acara,
-          keterangan: r.keterangan || undefined,
-        })),
-      });
+      const pdf = await generateRundownPDF(
+        {
+          nama_trip: currentTrip.nama_trip,
+          tanggal: currentTrip.tanggal,
+          tanggal_selesai: currentTrip.tanggal_selesai,
+          tujuan: currentTrip.tujuan,
+        },
+        rundownData,
+      );
+      pdf.save(`rundown-${currentTrip.nama_trip.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`);
 
       toast.dismiss();
-      toast.success("PDF rundown siap dibagikan!");
+      toast.success("PDF rundown berhasil diunduh");
     } catch (error) {
       toast.dismiss();
       console.error("Error generating PDF:", error);
@@ -509,34 +517,45 @@ const Dashboard = () => {
     }
   };
 
-  const handleShareRundownPDF = () => {
+  const handleShareRundownPDF = async () => {
     if (!currentTrip) {
       toast.error("Trip tidak ditemukan");
       return;
     }
 
-    if (rundownData.length === 0) {
-      toast.error("Belum ada data rundown acara");
-      return;
-    }
-
     try {
-      const shareText = `*Rundown Operasional: ${currentTrip.nama_trip}*\n\n📅 Tanggal: ${format(new Date(currentTrip.tanggal), "dd MMMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` s/d ${format(new Date(currentTrip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}` : ""}\n📍 Tujuan: ${currentTrip.tujuan}\n\nJadwal operasional siap dilaksanakan. Salam pariwisata!`;
-      
+      // Ambil data terbaru agar item rundown yang baru ditambahkan ikut terbawa.
+      const latestRundown = await loadRundownData();
+      if (latestRundown.length === 0) {
+        toast.error("Belum ada data rundown acara");
+        return;
+      }
+
+      const groupedRundown = latestRundown.reduce<Record<number, RundownItem[]>>((groups, item) => {
+        (groups[item.hari_ke] ||= []).push(item);
+        return groups;
+      }, {});
+
+      const rundownText = Object.entries(groupedRundown)
+        .sort(([dayA], [dayB]) => Number(dayA) - Number(dayB))
+        .map(([day, items]) => [
+          `*Hari ${day}*`,
+          ...items.map((item) => {
+            const details = item.keterangan ? `\n   ${item.keterangan}` : "";
+            return `• ${item.jam_mulai} - ${item.jam_selesai} — ${item.judul_acara}${details}`;
+          }),
+        ].join("\n"))
+        .join("\n\n");
+
+      const shareText = `*Rundown Operasional: ${currentTrip.nama_trip}*\n\n📅 Tanggal: ${format(new Date(currentTrip.tanggal), "dd MMMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` s/d ${format(new Date(currentTrip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}` : ""}\n📍 Tujuan: ${currentTrip.tujuan}\n\n${rundownText}\n\nJadwal operasional siap dilaksanakan.\nSalam pariwisata!`;
       const encodedText = encodeURIComponent(shareText);
       const whatsappUrl = `whatsapp://send?text=${encodedText}`;
       const whatsappWebUrl = `https://wa.me/?text=${encodedText}`;
-      
+
       if (Capacitor.isNativePlatform()) {
-        try {
-          window.location.href = whatsappUrl;
-          toast.success("Membuka WhatsApp...");
-        } catch {
-          window.open(whatsappWebUrl, '_blank');
-        }
+        window.location.assign(whatsappUrl);
       } else {
-        window.open(whatsappWebUrl, '_blank');
-        toast.success("Membuka WhatsApp...");
+        window.open(whatsappWebUrl, "_blank", "noopener,noreferrer");
       }
     } catch (error) {
       console.error("Error opening WhatsApp:", error);
@@ -545,6 +564,10 @@ const Dashboard = () => {
   };
 
   const activeRemindersCount = reminders.length;
+  const userRole = user?.user_metadata?.role || "owner";
+  const roleLabel = userRole === "employee" ? "Karyawan" : userRole === "tl" ? "Team Leader" : "Pemilik";
+  const canManageFinance = userRole === "owner" || userRole === "tl";
+  const canManageTeam = userRole === "owner";
 
   return (
     <AuthGuard>
@@ -581,6 +604,38 @@ const Dashboard = () => {
               </Button>
             </div>
           </div>
+
+          {/* Desktop workspace: ringkas, operasional, dan tidak mengubah alur mobile */}
+          <section className="hidden lg:block mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-600">Workspace operasional</p>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Pusat kendali biro wisata</h1>
+                <p className="mt-1 text-sm text-slate-500">Kelola agenda, keuangan, dan tim dari satu tampilan.</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><ShieldCheck className="h-4 w-4" /></div>
+                <div><p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Akses saat ini</p><p className="text-xs font-bold text-slate-800">{roleLabel}</p></div>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-4 gap-3">
+              {[
+                { label: "Trip aktif", value: String(trips.length), icon: Bus, tone: "text-blue-700 bg-blue-50" },
+                { label: "Pengingat", value: String(activeRemindersCount), icon: Bell, tone: "text-amber-700 bg-amber-50" },
+                { label: "Rundown", value: String(rundownData.length), icon: Activity, tone: "text-emerald-700 bg-emerald-50" },
+                { label: "Status sistem", value: "Normal", icon: ShieldCheck, tone: "text-violet-700 bg-violet-50" },
+              ].map((item) => {
+                const Icon = item.icon;
+                return <div key={item.label} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.tone}`}><Icon className="h-4 w-4" /></div><div><p className="text-[11px] text-slate-500">{item.label}</p><p className="text-base font-bold text-slate-900">{item.value}</p></div></div>;
+              })}
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <button type="button" onClick={() => setShowAddTrip(true)} className="group flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"><span><span className="block text-xs font-bold text-slate-900">Buat trip baru</span><span className="mt-0.5 block text-[11px] text-slate-500">Susun agenda rombongan</span></span><ChevronRight className="h-4 w-4 text-blue-600 transition-transform group-hover:translate-x-1" /></button>
+              <button type="button" onClick={() => navigate("/laporan")} className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-50"><span><span className="block text-xs font-bold text-slate-900">Lihat laporan</span><span className="mt-0.5 block text-[11px] text-slate-500">Pantau performa biro</span></span><FileText className="h-4 w-4 text-slate-500" /></button>
+              <button type="button" onClick={() => toast.info(canManageTeam ? "Menu tim siap dikembangkan untuk undangan anggota." : "Akses menu tim hanya untuk pemilik.")} className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-50"><span><span className="block text-xs font-bold text-slate-900">Kelola tim</span><span className="mt-0.5 block text-[11px] text-slate-500">Atur akses karyawan & TL</span></span>{canManageTeam ? <Users className="h-4 w-4 text-slate-500" /> : <LockKeyhole className="h-4 w-4 text-slate-400" />}</button>
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-slate-500"><span className="flex items-center gap-1.5"><BriefcaseBusiness className="h-3.5 w-3.5" />Mode kerja: {roleLabel}</span><span className="flex items-center gap-1.5">{canManageFinance ? "Keuangan tersedia" : "Keuangan hanya baca"} <Settings2 className="h-3.5 w-3.5" /></span></div>
+          </section>
           
           {/* Greeting Hero Card with Authentic Indonesian Destination */}
           <GreetingHeader userEmail={user?.email} currentDestination={currentTrip?.tujuan} />

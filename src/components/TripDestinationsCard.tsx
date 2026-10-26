@@ -5,6 +5,7 @@ import { Edit2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -179,29 +180,34 @@ export const TripDestinationsCard = ({ tripId, tripName }: TripDestinationsCardP
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
                   <Label>Destinasi 1 (Wajib)</Label>
-                  <Input
+                  <Select
                     value={formData.destinasi_1}
-                    onChange={(e) =>
-                      setFormData({ ...formData, destinasi_1: e.target.value })
-                    }
-                    placeholder="Nama destinasi"
+                    onValueChange={(value) => setFormData({ ...formData, destinasi_1: value })}
                     required
-                  />
+                  >
+                    <SelectTrigger><SelectValue placeholder="Pilih destinasi" /></SelectTrigger>
+                    <SelectContent>
+                      {['Semarang', 'Demak', 'Yogyakarta', 'Bandung', 'Jakarta', 'Bali', 'Malang', 'Surabaya', 'Lainnya'].map((destination) => (
+                        <SelectItem key={destination} value={destination}>{destination}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {[2, 3, 4, 5, 6].map((num) => (
                   <div key={num}>
                     <Label>Destinasi {num} (Opsional)</Label>
-                    <Input
+                    <Select
                       value={formData[`destinasi_${num}` as keyof DestinationNote] || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          [`destinasi_${num}`]: e.target.value,
-                        })
-                      }
-                      placeholder="Nama destinasi"
-                    />
+                      onValueChange={(value) => setFormData({ ...formData, [`destinasi_${num}`]: value })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Pilih destinasi" /></SelectTrigger>
+                      <SelectContent>
+                        {['Semarang', 'Demak', 'Yogyakarta', 'Bandung', 'Jakarta', 'Bali', 'Malang', 'Surabaya', 'Lainnya'].map((destination) => (
+                          <SelectItem key={destination} value={destination}>{destination}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ))}
 
