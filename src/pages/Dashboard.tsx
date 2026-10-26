@@ -250,15 +250,22 @@ const Dashboard = () => {
         supabase
           .from("trips")
           .select("*")
+          .eq("user_id", currentUser.id)
           .order("tanggal", { ascending: false }),
         supabase
           .from("reminders")
           .select("id, is_done")
+          .eq("user_id", currentUser.id)
           .eq("is_done", false),
       ]);
 
-      if (tripsResult.error) throw tripsResult.error;
-      if (remindersResult.error) throw remindersResult.error;
+      if (tripsResult.error) {
+        console.error("[v0] Gagal memuat trips:", tripsResult.error);
+        throw tripsResult.error;
+      }
+      if (remindersResult.error) {
+        console.warn("[v0] Gagal memuat reminders, dashboard tetap dilanjutkan:", remindersResult.error);
+      }
 
       const tripsData = tripsResult.data || [];
       setTrips(tripsData);
@@ -270,7 +277,7 @@ const Dashboard = () => {
         setCurrentTrip(null);
       }
 
-      setReminders(remindersResult.data || []);
+      setReminders(remindersResult.error ? [] : remindersResult.data || []);
 
       if (Capacitor.isNativePlatform() && tripsData.length > 0) {
         scheduleTripNotifications(tripsData);
