@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     allowedHosts: ["localhost", ".vercel.run"],
   },
+  envPrefix: ["VITE_", "NEXT_PUBLIC_", "SUPABASE_"],
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
