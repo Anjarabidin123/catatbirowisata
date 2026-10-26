@@ -227,7 +227,7 @@ const TripDetail = () => {
                       <Bus className="w-4 h-4 mr-2" />
                       {trip.nama_kendaraan}
                       {trip.nomor_polisi && ` - ${trip.nomor_polisi}`}
-                      {trip.nama_driver && ` (Driver: ${trip.nama_driver})`}
+                      {trip.nama_driver && ` (Kru: ${trip.nama_driver})`}
                     </div>
                   )}
 

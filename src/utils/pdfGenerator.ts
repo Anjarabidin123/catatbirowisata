@@ -16,28 +16,58 @@ interface TripInfo {
   tujuan: string;
 }
 
-export const generateRundownPDF = (
+const loadLogo = async (): Promise<string | null> => {
+  try {
+    const response = await fetch("/malika-logo.png");
+    const blob = await response.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+
+export const generateRundownPDF = async (
   tripInfo: TripInfo,
   rundownData: RundownItem[]
-): jsPDF => {
+): Promise<jsPDF> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const logo = await loadLogo();
 
-  // Header
-  doc.setFontSize(20);
+  // Kop surat formal
+  if (logo) doc.addImage(logo, "PNG", 14, 10, 22, 22);
   doc.setFont("helvetica", "bold");
-  doc.text("RUNDOWN ACARA", pageWidth / 2, 20, { align: "center" });
+  doc.setFontSize(15);
+  doc.text("BIRO PERJALANAN WISATA", logo ? 42 : pageWidth / 2, 16, logo ? undefined : { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Pencatatan Operasional Perjalanan", logo ? 42 : pageWidth / 2, 22, logo ? undefined : { align: "center" });
+  doc.setDrawColor(31, 78, 121);
+  doc.setLineWidth(0.8);
+  doc.line(14, 35, pageWidth - 14, 35);
+  doc.setDrawColor(170, 170, 170);
+  doc.setLineWidth(0.25);
+  doc.line(14, 37, pageWidth - 14, 37);
+
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("RUNDOWN ACARA", pageWidth / 2, 50, { align: "center" });
 
   // Trip Info
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
-  doc.text(`Trip: ${tripInfo.nama_trip}`, 14, 35);
-  doc.text(`Tujuan: ${tripInfo.tujuan}`, 14, 42);
+  doc.text(`Trip: ${tripInfo.nama_trip}`, 14, 66);
+  doc.text(`Tujuan: ${tripInfo.tujuan}`, 14, 73);
   
   const tanggalText = tripInfo.tanggal_selesai
     ? `${tripInfo.tanggal} - ${tripInfo.tanggal_selesai}`
     : tripInfo.tanggal;
-  doc.text(`Tanggal: ${tanggalText}`, 14, 49);
+  doc.text(`Tanggal: ${tanggalText}`, 14, 80);
 
   // Group by day
   const groupedByDay = rundownData.reduce((acc, item) => {
@@ -48,7 +78,7 @@ export const generateRundownPDF = (
     return acc;
   }, {} as Record<number, RundownItem[]>);
 
-  let currentY = 60;
+  let currentY = 92;
 
   // Generate tables for each day
   Object.keys(groupedByDay)

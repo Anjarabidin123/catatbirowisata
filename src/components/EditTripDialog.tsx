@@ -158,7 +158,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
           </div>
 
           <div>
-            <Label htmlFor="nama_driver">Nama Driver (Opsional)</Label>
+            <Label htmlFor="nama_driver">Nama Kru (Opsional)</Label>
             <Input
               id="nama_driver"
               value={formData.nama_driver}

@@ -485,7 +485,7 @@ const Dashboard = () => {
     try {
       toast.loading("Membuat dokumen rundown...");
       
-      const pdf = generateRundownPDF(
+      const pdf = await generateRundownPDF(
         {
           nama_trip: currentTrip.nama_trip,
           tanggal: currentTrip.tanggal,
