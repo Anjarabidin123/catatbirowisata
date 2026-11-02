@@ -8,6 +8,9 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import { RoleProvider } from "@/contexts/RoleContext";
+import { DesktopSidebar } from "@/components/DesktopSidebar";
+import { initAuthListener } from "@/utils/authHelper";
 
 // Lazy load heavy pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -21,6 +24,9 @@ const Destinations = lazy(() => import("./pages/Destinations"));
 const SelectDestinations = lazy(() => import("./pages/SelectDestinations"));
 const Notes = lazy(() => import("./pages/Notes"));
 const NotesNew = lazy(() => import("./pages/NotesNew"));
+const ImportWordRundown = lazy(() => import("./pages/ImportWordRundown"));
+const PengaturanBiro = lazy(() => import("./pages/PengaturanBiro"));
+const ManajemenKruRBAC = lazy(() => import("./pages/ManajemenKruRBAC"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const LoadingFallback = () => (
@@ -33,6 +39,8 @@ const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
+    initAuthListener();
+
     // Handle hardware back button
     let backButtonListener: any;
     
@@ -65,26 +73,33 @@ const App = () => {
         <Toaster />
         <Sonner />
         <PWAInstallPrompt />
-        <BrowserRouter>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/trips" element={<Trips />} />
-              <Route path="/trips/new" element={<NewTrip />} />
-              <Route path="/trips/:id" element={<TripDetail />} />
-              <Route path="/destinations" element={<Destinations />} />
-              <Route path="/destinations/select" element={<SelectDestinations />} />
-              <Route path="/notes" element={<Notes />} />
-              <Route path="/notesnew" element={<NotesNew />} />
-              <Route path="/keuangan" element={<Keuangan />} />
-              <Route path="/keuangan/new" element={<NewKeuangan />} />
-              <Route path="/laporan" element={<Laporan />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <RoleProvider>
+            <DesktopSidebar />
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/trips" element={<Trips />} />
+                <Route path="/trips/new" element={<NewTrip />} />
+                <Route path="/trips/:id" element={<TripDetail />} />
+                <Route path="/destinations" element={<Destinations />} />
+                <Route path="/destinations/select" element={<SelectDestinations />} />
+                <Route path="/notes" element={<Notes />} />
+                <Route path="/notesnew" element={<NotesNew />} />
+                <Route path="/keuangan" element={<Keuangan />} />
+                <Route path="/keuangan/new" element={<NewKeuangan />} />
+                <Route path="/laporan" element={<Laporan />} />
+                <Route path="/import-rundown" element={<ImportWordRundown />} />
+                <Route path="/asisten-ai" element={<ImportWordRundown />} />
+                <Route path="/pengaturan-biro" element={<PengaturanBiro />} />
+                <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </RoleProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

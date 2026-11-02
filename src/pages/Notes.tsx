@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
 import BottomNav from "@/components/BottomNav";
 import NoteDialog from "@/components/NoteDialog";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Plus, Pencil, Trash2, Search, StickyNote } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Search, StickyNote, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -31,6 +32,19 @@ const Notes = () => {
   const [selectedNote, setSelectedNote] = useState<Note | undefined>();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [openNotes, setOpenNotes] = useState<Record<string, boolean>>({});
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
+
+  const toggleNote = (id: string) => {
+    setOpenNotes((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleCopyNote = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedNoteId(id);
+    toast.success("Catatan berhasil disalin!");
+    setTimeout(() => setCopiedNoteId(null), 2000);
+  };
 
   useEffect(() => {
     loadNotes();
@@ -58,13 +72,14 @@ const Notes = () => {
 
   const loadNotes = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data: notesData, error: notesError } = await supabase
         .from("notes")
         .select("*")
         .eq("user_id", user.id)
+        .not("judul", "ilike", "[%]")
         .order("created_at", { ascending: false });
 
       if (notesError) throw notesError;
@@ -153,8 +168,8 @@ const Notes = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-lg mx-auto p-4">
+      <div className="min-h-screen bg-background pb-20 safe-top lg:pl-64">
+        <div className="max-w-lg lg:max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Button
@@ -210,45 +225,122 @@ const Notes = () => {
             </Card>
           ) : (
             <div className="space-y-3">
-              {filteredNotes.map((note) => (
-                <Card key={note.id} className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg flex-1">{note.judul}</h3>
-                    <div className="flex gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleEdit(note)}
+              {filteredNotes.map((note) => {
+                const isOpen = !!openNotes[note.id];
+                return (
+                  <Card key={note.id} className="p-4 border border-slate-200/80 dark:border-slate-800 transition-all hover:shadow-sm">
+                    <div className="flex justify-between items-start gap-2 mb-1">
+                      <h3 
+                        className="font-semibold text-base text-slate-900 dark:text-slate-100 flex-1 cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => toggleNote(note.id)}
                       >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDelete(note.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                        {note.judul}
+                      </h3>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleEdit(note)}
+                          title="Edit catatan"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDelete(note.id)}
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          title="Hapus catatan"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className={`h-8 w-8 rounded-full transition-transform duration-200 ${isOpen ? "rotate-180 text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+                          onClick={() => toggleNote(note.id)}
+                          title={isOpen ? "Tutup detail catatan" : "Lihat isi lengkap catatan"}
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
 
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-                    {note.konten}
-                  </p>
+                    {!isOpen ? (
+                      <div 
+                        className="mt-1 cursor-pointer group"
+                        onClick={() => toggleNote(note.id)}
+                      >
+                        <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-line leading-relaxed">
+                          {note.konten}
+                        </p>
+                        <div className="flex items-center justify-between mt-2 pt-1 text-xs text-muted-foreground border-t border-slate-100 dark:border-slate-800/60">
+                          <span>{format(new Date(note.created_at), "dd MMM yyyy", { locale: idLocale })}</span>
+                          {note.trips && (
+                            <span className="text-primary font-medium">📍 {note.trips.nama_trip}</span>
+                          )}
+                          <span className="text-xs text-primary font-medium flex items-center gap-1 group-hover:underline">
+                            Lihat selengkapnya <ChevronDown className="w-3 h-3" />
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                        <div className="text-sm text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 font-normal select-text break-words">
+                          {note.konten}
+                        </div>
 
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {format(new Date(note.created_at), "dd MMM yyyy", { locale: idLocale })}
-                    </span>
-                    {note.trips && (
-                      <span className="text-primary">
-                        📍 {note.trips.nama_trip}
-                      </span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <span>{format(new Date(note.created_at), "dd MMM yyyy, HH:mm", { locale: idLocale })}</span>
+                            {note.trips && (
+                              <span className="text-primary font-medium">📍 {note.trips.nama_trip}</span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2.5 text-xs gap-1.5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyNote(note.id, note.konten);
+                              }}
+                            >
+                              {copiedNoteId === note.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span className="text-emerald-600 font-medium">Tersalin</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Salin Teks</span>
+                                </>
+                              )}
+                            </Button>
+                            
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleNote(note.id);
+                              }}
+                            >
+                              <span>Tutup</span>
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

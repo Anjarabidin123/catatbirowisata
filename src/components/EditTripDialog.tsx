@@ -7,6 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { RupiahInput } from "@/components/RupiahInput";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Users } from "lucide-react";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity, assignTripToMultipleCrewDB } from "@/utils/rbacAuditLogger";
 
 interface Trip {
   id: string;
@@ -30,6 +33,8 @@ interface EditTripDialogProps {
 }
 
 export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTripDialogProps) => {
+  const { hasPermission, crewList, isPemilik } = useRole();
+  const canSeeFinancials = hasPermission("rule_buku_kas_laba");
   const [formData, setFormData] = useState({
     nama_trip: "",
     tanggal: "",
@@ -44,6 +49,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
   });
   const [budgetFormatted, setBudgetFormatted] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (trip && open) {
@@ -60,8 +66,24 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
         catatan: trip.catatan || "",
       });
       setBudgetFormatted(trip.budget_estimasi?.toString() || "");
+
+      // Inisialisasi kru yang ditugaskan ke trip ini
+      const initialSelected = crewList
+        .filter((c) => {
+          if (c.assignedTripIds && c.assignedTripIds.includes(trip.id)) return true;
+          if (
+            c.assignedTrip &&
+            (trip.nama_trip.toLowerCase().includes(c.assignedTrip.toLowerCase()) ||
+              c.assignedTrip.toLowerCase().includes(trip.nama_trip.toLowerCase()))
+          ) {
+            return true;
+          }
+          return false;
+        })
+        .map((c) => c.id);
+      setSelectedCrewIds(initialSelected);
     }
-  }, [trip, open]);
+  }, [trip, open, crewList]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,12 +103,24 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
           nama_driver: formData.nama_driver || null,
           tanggal_selesai: formData.tanggal_selesai || null,
           jumlah_penumpang: formData.jumlah_penumpang ? parseInt(formData.jumlah_penumpang) : null,
-          budget_estimasi: budgetNumber,
+          budget_estimasi: canSeeFinancials ? budgetNumber : trip.budget_estimasi ?? null,
           catatan: formData.catatan || null,
         })
         .eq("id", trip.id);
 
       if (error) throw error;
+
+      // Update penugasan kru ke trip ini di database
+      if (isPemilik) {
+        await assignTripToMultipleCrewDB(trip.id, formData.nama_trip, selectedCrewIds);
+      }
+
+      logCrewActivity({
+        actionType: "system",
+        actionTitle: "Memperbarui Data Trip",
+        actionDetail: `Memperbarui detail trip "${formData.nama_trip}" tujuan ${formData.tujuan}`,
+        tripName: formData.nama_trip,
+      });
 
       toast.success("Trip berhasil diperbarui");
       onOpenChange(false);
@@ -158,12 +192,27 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
           </div>
 
           <div>
-            <Label htmlFor="nama_driver">Nama Driver (Opsional)</Label>
-            <Input
+            <Label htmlFor="nama_driver" className="flex items-center gap-1.5 font-medium">
+              <Users className="w-3.5 h-3.5 text-blue-600" />
+              Nama Kru (Opsional)
+            </Label>
+            <Textarea
               id="nama_driver"
               value={formData.nama_driver}
               onChange={(e) => setFormData({ ...formData, nama_driver: e.target.value })}
+              placeholder={"Contoh:\nPak Joko (Driver 1)\nPak Agus (Driver 2)\nMas Budi (Tour Leader)"}
+              rows={3}
+              enterKeyHint="enter"
+              className="mt-1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.stopPropagation();
+                }
+              }}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              💡 Simpan nama kru untuk koordinasi lapangan. Tekan Enter untuk menambah baris kru baru.
+            </p>
           </div>
 
           <div>
@@ -186,15 +235,17 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
             />
           </div>
 
-          <div>
-            <RupiahInput
-              label="Budget Estimasi (Opsional)"
-              value={budgetFormatted}
-              onChange={setBudgetFormatted}
-              placeholder="0"
-              id="budget_estimasi"
-            />
-          </div>
+          {canSeeFinancials && (
+            <div>
+              <RupiahInput
+                label="Budget Estimasi (Opsional)"
+                value={budgetFormatted}
+                onChange={setBudgetFormatted}
+                placeholder="0"
+                id="budget_estimasi"
+              />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="catatan">Catatan (Opsional)</Label>
@@ -204,6 +255,58 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
               onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
             />
           </div>
+
+          {/* Atur Penugasan Kru / Tour Leader ke Trip Ini */}
+          {isPemilik && (
+            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                  Atur Tour Leader & Kru Bertugas
+                </Label>
+                <span className="text-[11px] text-blue-600 font-semibold">
+                  {selectedCrewIds.length} kru dipilih
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                {crewList.map((crew) => {
+                  const isChecked = selectedCrewIds.includes(crew.id);
+                  return (
+                    <label
+                      key={crew.id}
+                      className={`flex items-center gap-2 p-2 rounded-md border text-xs cursor-pointer transition-colors ${
+                        isChecked
+                          ? "bg-blue-50 border-blue-300 dark:bg-blue-950/40 dark:border-blue-700 font-semibold text-blue-900 dark:text-blue-200"
+                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setSelectedCrewIds((prev) =>
+                            prev.includes(crew.id)
+                              ? prev.filter((id) => id !== crew.id)
+                              : [...prev, crew.id]
+                          );
+                        }}
+                        className="rounded text-blue-600 w-3.5 h-3.5"
+                      />
+                      <div className="truncate">
+                        <div>{crew.nama}</div>
+                        <div className="text-[10px] text-slate-400 font-normal">
+                          {crew.jabatan}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Hanya kru yang dicentang yang akan melihat trip ini di akun mereka. Kru lain tidak akan dapat mengaksesnya.
+              </p>
+            </div>
+          )}
 
           <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
             {loading ? "Menyimpan..." : "Simpan Perubahan"}

@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { RupiahInput } from "./RupiahInput";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface CateringNote {
   id?: string;
@@ -23,6 +26,7 @@ interface CateringNoteDialogProps {
 }
 
 export const CateringNoteDialog = ({ open, onOpenChange, note, onSuccess }: CateringNoteDialogProps) => {
+  const { hasPermission } = useRole();
   const [formData, setFormData] = useState({
     nama_catering: "",
     harga_per_snack: "",
@@ -47,18 +51,23 @@ export const CateringNoteDialog = ({ open, onOpenChange, note, onSuccess }: Cate
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission("rule_rundown_catatan")) {
+      toast.error("Akses tambah/edit catatan catering dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const unformatRupiah = (formatted: string): number => {
         return Number(formatted.replace(/\./g, "").replace(/,/g, ".")) || 0;
       };
 
+      const hargaNum = unformatRupiah(formData.harga_per_snack);
       const judul = `[CATERING] ${formData.nama_catering}`;
       const konten = JSON.stringify({
-        harga_per_snack: unformatRupiah(formData.harga_per_snack),
+        harga_per_snack: hargaNum,
         catatan: formData.catatan || null,
       });
 
@@ -68,6 +77,11 @@ export const CateringNoteDialog = ({ open, onOpenChange, note, onSuccess }: Cate
           .update({ judul, konten })
           .eq("id", note.id);
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Memperbarui Catatan Catering",
+          detail: `Mengubah catering '${formData.nama_catering}' (Rp ${hargaNum.toLocaleString("id-ID")}/snack)`,
+        });
       } else {
         const { error } = await supabase.from("notes").insert({
           user_id: user.id,
@@ -75,6 +89,11 @@ export const CateringNoteDialog = ({ open, onOpenChange, note, onSuccess }: Cate
           konten,
         });
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Menambahkan Catatan Catering",
+          detail: `Menambahkan catering '${formData.nama_catering}' (Rp ${hargaNum.toLocaleString("id-ID")}/snack)`,
+        });
       }
 
       toast.success(note?.id ? "Catatan catering berhasil diperbarui" : "Catatan catering berhasil ditambahkan");

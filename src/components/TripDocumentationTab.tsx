@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Trash2, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 
 interface Media {
@@ -41,7 +42,7 @@ export const TripDocumentationTab = ({ tripId }: TripDocumentationTabProps) => {
 
   const loadMedia = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -65,7 +66,7 @@ export const TripDocumentationTab = ({ tripId }: TripDocumentationTabProps) => {
     setUploading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       for (const file of Array.from(files)) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,7 +40,7 @@ const SelectDestinations = () => {
 
   const loadDestinations = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -72,7 +73,7 @@ const SelectDestinations = () => {
 
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const insertData = selected.map((destId, index) => ({
@@ -123,8 +124,8 @@ const SelectDestinations = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-lg mx-auto p-4">
+      <div className="min-h-screen bg-background pb-20 safe-top lg:pl-64">
+        <div className="max-w-lg lg:max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Button
@@ -172,6 +173,7 @@ const SelectDestinations = () => {
                     <Checkbox
                       checked={selected.includes(dest.id)}
                       onCheckedChange={() => toggleSelection(dest.id)}
+                      onClick={(e) => e.stopPropagation()}
                       className="mt-1"
                     />
                     <div className="flex-1">

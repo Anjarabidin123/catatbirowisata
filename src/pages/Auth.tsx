@@ -6,13 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Eye, EyeOff, Fingerprint, Mail, Lock, ArrowRight, ShieldCheck, MapPin } from "lucide-react";
+import { Eye, EyeOff, Fingerprint, Mail, Lock, ArrowRight, ShieldCheck, MapPin, UserCheck, Smartphone } from "lucide-react";
 import { biometricAuth } from "@/utils/biometricAuth";
 import { Capacitor } from "@capacitor/core";
 import MiniRunningBus from "@/components/MiniRunningBus";
+import { useRole, UserRole } from "@/contexts/RoleContext";
+import { registerCurrentDeviceLogin, logCrewActivity } from "@/utils/rbacAuditLogger";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { role, setRole, activeCrew, switchActiveCrew, crewList, currentDevice } = useRole();
+  const [selectedRole, setSelectedRole] = useState<UserRole>(role);
+  const [selectedCrewId, setSelectedCrewId] = useState<string>(activeCrew.crewId);
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -34,12 +39,59 @@ const Auth = () => {
     }
   }, []);
 
+  const applyRBACSession = () => {
+    setRole(selectedRole);
+    if (selectedRole === "kru") {
+      switchActiveCrew(selectedCrewId);
+      const picked = crewList.find((c) => c.id === selectedCrewId);
+      const crewId = picked ? picked.id : activeCrew.crewId;
+      const crewName = picked ? picked.nama : activeCrew.nama;
+      const jabatan = picked ? picked.jabatan : activeCrew.jabatan;
+
+      registerCurrentDeviceLogin({
+        role: "kru",
+        crewId,
+        crewName,
+        jabatan,
+      });
+      logCrewActivity({
+        kategori: "login_device",
+        aksi: `Login Kru Berhasil: ${crewName}`,
+        detail: `Perangkat: ${currentDevice.deviceName} (${currentDevice.os} • ${currentDevice.browser})`,
+        customActor: { crewId, crewName, jabatan, role: "kru" },
+      });
+    } else {
+      registerCurrentDeviceLogin({
+        role: "pemilik",
+        crewId: "owner_primary",
+        crewName: "Pemilik Biro (Direktur)",
+        jabatan: "Owner & Super Admin",
+      });
+      logCrewActivity({
+        kategori: "login_device",
+        aksi: "Login Pemilik Biro (Owner)",
+        detail: `Perangkat: ${currentDevice.deviceName} (${currentDevice.os} • ${currentDevice.browser})`,
+        customActor: {
+          crewId: "owner_primary",
+          crewName: "Pemilik Biro (Owner)",
+          jabatan: "Owner & Super Admin",
+          role: "pemilik",
+        },
+      });
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       if (isLogin) {
+        // Bersihkan sisa token sesi lama sebelum login baru
+        try {
+          localStorage.removeItem("sb-xirxglkwojgbzjyhhdhm-auth-token");
+        } catch (e) {}
+
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -58,8 +110,13 @@ const Auth = () => {
             await biometricAuth.deleteCredentials();
           }
         }
-        
-        toast.success("Selamat datang! Berhasil masuk ke sistem.");
+
+        applyRBACSession();
+        toast.success(
+          selectedRole === "pemilik"
+            ? "Selamat datang, Pemilik Biro! Berhasil masuk dengan hak akses penuh."
+            : "Selamat bertugas! Berhasil masuk ke Posko Operasional Kru."
+        );
         navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signUp({
@@ -97,6 +154,7 @@ const Auth = () => {
 
       if (error) throw error;
 
+      applyRBACSession();
       toast.success("Login biometrik berhasil!");
       navigate("/dashboard");
     } catch (error: any) {
@@ -125,7 +183,7 @@ const Auth = () => {
         <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-xl shadow-2xl shadow-sky-900/15 p-6 sm:p-8 text-slate-800">
           
           {/* Header Branding */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mb-1">
               Catat Trip Nusantara
             </h1>
@@ -135,7 +193,7 @@ const Auth = () => {
           </div>
 
           {/* Segmented Tab (Masuk vs Daftar) */}
-          <div className="flex p-1 mb-5 rounded-2xl bg-slate-100 border border-slate-200/80">
+          <div className="flex p-1 mb-4 rounded-2xl bg-slate-100 border border-slate-200/80">
             <button
               type="button"
               onClick={() => setIsLogin(true)}
@@ -159,6 +217,83 @@ const Auth = () => {
               Daftar Akun
             </button>
           </div>
+
+          {/* RBAC Role Selector (Pemilik Biro vs Kru Lapangan) */}
+          {isLogin && (
+            <div className="mb-4 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  Pilih Hak Akses Login (RBAC):
+                </span>
+                <span className="text-[10px] font-semibold text-blue-600 flex items-center gap-1">
+                  <Smartphone className="w-3 h-3" />
+                  {currentDevice.deviceType}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole("pemilik")}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    selectedRole === "pemilik"
+                      ? "bg-amber-50 border-amber-400 text-amber-900 shadow-xs"
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <ShieldCheck className={`w-4 h-4 ${selectedRole === "pemilik" ? "text-amber-600" : "text-slate-400"}`} />
+                    <span>Pemilik Biro</span>
+                  </div>
+                  <p className="text-[10px] opacity-80 mt-0.5 line-clamp-1">
+                    Owner, Kas & Monitor Kru
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole("kru")}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    selectedRole === "kru"
+                      ? "bg-emerald-50 border-emerald-400 text-emerald-900 shadow-xs"
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <UserCheck className={`w-4 h-4 ${selectedRole === "kru" ? "text-emerald-600" : "text-slate-400"}`} />
+                    <span>Kru / TL</span>
+                  </div>
+                  <p className="text-[10px] opacity-80 mt-0.5 line-clamp-1">
+                    Tour Leader & Driver
+                  </p>
+                </button>
+              </div>
+
+              {selectedRole === "kru" && (
+                <div className="pt-1.5 space-y-1">
+                  <label className="text-[10px] font-bold text-emerald-800 block">
+                    Identitas Personel Kru yang Bertugas:
+                  </label>
+                  <select
+                    value={selectedCrewId}
+                    onChange={(e) => setSelectedCrewId(e.target.value)}
+                    className="w-full h-8 rounded-xl bg-white border border-emerald-300 px-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {crewList.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nama} — {c.jabatan} ({c.kodeKru})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="pt-1 border-t border-slate-200/70 flex items-center justify-between text-[10px] text-slate-500">
+                <span>Perangkat tercatat di Audit Pemilik:</span>
+                <strong className="text-slate-700 truncate max-w-[175px]">
+                  {currentDevice.deviceName} • {currentDevice.os}
+                </strong>
+              </div>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleAuth} className="space-y-4">

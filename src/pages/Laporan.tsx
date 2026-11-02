@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer, TrendingUp, TrendingDown, Download, Share2 } from "lucide-react";
+import { Printer, TrendingUp, TrendingDown, Download, Share2, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { generateReportPDF } from "@/utils/reportPdfGenerator";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/utils";
+import { KwitansiInvoiceDialog } from "@/components/KwitansiInvoiceDialog";
+import { useRole } from "@/contexts/RoleContext";
+import RBACOwnerGuard from "@/components/RBACOwnerGuard";
 
 interface ReportData {
   trips: any[];
@@ -19,10 +23,12 @@ interface ReportData {
 }
 
 const Laporan = () => {
+  const { role, isPemilik, isKru, roleName } = useRole();
   const [data, setData] = useState<ReportData>({ trips: [], keuangan: [], media: [] });
   const [loading, setLoading] = useState(true);
   const [selectedTripId, setSelectedTripId] = useState<string>("all");
   const [filterMonth, setFilterMonth] = useState<string>("current");
+  const [showKwitansiDialog, setShowKwitansiDialog] = useState(false);
 
   useEffect(() => {
     loadReportData();
@@ -30,7 +36,7 @@ const Laporan = () => {
 
   const loadReportData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const [tripsRes, keuanganRes, mediaRes] = await Promise.all([
@@ -65,17 +71,19 @@ const Laporan = () => {
 
   const handleGeneratePDF = async () => {
     try {
-      const doc = generateReportPDF({
+      const doc = await generateReportPDF({
         trips: filteredTrips,
         keuangan: filteredKeuangan,
         media: filteredMedia,
         filterTripId: selectedTripId,
       });
 
-      const fileName = `Laporan_Agen_Biro_${format(new Date(), "yyyyMMdd")}.pdf`;
+      const fileName = `Laporan_Resmi_Biro_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
       doc.save(fileName);
+      toast.success("Laporan PDF resmi dengan kop surat berhasil diunduh!");
     } catch (error) {
       console.error("Error generating PDF:", error);
+      toast.error("Gagal membuat PDF");
     }
   };
 
@@ -163,10 +171,30 @@ const Laporan = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-2xl mx-auto p-4">
+      <RBACOwnerGuard
+        ruleId="rule_buku_kas_laba"
+        pageTitle="Laporan Laba/Rugi & Invoice Resmi Biro"
+        reason="Rekapitulasi laba bersih biro, omset per trip, dan penerbitan kwitansi/invoice resmi dikhususkan bagi Pemilik Biro."
+      >
+      <div className="min-h-screen bg-background pb-20 safe-top lg:pl-64">
+        <div className="max-w-2xl lg:max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col gap-3 mb-4 print:hidden">
-            <h1 className="text-xl font-bold">Laporan</h1>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold flex items-center gap-2">
+                  <span>Laporan & Dokumen Resmi</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                    isPemilik ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                  }`}>
+                    {roleName}
+                  </span>
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Rekapitulasi performa trip, keuangan, dan arsip dokumen resmi biro
+                </p>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <Select value={filterMonth} onValueChange={setFilterMonth}>
                 <SelectTrigger className="w-32 h-9">
@@ -192,10 +220,22 @@ const Laporan = () => {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="flex gap-2">
+              {isPemilik && (
+                <Button
+                  onClick={() => setShowKwitansiDialog(true)}
+                  variant="outline"
+                  className="h-9 text-xs font-semibold gap-1.5 border-slate-200 dark:border-slate-800"
+                  size="sm"
+                >
+                  <Receipt className="w-4 h-4 text-blue-600" />
+                  <span>Kwitansi / Invoice</span>
+                </Button>
+              )}
               <Button onClick={handleGeneratePDF} className="gradient-primary text-white flex-1 h-9" size="sm">
                 <Download className="w-4 h-4 mr-1" />
-                PDF
+                PDF Laporan
               </Button>
               <Button onClick={handleSharePDF} variant="outline" className="flex-1 h-9" size="sm">
                 <Share2 className="w-4 h-4 mr-1" />
@@ -275,8 +315,14 @@ const Laporan = () => {
           )}
         </div>
 
+        <KwitansiInvoiceDialog
+          open={showKwitansiDialog}
+          onOpenChange={setShowKwitansiDialog}
+        />
+
         <BottomNav />
       </div>
+      </RBACOwnerGuard>
     </AuthGuard>
   );
 };

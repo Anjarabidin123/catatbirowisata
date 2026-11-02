@@ -59,16 +59,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Khusus request API Supabase / AI: Network first tanpa caching permanen
-  if (url.hostname.includes('supabase.co') || url.hostname.includes('googleapis.com')) {
-    event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(
-          JSON.stringify({ error: 'Koneksi offline, gagal memuat data online' }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        );
-      })
-    );
+  // Abaikan seluruh request cross-origin (seperti Supabase, Google APIs, dsb)
+  // Biarkan browser menangani koneksi dan CORS secara langsung tanpa intervensi Service Worker
+  if (url.origin !== self.location.origin || url.hostname.includes('supabase.co') || url.hostname.includes('googleapis.com')) {
     return;
   }
 

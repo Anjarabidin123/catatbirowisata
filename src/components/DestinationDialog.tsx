@@ -7,7 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RupiahInput } from "@/components/RupiahInput";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface Destination {
   id?: string;
@@ -27,6 +30,7 @@ interface DestinationDialogProps {
 }
 
 const DestinationDialog = ({ open, onOpenChange, destination, onSuccess }: DestinationDialogProps) => {
+  const { hasPermission } = useRole();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Destination>({
     nama_destinasi: "",
@@ -57,10 +61,14 @@ const DestinationDialog = ({ open, onOpenChange, destination, onSuccess }: Desti
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission("rule_rundown_catatan")) {
+      toast.error("Akses tambah/edit destinasi dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const biayaNumber = Number(estimasiBiayaFormatted.replace(/\./g, "").replace(/,/g, ".")) || 0;
@@ -73,6 +81,11 @@ const DestinationDialog = ({ open, onOpenChange, destination, onSuccess }: Desti
           .eq("id", destination.id);
 
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Memperbarui Master Destinasi Wisata",
+          detail: `Mengubah destinasi '${formData.nama_destinasi}' (${formData.lokasi})`,
+        });
         toast.success("Destinasi berhasil diupdate");
       } else {
         const { error } = await supabase
@@ -80,6 +93,11 @@ const DestinationDialog = ({ open, onOpenChange, destination, onSuccess }: Desti
           .insert({ ...dataToSave, user_id: user.id });
 
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Menambahkan Master Destinasi Wisata",
+          detail: `Menambahkan destinasi '${formData.nama_destinasi}' (${formData.lokasi})`,
+        });
         toast.success("Destinasi berhasil ditambahkan");
       }
 

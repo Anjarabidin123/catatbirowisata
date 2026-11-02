@@ -1,11 +1,29 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Settings } from "lucide-react";
 import { PengaturanBiroDialog } from "./PengaturanBiroDialog";
 import { getLocalBiroProfile, fetchBiroProfile, BiroProfile } from "@/utils/biroProfile";
+import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 
 export const AnimatedHeader = () => {
+  const navigate = useNavigate();
+  const { hasPermission } = useRole();
+  const canEditBiro = hasPermission("rule_pengaturan_biro");
   const [showPengaturan, setShowPengaturan] = useState(false);
   const [profile, setProfile] = useState<BiroProfile>(getLocalBiroProfile());
+
+  const handleOpenSettings = () => {
+    if (!canEditBiro) {
+      toast.info("Pengaturan Profil, Rekening Bank & API Key dikunci oleh RBAC (Khusus Pemilik Biro)");
+      return;
+    }
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      navigate("/pengaturan-biro");
+    } else {
+      setShowPengaturan(true);
+    }
+  };
 
   useEffect(() => {
     // Muat data awal dan sinkronkan dengan Supabase
@@ -35,13 +53,13 @@ export const AnimatedHeader = () => {
   return (
     <>
       <div className="flex items-center gap-2.5">
-        {/* Custom Logo Biro (Dapat diubah di Pengaturan) */}
+        {/* Custom Logo Biro (Dapat diubah di Pengaturan oleh Pemilik) */}
         {profile.logo_url ? (
           <button
             type="button"
-            onClick={() => setShowPengaturan(true)}
+            onClick={handleOpenSettings}
             className="w-10 h-10 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex items-center justify-center p-0.5 hover:scale-105 transition-transform"
-            title="Klik untuk ganti logo / edit biro"
+            title={canEditBiro ? "Klik untuk ganti logo / edit biro" : profile.nama_biro}
           >
             <img
               src={profile.logo_url}
@@ -52,19 +70,19 @@ export const AnimatedHeader = () => {
         ) : (
           <button
             type="button"
-            onClick={() => setShowPengaturan(true)}
+            onClick={handleOpenSettings}
             className="w-9 h-9 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white flex items-center justify-center font-black text-xs tracking-wider shadow-sm hover:bg-blue-600 transition-colors"
-            title="Klik untuk atur logo & nama biro"
+            title={canEditBiro ? "Klik untuk atur logo & nama biro" : profile.nama_biro}
           >
             {initials}
           </button>
         )}
 
-        {/* Nama & Slogan Biro Wisata (Dinamis dari Pengaturan) */}
+        {/* Nama & Slogan Biro Wisata */}
         <div 
-          onClick={() => setShowPengaturan(true)}
+          onClick={handleOpenSettings}
           className="cursor-pointer group select-none"
-          title="Klik untuk ubah nama biro"
+          title={canEditBiro ? "Klik untuk ubah nama biro" : profile.nama_biro}
         >
           <div className="flex items-center gap-1.5">
             <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors truncate max-w-[170px] sm:max-w-[220px]">
@@ -80,18 +98,23 @@ export const AnimatedHeader = () => {
           </div>
         </div>
 
-        {/* Action Button: Pengaturan */}
-        <button
-          onClick={() => setShowPengaturan(true)}
-          className="ml-0.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-blue-600"
-          title="Pengaturan Logo & Nama Biro"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+        {/* Action Button: Pengaturan (Khusus yang punya hak akses rule_pengaturan_biro) */}
+        {canEditBiro && (
+          <button
+            onClick={handleOpenSettings}
+            className="ml-0.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-blue-600"
+            title="Pengaturan Logo & Nama Biro"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Dialog Pengaturan Profil Biro */}
-      <PengaturanBiroDialog open={showPengaturan} onOpenChange={setShowPengaturan} />
+      {canEditBiro && (
+        <PengaturanBiroDialog open={showPengaturan} onOpenChange={setShowPengaturan} />
+      )}
     </>
   );
 };
+

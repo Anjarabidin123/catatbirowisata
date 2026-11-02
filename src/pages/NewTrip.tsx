@@ -1,22 +1,28 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
+import { RBACOwnerGuard } from "@/components/RBACOwnerGuard";
+import { logCrewActivity, assignTripToMultipleCrewDB } from "@/utils/rbacAuditLogger";
+import { useRole } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import FormField from "@/components/FormField";
 import { RupiahInput } from "@/components/RupiahInput";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, ChevronDown, Bus, Calendar, MapPin, User } from "lucide-react";
+import { ArrowLeft, ChevronDown, Bus, Calendar, MapPin, User, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const NewTrip = () => {
   const navigate = useNavigate();
+  const { crewList } = useRole();
   const [loading, setLoading] = useState(false);
   const [showVehicleDetails, setShowVehicleDetails] = useState(false);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [budgetFormatted, setBudgetFormatted] = useState("");
+  const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     nama_trip: "",
     tanggal: "",
@@ -37,7 +43,7 @@ const NewTrip = () => {
     console.log("Submitting trip:", formData);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const budgetNumber = budgetFormatted ? Number(budgetFormatted.replace(/\./g, "").replace(/,/g, ".")) : null;
@@ -62,6 +68,18 @@ const NewTrip = () => {
 
       if (error) throw error;
 
+      // Tugaskan kru / TL terpilih ke trip baru ini
+      if (data && selectedCrewIds.length > 0) {
+        await assignTripToMultipleCrewDB(data.id, data.nama_trip, selectedCrewIds);
+      }
+
+      logCrewActivity({
+        kategori: "operasional_trip",
+        aksi: "Membuat Jadwal Trip Baru",
+        detail: `Menambahkan trip baru "${formData.nama_trip}" tujuan ${formData.tujuan} (${formData.tanggal})`,
+        tripName: formData.nama_trip,
+      });
+
       toast.success("Trip berhasil ditambahkan!");
       
       // Navigate to trip detail page with planning tab
@@ -78,8 +96,13 @@ const NewTrip = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-lg mx-auto p-4">
+      <RBACOwnerGuard
+        pageTitle="Pembuatan Jadwal Trip Baru"
+        reason="Hanya Pemilik Biro (Owner) atau pengguna dengan hak akses manajemen trip yang dapat membuat jadwal keberangkatan baru."
+        ruleId="rule_hapus_buat_trip"
+      >
+      <div className="min-h-screen bg-background pb-20 safe-top lg:pl-64">
+        <div className="max-w-lg lg:max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
           <Button
             variant="ghost"
             size="icon"
@@ -144,17 +167,60 @@ const NewTrip = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="tujuan" className="flex items-center gap-2">
-                    Tujuan <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="tujuan"
-                    value={formData.tujuan}
-                    onChange={(e) => setFormData({ ...formData, tujuan: e.target.value })}
-                    placeholder="Contoh: Bandung"
-                    required
-                    className="mt-1 border-2"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="tujuan" className="flex items-center gap-2">
+                      Tujuan <span className="text-destructive">*</span>
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground">Pilih atau ketik rute</span>
+                  </div>
+                  <div className="mt-1 space-y-1.5">
+                    <select
+                      value={formData.tujuan}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setFormData({ ...formData, tujuan: e.target.value });
+                        }
+                      }}
+                      className="w-full h-9 rounded-xl border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">-- Rekomendasi Destinasi / Rute Populer --</option>
+                      <optgroup label="Jawa Tengah & DIY">
+                        <option value="Yogyakarta">Yogyakarta (Malioboro, Candi, Pantai)</option>
+                        <option value="Semarang">Semarang (Kota Lama, Lawang Sewu, Sam Poo Kong)</option>
+                        <option value="Magelang">Magelang (Candi Borobudur, Nepal Van Java)</option>
+                        <option value="Solo / Surakarta">Solo / Surakarta (Keraton, Pasar Klewer)</option>
+                        <option value="Dieng / Wonosobo">Dieng / Wonosobo (Sikunir, Telaga Warna)</option>
+                        <option value="Demak & Kudus">Demak & Kudus (Wisata Religi & Ziarah)</option>
+                        <option value="Karanganyar">Karanganyar (Tawangmangu, Kemuning, Candi Cetho)</option>
+                      </optgroup>
+                      <optgroup label="Jawa Barat, Jakarta & Banten">
+                        <option value="Bandung">Bandung (Lembang, Ciwidey, Kawah Putih)</option>
+                        <option value="Puncak & Bogor">Puncak & Bogor (Kebun Teh, Taman Safari)</option>
+                        <option value="Jakarta">Jakarta (Ancol, Monas, TMII, Kota Tua)</option>
+                        <option value="Pangandaran">Pangandaran (Pantai & Green Canyon)</option>
+                      </optgroup>
+                      <optgroup label="Jawa Timur">
+                        <option value="Bromo & Malang">Bromo & Malang (Sunrise Bromo, Jatim Park)</option>
+                        <option value="Batu Malang">Batu Malang (Museum Angkut, Selecta)</option>
+                        <option value="Surabaya">Surabaya (Wisata Sejarah & Kuliner)</option>
+                        <option value="Banyuwangi">Banyuwangi (Kawah Ijen, Baluran)</option>
+                        <option value="Pacitan">Pacitan (Pantai Klayar, Goa Gong)</option>
+                      </optgroup>
+                      <optgroup label="Bali & Luar Jawa">
+                        <option value="Bali">Bali (Kuta, Bedugul, Kintamani, Tanah Lot)</option>
+                        <option value="Lombok">Lombok (Gili Trawangan, Mandalika)</option>
+                        <option value="Lampung">Lampung (Pahawang, Kiluan)</option>
+                      </optgroup>
+                    </select>
+                    <Input
+                      id="tujuan"
+                      value={formData.tujuan}
+                      onChange={(e) => setFormData({ ...formData, tujuan: e.target.value })}
+                      placeholder="Contoh: Bandung, Bromo, atau ketik rute kustom..."
+                      required
+                      className="border-2 rounded-xl"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -193,12 +259,14 @@ const NewTrip = () => {
                   </div>
 
                   <FormField
-                    label="Nama Driver"
+                    label="Nama Kru"
                     value={formData.nama_driver}
                     onChange={(value) => setFormData({ ...formData, nama_driver: value })}
-                    placeholder="Contoh: Budi Santoso"
-                    helpText="Simpan nama driver untuk koordinasi"
-                    icon={<User className="w-4 h-4" />}
+                    type="textarea"
+                    rows={3}
+                    placeholder={"Contoh:\nPak Joko (Driver 1)\nPak Agus (Driver 2)\nMas Budi (Tour Leader)"}
+                    helpText="Simpan nama kru (driver, TL, co-driver) untuk koordinasi. Tekan Enter untuk menambah baris kru baru."
+                    icon={<Users className="w-4 h-4" />}
                   />
                 </CollapsibleContent>
               </div>
@@ -247,6 +315,59 @@ const NewTrip = () => {
               </div>
             </Collapsible>
 
+            {/* Atur Penugasan Tour Leader & Kru Bertugas */}
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-semibold text-sm">
+                    Hak Akses Tour Leader & Kru Bertugas
+                  </h3>
+                </div>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                  {selectedCrewIds.length} kru dipilih
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pilih siapa saja kru yang berhak mengakses trip ini. Kru yang tidak dipilih tidak akan melihat trip ini di akun mereka.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 max-h-44 overflow-y-auto">
+                {crewList.map((crew) => {
+                  const isChecked = selectedCrewIds.includes(crew.id);
+                  return (
+                    <label
+                      key={crew.id}
+                      className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                        isChecked
+                          ? "bg-blue-50/80 border-blue-300 dark:bg-blue-950/40 dark:border-blue-700 font-semibold text-blue-900 dark:text-blue-200"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setSelectedCrewIds((prev) =>
+                            prev.includes(crew.id)
+                              ? prev.filter((id) => id !== crew.id)
+                              : [...prev, crew.id]
+                          );
+                        }}
+                        className="rounded text-blue-600 w-4 h-4"
+                      />
+                      <div className="truncate">
+                        <div className="font-bold">{crew.nama}</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">
+                          {crew.jabatan}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
             <Button
               type="submit"
               className="w-full gradient-primary text-white font-semibold"
@@ -257,6 +378,7 @@ const NewTrip = () => {
           </form>
         </div>
       </div>
+      </RBACOwnerGuard>
     </AuthGuard>
   );
 };

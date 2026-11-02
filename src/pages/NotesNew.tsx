@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Plus, Trash2, Pencil, Search, ChevronDown, ChevronUp } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, Trash2, Pencil, Search, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -17,6 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { HTMNoteDialog } from "@/components/HTMNoteDialog";
 import { CateringNoteDialog } from "@/components/CateringNoteDialog";
 import { formatRupiah } from "@/lib/utils";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface GeneralNote {
   id: string;
@@ -41,6 +43,8 @@ interface CateringNote {
 }
 
 const NotesNew = () => {
+  const { hasPermission } = useRole();
+  const canEditNotes = hasPermission("rule_rundown_catatan");
   const [generalNotes, setGeneralNotes] = useState<GeneralNote[]>([]);
   const [htmNotes, setHTMNotes] = useState<HTMNote[]>([]);
   const [cateringNotes, setCateringNotes] = useState<CateringNote[]>([]);
@@ -61,6 +65,21 @@ const NotesNew = () => {
   const [generalFormData, setGeneralFormData] = useState({ judul: "", konten: "" });
   const [editingGeneralId, setEditingGeneralId] = useState<string | null>(null);
 
+  // Expanded notes state and copy helper
+  const [openNotes, setOpenNotes] = useState<Record<string, boolean>>({});
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
+
+  const toggleNote = (id: string) => {
+    setOpenNotes((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleCopyNote = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedNoteId(id);
+    toast.success("Catatan berhasil disalin!");
+    setTimeout(() => setCopiedNoteId(null), 2000);
+  };
+
   useEffect(() => {
     loadAllNotes();
 
@@ -77,94 +96,86 @@ const NotesNew = () => {
   }, []);
 
   const loadAllNotes = async () => {
-    await Promise.all([loadGeneralNotes(), loadHTMNotes(), loadCateringNotes()]);
-    setLoading(false);
-  };
-
-  const loadGeneralNotes = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const user = await getActiveUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("notes")
         .select("*")
         .eq("user_id", user.id)
-        .not("judul", "ilike", "[HTM]%")
-        .not("judul", "ilike", "[CATERING]%")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setGeneralNotes(data || []);
-    } catch (error: any) {
-      console.error("Error loading general notes:", error);
-    }
-  };
+      const allRows = data || [];
 
-  const loadHTMNotes = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // 1. General notes (tidak diawali tag [...])
+      const general = allRows.filter((row) => !/^\[.*?\]/.test(row.judul || ""));
+      setGeneralNotes(general);
 
-      const { data, error } = await supabase
-        .from("notes")
-        .select("*")
-        .eq("user_id", user.id)
-        .ilike("judul", "[HTM]%")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      const mapped = (data || []).map((row: any) => {
+      // 2. HTM notes (diawali [HTM])
+      const htmRows = allRows.filter((row) => (row.judul || "").toUpperCase().startsWith("[HTM]"));
+      const mappedHTM = htmRows.map((row: any) => {
         let payload: any = {};
-        try { payload = JSON.parse(row.konten || "{}"); } catch {}
+        try {
+          payload = JSON.parse(row.konten || "{}");
+        } catch {}
         return {
           id: row.id,
-          destination_name: String(row.judul || "").replace(/^\[HTM\]\s*/, ""),
+          destination_name: String(row.judul || "").replace(/^\[HTM\]\s*/i, ""),
           harga_per_orang: Number(payload.harga_per_orang) || 0,
           cashback_guru: Boolean(payload.cashback_guru),
           catatan: payload.catatan || null,
         } as HTMNote;
       });
-      setHTMNotes(mapped);
-    } catch (error: any) {
-      console.error("Error loading HTM notes:", error);
-    }
-  };
+      setHTMNotes(mappedHTM);
 
-  const loadCateringNotes = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("notes")
-        .select("*")
-        .eq("user_id", user.id)
-        .ilike("judul", "[CATERING]%")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      const mapped = (data || []).map((row: any) => {
+      // 3. Catering notes (diawali [CATERING])
+      const cateringRows = allRows.filter((row) => (row.judul || "").toUpperCase().startsWith("[CATERING]"));
+      const mappedCatering = cateringRows.map((row: any) => {
         let payload: any = {};
-        try { payload = JSON.parse(row.konten || "{}"); } catch {}
+        try {
+          payload = JSON.parse(row.konten || "{}");
+        } catch {}
         return {
           id: row.id,
-          nama_catering: String(row.judul || "").replace(/^\[CATERING\]\s*/, ""),
+          nama_catering: String(row.judul || "").replace(/^\[CATERING\]\s*/i, ""),
           harga_per_snack: Number(payload.harga_per_snack) || 0,
           catatan: payload.catatan || null,
         } as CateringNote;
       });
-      setCateringNotes(mapped);
+      setCateringNotes(mappedCatering);
     } catch (error: any) {
-      console.error("Error loading catering notes:", error);
+      console.error("Error loading notes:", error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const loadGeneralNotes = async (_userIdParam?: string) => {
+    await loadAllNotes();
+  };
+
+  const loadHTMNotes = async (_userIdParam?: string) => {
+    await loadAllNotes();
+  };
+
+  const loadCateringNotes = async (_userIdParam?: string) => {
+    await loadAllNotes();
   };
 
   const handleSubmitGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEditNotes) {
+      toast.error("Akses tambah/edit catatan dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       if (editingGeneralId) {
@@ -173,6 +184,11 @@ const NotesNew = () => {
           .update({ judul: generalFormData.judul, konten: generalFormData.konten })
           .eq("id", editingGeneralId);
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Memperbarui Catatan Umum",
+          detail: `Mengubah catatan '${generalFormData.judul}'`,
+        });
         toast.success("Catatan berhasil diperbarui");
       } else {
         const { error } = await supabase.from("notes").insert({
@@ -181,6 +197,11 @@ const NotesNew = () => {
           konten: generalFormData.konten,
         });
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Menambahkan Catatan Umum",
+          detail: `Menambahkan catatan '${generalFormData.judul}'`,
+        });
         toast.success("Catatan berhasil ditambahkan");
       }
 
@@ -194,11 +215,22 @@ const NotesNew = () => {
   };
 
   const handleDeleteGeneral = async (id: string) => {
+    if (!canEditNotes) {
+      toast.error("Akses hapus catatan dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     if (!confirm("Hapus catatan ini?")) return;
 
     try {
+      const target = generalNotes.find((n) => n.id === id);
       const { error } = await supabase.from("notes").delete().eq("id", id);
       if (error) throw error;
+      logCrewActivity({
+        kategori: "catatan_htm",
+        aksi: "Menghapus Catatan Umum",
+        detail: `Menghapus catatan '${target?.judul || id}'`,
+        status: "peringatan",
+      });
       toast.success("Catatan berhasil dihapus");
     } catch (error: any) {
       console.error("Error:", error);
@@ -207,11 +239,22 @@ const NotesNew = () => {
   };
 
   const handleDeleteHTM = async (id: string) => {
+    if (!canEditNotes) {
+      toast.error("Akses hapus catatan HTM dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     if (!confirm("Hapus catatan HTM ini?")) return;
 
     try {
+      const target = htmNotes.find((n) => n.id === id);
       const { error } = await supabase.from("notes").delete().eq("id", id);
       if (error) throw error;
+      logCrewActivity({
+        kategori: "catatan_htm",
+        aksi: "Menghapus Catatan HTM",
+        detail: `Menghapus HTM '${target?.destination_name || id}'`,
+        status: "peringatan",
+      });
       toast.success("Catatan HTM berhasil dihapus");
     } catch (error: any) {
       console.error("Error:", error);
@@ -220,11 +263,22 @@ const NotesNew = () => {
   };
 
   const handleDeleteCatering = async (id: string) => {
+    if (!canEditNotes) {
+      toast.error("Akses hapus catatan catering dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     if (!confirm("Hapus catatan catering ini?")) return;
 
     try {
+      const target = cateringNotes.find((n) => n.id === id);
       const { error } = await supabase.from("notes").delete().eq("id", id);
       if (error) throw error;
+      logCrewActivity({
+        kategori: "catatan_htm",
+        aksi: "Menghapus Catatan Catering",
+        detail: `Menghapus catering '${target?.nama_catering || id}'`,
+        status: "peringatan",
+      });
       toast.success("Catatan catering berhasil dihapus");
     } catch (error: any) {
       console.error("Error:", error);
@@ -233,6 +287,10 @@ const NotesNew = () => {
   };
 
   const openEditGeneral = (note: GeneralNote) => {
+    if (!canEditNotes) {
+      toast.error("Akses edit catatan dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     setGeneralFormData({ judul: note.judul, konten: note.konten });
     setEditingGeneralId(note.id);
     setGeneralDialogOpen(true);
@@ -240,8 +298,8 @@ const NotesNew = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-lg mx-auto p-4">
+      <div className="min-h-screen bg-background pb-20 safe-top lg:pl-64">
+        <div className="max-w-lg lg:max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <h1 className="text-2xl font-bold mb-6">Catatan</h1>
 
           <Tabs defaultValue="general" className="w-full">
@@ -295,16 +353,29 @@ const NotesNew = () => {
                       {generalNotes.filter(note =>
                         note.judul.toLowerCase().includes(searchGeneral.toLowerCase()) ||
                         note.konten.toLowerCase().includes(searchGeneral.toLowerCase())
-                      ).map((note) => (
-                        <Card key={note.id} className="p-4">
-                          <Collapsible>
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="font-semibold flex-1">{note.judul}</h3>
-                              <div className="flex gap-1">
+                      ).map((note) => {
+                        const isOpen = !!openNotes[note.id];
+                        return (
+                          <Card 
+                            key={note.id} 
+                            className="p-4 border border-slate-200/80 dark:border-slate-800 transition-all hover:shadow-sm"
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <div 
+                                className="flex-1 cursor-pointer select-none"
+                                onClick={() => toggleNote(note.id)}
+                              >
+                                <h3 className="font-semibold text-base text-slate-900 dark:text-slate-100 leading-snug hover:text-primary transition-colors">
+                                  {note.judul}
+                                </h3>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
                                 <Button
                                   size="icon"
                                   variant="ghost"
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
                                   onClick={() => openEditGeneral(note)}
+                                  title="Edit catatan"
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </Button>
@@ -312,28 +383,93 @@ const NotesNew = () => {
                                   size="icon"
                                   variant="ghost"
                                   onClick={() => handleDeleteGeneral(note.id)}
-                                  className="text-destructive"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  title="Hapus catatan"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
-                                <CollapsibleTrigger asChild>
-                                  <Button size="icon" variant="ghost">
-                                    <ChevronDown className="w-4 h-4" />
-                                  </Button>
-                                </CollapsibleTrigger>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost"
+                                  className={`h-8 w-8 rounded-full transition-transform duration-200 ${isOpen ? "rotate-180 text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+                                  onClick={() => toggleNote(note.id)}
+                                  title={isOpen ? "Tutup detail catatan" : "Lihat isi lengkap catatan"}
+                                >
+                                  <ChevronDown className="w-4 h-4" />
+                                </Button>
                               </div>
                             </div>
-                            <CollapsibleContent>
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-2 mb-2">
-                                {note.konten}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(note.created_at), "dd MMM yyyy, HH:mm", { locale: id })}
-                              </p>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </Card>
-                      ))}
+
+                            {/* Collapsed Preview (saat belum dibuka) */}
+                            {!isOpen && (
+                              <div 
+                                className="mt-2 cursor-pointer group"
+                                onClick={() => toggleNote(note.id)}
+                              >
+                                <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-line leading-relaxed">
+                                  {note.konten}
+                                </p>
+                                <div className="flex items-center justify-between mt-2 pt-1 text-xs text-muted-foreground border-t border-slate-100 dark:border-slate-800/60">
+                                  <span>{format(new Date(note.created_at), "dd MMM yyyy, HH:mm", { locale: id })}</span>
+                                  <span className="text-xs text-primary font-medium flex items-center gap-1 group-hover:underline">
+                                    Lihat selengkapnya <ChevronDown className="w-3 h-3" />
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Expanded View (tampilan penuh TANPA pemotongan line-clamp) */}
+                            {isOpen && (
+                              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                                <div className="text-sm text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 font-normal select-text break-words shadow-inner">
+                                  {note.konten}
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-muted-foreground">
+                                  <span>Dibuat: {format(new Date(note.created_at), "dd MMM yyyy, HH:mm", { locale: id })}</span>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 px-2.5 text-xs gap-1.5"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCopyNote(note.id, note.konten);
+                                      }}
+                                    >
+                                      {copiedNoteId === note.id ? (
+                                        <>
+                                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                          <span className="text-emerald-600 font-medium">Tersalin</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="w-3.5 h-3.5" />
+                                          <span>Salin Teks</span>
+                                        </>
+                                      )}
+                                    </Button>
+                                    
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleNote(note.id);
+                                      }}
+                                    >
+                                      <span>Tutup</span>
+                                      <ChevronUp className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      })}
                     </div>
                   )}
                 </>

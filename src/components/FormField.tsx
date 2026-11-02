@@ -14,6 +14,7 @@ interface FormFieldProps {
   placeholder?: string;
   icon?: React.ReactNode;
   rows?: number;
+  enterKeyHint?: "enter" | "done" | "go" | "next" | "previous" | "search" | "send";
 }
 
 const FormField = ({
@@ -25,7 +26,8 @@ const FormField = ({
   helpText,
   placeholder,
   icon,
-  rows = 3
+  rows = 3,
+  enterKeyHint = "enter"
 }: FormFieldProps) => {
   const inputId = label.toLowerCase().replace(/\s+/g, '-');
   
@@ -64,6 +66,13 @@ const FormField = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={rows}
+          enterKeyHint={enterKeyHint}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              // Pastikan saat tekan Enter di HP atau keyboard, berfungsi membuat baris baru bukan submit/pindah fokus
+              e.stopPropagation();
+            }
+          }}
           className={required ? "border-2" : "border"}
         />
       ) : (

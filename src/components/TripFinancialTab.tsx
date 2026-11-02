@@ -8,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Plus, Trash2, ChevronDown, Pencil, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/utils";
 import { RupiahInput } from "./RupiahInput";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface FinancialItem {
   id: string;
@@ -90,7 +92,7 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
 
   const loadTripData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -118,7 +120,7 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
   const loadFinancialData = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -142,19 +144,21 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
     e.preventDefault();
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const unformatRupiah = (formatted: string): number => {
         return Number(formatted.replace(/\./g, "").replace(/,/g, ".")) || 0;
       };
 
+      const parsedJumlah = unformatRupiah(jumlah);
+
       if (editingItem) {
         const { error } = await supabase
           .from("keuangan")
           .update({
             jenis,
-            jumlah: unformatRupiah(jumlah),
+            jumlah: parsedJumlah,
             keterangan,
             cashback: hasCashback ? unformatRupiah(cashback) : null,
             harga_satuan: useCalculator && hargaSatuan ? unformatRupiah(hargaSatuan) : null,
@@ -163,13 +167,18 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
           .eq("id", editingItem.id);
 
         if (error) throw error;
+        logCrewActivity({
+          actionType: "petty_cash",
+          actionTitle: `Memperbarui Transaksi Buku Kas (${jenis})`,
+          actionDetail: `Mengubah data ${jenis} "${keterangan}" sebesar Rp ${parsedJumlah.toLocaleString("id-ID")}`,
+        });
         toast.success("Data keuangan berhasil diperbarui");
       } else {
         const { error } = await supabase.from("keuangan").insert({
           trip_id: tripId,
           user_id: user.id,
           jenis,
-          jumlah: unformatRupiah(jumlah),
+          jumlah: parsedJumlah,
           keterangan,
           cashback: hasCashback ? unformatRupiah(cashback) : null,
           harga_satuan: useCalculator && hargaSatuan ? unformatRupiah(hargaSatuan) : null,
@@ -178,6 +187,11 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
         });
 
         if (error) throw error;
+        logCrewActivity({
+          actionType: "petty_cash",
+          actionTitle: `Menambahkan Transaksi Buku Kas (${jenis})`,
+          actionDetail: `Menambahkan ${jenis} "${keterangan}" sebesar Rp ${parsedJumlah.toLocaleString("id-ID")}`,
+        });
         toast.success("Data keuangan berhasil ditambahkan");
       }
 
@@ -215,9 +229,16 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus data ini?")) return;
 
+    const target = items.find((i) => i.id === id);
+
     try {
       const { error } = await supabase.from("keuangan").delete().eq("id", id);
       if (error) throw error;
+      logCrewActivity({
+        actionType: "petty_cash",
+        actionTitle: "Menghapus Transaksi Buku Kas",
+        actionDetail: `Menghapus data keuangan "${target?.keterangan || id}"`,
+      });
       toast.success("Data berhasil dihapus");
     } catch (error: any) {
       console.error("Error:", error);

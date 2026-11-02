@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { RupiahInput } from "./RupiahInput";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface HTMNote {
   id?: string;
@@ -24,6 +27,7 @@ interface HTMNoteDialogProps {
 }
 
 export const HTMNoteDialog = ({ open, onOpenChange, note, onSuccess }: HTMNoteDialogProps) => {
+  const { hasPermission } = useRole();
   const [formData, setFormData] = useState({
     destination_name: "",
     harga_per_orang: "",
@@ -51,18 +55,23 @@ export const HTMNoteDialog = ({ open, onOpenChange, note, onSuccess }: HTMNoteDi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission("rule_rundown_catatan")) {
+      toast.error("Akses tambah/edit catatan HTM dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const unformatRupiah = (formatted: string): number => {
         return Number(formatted.replace(/\./g, "").replace(/,/g, ".")) || 0;
       };
 
+      const hargaNum = unformatRupiah(formData.harga_per_orang);
       const judul = `[HTM] ${formData.destination_name}`;
       const konten = JSON.stringify({
-        harga_per_orang: unformatRupiah(formData.harga_per_orang),
+        harga_per_orang: hargaNum,
         cashback_guru: formData.cashback_guru,
         catatan: formData.catatan || null,
       });
@@ -73,6 +82,11 @@ export const HTMNoteDialog = ({ open, onOpenChange, note, onSuccess }: HTMNoteDi
           .update({ judul, konten })
           .eq("id", note.id);
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Memperbarui Catatan HTM",
+          detail: `Mengubah HTM '${formData.destination_name}' (Rp ${hargaNum.toLocaleString("id-ID")}/org)`,
+        });
       } else {
         const { error } = await supabase.from("notes").insert({
           user_id: user.id,
@@ -80,6 +94,11 @@ export const HTMNoteDialog = ({ open, onOpenChange, note, onSuccess }: HTMNoteDi
           konten,
         });
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Menambahkan Catatan HTM",
+          detail: `Menambahkan HTM '${formData.destination_name}' (Rp ${hargaNum.toLocaleString("id-ID")}/org)`,
+        });
       }
 
       toast.success(note?.id ? "Catatan HTM berhasil diperbarui" : "Catatan HTM berhasil ditambahkan");
