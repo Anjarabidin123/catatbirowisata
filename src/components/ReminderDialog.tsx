@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { Bell, Check, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -93,7 +94,7 @@ export const ReminderDialog = ({ open, onOpenChange }: ReminderDialogProps) => {
 
   const loadReminders = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -111,7 +112,7 @@ export const ReminderDialog = ({ open, onOpenChange }: ReminderDialogProps) => {
 
   const loadTrips = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -132,7 +133,7 @@ export const ReminderDialog = ({ open, onOpenChange }: ReminderDialogProps) => {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const tanggalWaktu = `${formData.tanggal}T${formData.waktu}:00`;

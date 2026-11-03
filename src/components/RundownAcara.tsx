@@ -1,15 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Clock, Trash2, Pencil, Sparkles, Calendar, MapPin } from "lucide-react";
+import { Plus, Clock, Trash2, Pencil, Sparkles, Calendar, MapPin, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RupiahInput } from "./RupiahInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
+import { ImportWordRundownDialog } from "./ImportWordRundownDialog";
 
 interface RundownItem {
   id: string;
@@ -35,9 +39,14 @@ export const RundownAcara = ({
   tripDate,
   onOpenAIForTrip,
 }: RundownAcaraProps) => {
+  const { hasPermission } = useRole();
+  const canEditRundown = hasPermission("rule_rundown_catatan");
+  const canSeeFinancials = hasPermission("rule_buku_kas_laba");
+  const canInputPettyCash = hasPermission("rule_petty_cash");
   const [rundown, setRundown] = useState<RundownItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showWordImportDialog, setShowWordImportDialog] = useState(false);
   const [showTransactionDialog, setShowTransactionDialog] = useState(false);
   const [selectedRundown, setSelectedRundown] = useState<string | null>(null);
   const { toast } = useToast();
@@ -81,14 +90,17 @@ export const RundownAcara = ({
 
   const loadRundown = async () => {
     setLoading(true);
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
+    const user = await getActiveUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("rundown_acara")
       .select("*")
       .eq("trip_id", tripId)
-      .eq("user_id", user.user.id)
+      .eq("user_id", user.id)
       .order("hari_ke", { ascending: true })
       .order("jam_mulai", { ascending: true });
 
@@ -102,24 +114,38 @@ export const RundownAcara = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEditRundown) {
+      toast({
+        title: "Akses Dibatasi",
+        description: "Anda tidak memiliki izin menambah jadwal rundown acara.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (loading) return;
     setLoading(true);
     
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
+    const user = await getActiveUser();
+    if (!user) {
       setLoading(false);
       return;
     }
 
     const { error } = await supabase.from("rundown_acara").insert({
       trip_id: tripId,
-      user_id: user.user.id,
+      user_id: user.id,
       ...formData,
     });
 
     if (error) {
       toast({ title: "Error", description: "Gagal menambahkan jadwal", variant: "destructive" });
     } else {
+      logCrewActivity({
+        actionType: "rundown",
+        actionTitle: "Menambahkan Jadwal Rundown",
+        actionDetail: `Menambahkan jadwal Hari ${formData.hari_ke} (${formData.jam_mulai}-${formData.jam_selesai}): "${formData.judul_acara}"`,
+        tripName,
+      });
       toast({
         title: "Berhasil",
         description: tripName
@@ -128,45 +154,79 @@ export const RundownAcara = ({
       });
       setShowAddDialog(false);
       setFormData({ hari_ke: 1, judul_acara: "", jam_mulai: "", jam_selesai: "", keterangan: "" });
+      loadRundown();
     }
     setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
+    if (!canEditRundown) {
+      toast({
+        title: "Akses Dibatasi",
+        description: "Anda tidak memiliki izin menghapus jadwal rundown acara.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const targetItem = rundown.find((item) => item.id === id);
+    // Optimistic UI update
+    setRundown((prev) => prev.filter((item) => item.id !== id));
     const { error } = await supabase.from("rundown_acara").delete().eq("id", id);
 
     if (error) {
       toast({ title: "Error", description: "Gagal menghapus jadwal", variant: "destructive" });
+      loadRundown();
     } else {
+      logCrewActivity({
+        actionType: "rundown",
+        actionTitle: "Menghapus Jadwal Rundown",
+        actionDetail: `Menghapus jadwal "${targetItem?.judul_acara || id}" pada trip ${tripName || "Aktif"}`,
+        tripName,
+      });
       toast({ title: "Berhasil", description: "Jadwal berhasil dihapus" });
     }
   };
 
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canInputPettyCash && !canSeeFinancials) {
+      toast({
+        title: "Akses Dibatasi",
+        description: "Anda tidak memiliki izin menginput transaksi pengeluaran.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (loading) return; // Prevent double submission
     setLoading(true);
     
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
+    const user = await getActiveUser();
+    if (!user) {
       setLoading(false);
       return;
     }
 
     // Convert formatted string to number
     const jumlahNumber = Number(transactionForm.jumlah.replace(/\./g, "").replace(/,/g, ".")) || 0;
+    const effectiveJenis = canSeeFinancials ? transactionForm.jenis : "pengeluaran";
 
     const { error } = await supabase.from("keuangan").insert({
       trip_id: tripId,
-      user_id: user.user.id,
+      user_id: user.id,
       keterangan: transactionForm.keterangan,
-      jenis: transactionForm.jenis,
+      jenis: effectiveJenis,
       jumlah: jumlahNumber,
     });
 
     if (error) {
       toast({ title: "Error", description: "Gagal menambahkan transaksi", variant: "destructive" });
     } else {
+      logCrewActivity({
+        actionType: "petty_cash",
+        actionTitle: `Input Transaksi Cepat Rundown (${effectiveJenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"})`,
+        actionDetail: `Mencatat ${effectiveJenis} sebesar Rp ${jumlahNumber.toLocaleString("id-ID")} untuk "${transactionForm.keterangan}"`,
+        tripName,
+      });
       toast({ title: "Berhasil", description: "Transaksi berhasil ditambahkan" });
       setShowTransactionDialog(false);
       setTransactionForm({ keterangan: "", jenis: "pengeluaran", jumlah: "" });
@@ -213,87 +273,89 @@ export const RundownAcara = ({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          {onOpenAIForTrip && (
+          {canEditRundown && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={onOpenAIForTrip}
-              className="h-8 text-xs rounded-xl border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 font-semibold shadow-xs"
+              onClick={() => setShowWordImportDialog(true)}
+              className="h-8 text-xs rounded-xl border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold shadow-2xs gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5 mr-1 text-blue-600" />
-              AI Rundown
+              <FileText className="w-3.5 h-3.5 text-blue-600" />
+              <span>Import Word (.docx)</span>
             </Button>
           )}
 
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs">
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Tambah
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Tambah Jadwal Acara {tripName ? `- ${tripName}` : ""}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label>Hari Ke-</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={formData.hari_ke}
-                    onChange={(e) => setFormData({ ...formData, hari_ke: parseInt(e.target.value) })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Judul Acara</Label>
-                  <Input
-                    value={formData.judul_acara}
-                    onChange={(e) => setFormData({ ...formData, judul_acara: e.target.value })}
-                    required
-                    placeholder="Contoh: Berkunjung ke Museum"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          {canEditRundown && (
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs">
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Tambah
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tambah Jadwal Acara {tripName ? `- ${tripName}` : ""}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label>Jam Mulai</Label>
+                    <Label>Hari Ke-</Label>
                     <Input
-                      type="time"
-                      value={formData.jam_mulai}
-                      onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
+                      type="number"
+                      min="1"
+                      value={formData.hari_ke}
+                      onChange={(e) => setFormData({ ...formData, hari_ke: parseInt(e.target.value) })}
                       required
                     />
                   </div>
                   <div>
-                    <Label>Jam Selesai</Label>
+                    <Label>Judul Acara</Label>
                     <Input
-                      type="time"
-                      value={formData.jam_selesai}
-                      onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
+                      value={formData.judul_acara}
+                      onChange={(e) => setFormData({ ...formData, judul_acara: e.target.value })}
                       required
+                      placeholder="Contoh: Berkunjung ke Museum"
                     />
                   </div>
-                </div>
-                <div>
-                  <Label>Keterangan (Opsional)</Label>
-                  <Textarea
-                    value={formData.keterangan}
-                    onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                    placeholder="Detail tambahan acara..."
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
-                    Batal
-                  </Button>
-                  <Button type="submit">Simpan</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Jam Mulai</Label>
+                      <Input
+                        type="time"
+                        value={formData.jam_mulai}
+                        onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Jam Selesai</Label>
+                      <Input
+                        type="time"
+                        value={formData.jam_selesai}
+                        onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Keterangan (Opsional)</Label>
+                    <Textarea
+                      value={formData.keterangan}
+                      onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                      placeholder="Detail tambahan acara..."
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
+                      Batal
+                    </Button>
+                    <Button type="submit">Simpan</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -314,27 +376,29 @@ export const RundownAcara = ({
             <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
               Tambahkan kegiatan manual atau gunakan Asisten AI untuk menyusun jadwal otomatis.
             </p>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
-                size="sm"
-                onClick={() => setShowAddDialog(true)}
-                className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Tambah Manual
-              </Button>
-              {onOpenAIForTrip && (
+            {canEditRundown && (
+              <div className="flex items-center justify-center gap-2 pt-2">
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={onOpenAIForTrip}
-                  className="h-8 text-xs rounded-xl border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-semibold px-3 hover:bg-blue-50 dark:hover:bg-blue-950"
+                  onClick={() => setShowAddDialog(true)}
+                  className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3"
                 >
-                  <Sparkles className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                  Susun via AI
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Tambah Manual
                 </Button>
-              )}
-            </div>
+                {onOpenAIForTrip && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onOpenAIForTrip}
+                    className="h-8 text-xs rounded-xl border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-semibold px-3 hover:bg-blue-50 dark:hover:bg-blue-950"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                    Susun via AI
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -354,26 +418,30 @@ export const RundownAcara = ({
                     )}
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 w-6 p-0"
-                      onClick={() => {
-                        setSelectedRundown(item.id);
-                        setTransactionForm({ ...transactionForm, keterangan: item.judul_acara });
-                        setShowTransactionDialog(true);
-                      }}
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="w-3 h-3 text-destructive" />
-                    </Button>
+                    {(canInputPettyCash || canSeeFinancials) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 w-6 p-0"
+                        onClick={() => {
+                          setSelectedRundown(item.id);
+                          setTransactionForm({ ...transactionForm, keterangan: item.judul_acara, jenis: "pengeluaran" });
+                          setShowTransactionDialog(true);
+                        }}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                    )}
+                    {canEditRundown && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Trash2 className="w-3 h-3 text-destructive" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -400,15 +468,16 @@ export const RundownAcara = ({
             <div>
               <Label>Jenis</Label>
               <Select
-                value={transactionForm.jenis}
+                value={canSeeFinancials ? transactionForm.jenis : "pengeluaran"}
                 onValueChange={(value) => setTransactionForm({ ...transactionForm, jenis: value })}
+                disabled={!canSeeFinancials}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pemasukan">Pemasukan</SelectItem>
-                  <SelectItem value="pengeluaran">Pengeluaran</SelectItem>
+                  {canSeeFinancials && <SelectItem value="pemasukan">Pemasukan</SelectItem>}
+                  <SelectItem value="pengeluaran">Pengeluaran (Operasional Lapangan)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -429,6 +498,14 @@ export const RundownAcara = ({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ImportWordRundownDialog
+        open={showWordImportDialog}
+        onOpenChange={setShowWordImportDialog}
+        defaultTripId={tripId}
+        defaultTripName={tripName}
+        onSuccess={loadRundown}
+      />
     </div>
   );
 };

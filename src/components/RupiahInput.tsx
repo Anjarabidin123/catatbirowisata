@@ -1,13 +1,15 @@
+import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface RupiahInputProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
+  label?: string;
+  value: string | number;
+  onChange: (value: any) => void;
   placeholder?: string;
   required?: boolean;
   id?: string;
+  className?: string;
 }
 
 export const RupiahInput = ({ 
@@ -16,7 +18,8 @@ export const RupiahInput = ({
   onChange, 
   placeholder = "0",
   required = false,
-  id 
+  id,
+  className = ""
 }: RupiahInputProps) => {
   const formatRupiah = (angka: string) => {
     // Remove non-digit characters
@@ -35,6 +38,8 @@ export const RupiahInput = ({
     return rupiah;
   };
 
+  const stringValue = typeof value === "number" ? (value > 0 ? String(value) : "") : String(value || "");
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     const formattedValue = formatRupiah(inputValue);
@@ -47,24 +52,24 @@ export const RupiahInput = ({
 
   return (
     <div>
-      <Label htmlFor={id}>{label}</Label>
+      {label && <Label htmlFor={id}>{label}</Label>}
       <div className="relative mt-1">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-semibold">
           Rp
         </span>
         <Input
           id={id}
           type="text"
-          value={value}
+          value={stringValue}
           onChange={handleChange}
           placeholder={placeholder}
           required={required}
-          className="pl-10"
+          className={`pl-9 ${className}`}
         />
       </div>
-      {value && (
-        <p className="text-xs text-muted-foreground mt-1">
-          {unformatRupiah(value).toLocaleString("id-ID", {
+      {stringValue && (
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          {unformatRupiah(stringValue).toLocaleString("id-ID", {
             style: "currency",
             currency: "IDR",
           })}

@@ -5,8 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { RupiahInput } from "./RupiahInput";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface PriceNote {
   id: string;
@@ -24,6 +27,7 @@ interface TripPriceNoteDialogProps {
 }
 
 export const TripPriceNoteDialog = ({ open, onOpenChange, tripId, note, onSuccess }: TripPriceNoteDialogProps) => {
+  const { hasPermission } = useRole();
   const [keterangan, setKeterangan] = useState("");
   const [jumlah, setJumlah] = useState("");
   const [catatan, setCatatan] = useState("");
@@ -43,10 +47,14 @@ export const TripPriceNoteDialog = ({ open, onOpenChange, tripId, note, onSucces
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission("rule_rundown_catatan")) {
+      toast.error("Akses tambah/edit catatan harga dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       // Parse rupiah format
@@ -71,6 +79,11 @@ export const TripPriceNoteDialog = ({ open, onOpenChange, tripId, note, onSucces
           .eq("id", note.id);
 
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Memperbarui Catatan Harga Trip",
+          detail: `Mengubah catatan harga '${keterangan}' (Rp ${jumlahNumber.toLocaleString("id-ID")})`,
+        });
         toast.success("Catatan harga berhasil diperbarui");
       } else {
         const { error } = await supabase.from("trip_price_notes").insert({
@@ -82,6 +95,11 @@ export const TripPriceNoteDialog = ({ open, onOpenChange, tripId, note, onSucces
         });
 
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Menambahkan Catatan Harga Trip",
+          detail: `Menambahkan catatan harga '${keterangan}' (Rp ${jumlahNumber.toLocaleString("id-ID")})`,
+        });
         toast.success("Catatan harga berhasil ditambahkan");
       }
       setKeterangan("");

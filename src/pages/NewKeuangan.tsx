@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RupiahInput } from "@/components/RupiahInput";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface Trip {
   id: string;
@@ -17,6 +20,9 @@ interface Trip {
 
 const NewKeuangan = () => {
   const navigate = useNavigate();
+  const { hasPermission } = useRole();
+  const canSeeFinancials = hasPermission("rule_buku_kas_laba");
+  const canInputPettyCash = hasPermission("rule_petty_cash");
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [useCalculator, setUseCalculator] = useState(false);
@@ -24,7 +30,7 @@ const NewKeuangan = () => {
   const [jumlahItem, setJumlahItem] = useState("");
   const [formData, setFormData] = useState({
     trip_id: "",
-    jenis: "",
+    jenis: canSeeFinancials ? "" : "pengeluaran",
     jumlah: "",
     keterangan: "",
     hasCashback: false,
@@ -34,6 +40,12 @@ const NewKeuangan = () => {
   useEffect(() => {
     loadTrips();
   }, []);
+
+  useEffect(() => {
+    if (!canSeeFinancials && formData.jenis !== "pengeluaran") {
+      setFormData((prev) => ({ ...prev, jenis: "pengeluaran", hasCashback: false, cashback: "" }));
+    }
+  }, [canSeeFinancials]);
 
   // Auto-calculate when calculator fields change
   useEffect(() => {
@@ -55,7 +67,7 @@ const NewKeuangan = () => {
 
   const loadTrips = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -73,13 +85,15 @@ const NewKeuangan = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canInputPettyCash && !canSeeFinancials) {
+      toast.error("Akses Dibatasi: Anda tidak memiliki izin mencatat transaksi keuangan.");
+      return;
+    }
     if (loading) return;
     setLoading(true);
 
-    console.log("Submitting keuangan:", formData);
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       // Convert formatted rupiah to number
@@ -87,18 +101,32 @@ const NewKeuangan = () => {
         return Number(formatted.replace(/\./g, "").replace(/,/g, ".")) || 0;
       };
 
+      const finalJenis = canSeeFinancials ? formData.jenis : "pengeluaran";
+      const finalJumlah = unformatRupiah(formData.jumlah);
+
       const { error } = await supabase.from("keuangan").insert({
         trip_id: formData.trip_id,
         user_id: user.id,
-        jenis: formData.jenis,
-        jumlah: unformatRupiah(formData.jumlah),
+        jenis: finalJenis,
+        jumlah: finalJumlah,
         keterangan: formData.keterangan || null,
-        cashback: formData.hasCashback ? unformatRupiah(formData.cashback) : null,
+        cashback: canSeeFinancials && formData.hasCashback ? unformatRupiah(formData.cashback) : null,
         harga_satuan: useCalculator && hargaSatuan ? unformatRupiah(hargaSatuan) : null,
         jumlah_item: useCalculator && jumlahItem ? Number(jumlahItem) : null,
       });
 
       if (error) throw error;
+
+      const selectedTripName = trips.find((t) => t.id === formData.trip_id)?.nama_trip;
+      logCrewActivity({
+        kategori: "keuangan_lapangan",
+        aksi:
+          finalJenis === "pemasukan"
+            ? "Mencatat Pemasukan Kas Biro"
+            : "Mencatat Pengeluaran Operasional",
+        detail: `${formData.keterangan || "Transaksi"} sebesar Rp ${finalJumlah.toLocaleString("id-ID")}`,
+        tripName: selectedTripName,
+      });
 
       toast.success("Transaksi berhasil ditambahkan!");
       navigate("/keuangan");
@@ -112,8 +140,8 @@ const NewKeuangan = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-lg mx-auto p-4">
+      <div className="min-h-screen bg-background pb-20 safe-top lg:pl-64">
+        <div className="max-w-lg lg:max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
           <Button
             variant="ghost"
             size="icon"
@@ -123,7 +151,9 @@ const NewKeuangan = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
 
-          <h1 className="text-2xl font-bold mb-6">Tambah Transaksi</h1>
+          <h1 className="text-2xl font-bold mb-6">
+            {canSeeFinancials ? "Tambah Transaksi Kas Biro" : "Catat Pengeluaran Operasional Lapangan"}
+          </h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="ios-card p-5">
@@ -145,16 +175,22 @@ const NewKeuangan = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="jenis">Jenis</Label>
-                  <Select value={formData.jenis} onValueChange={(value) => setFormData({ ...formData, jenis: value })} required>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Pilih jenis" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pemasukan">Pemasukan</SelectItem>
-                      <SelectItem value="pengeluaran">Pengeluaran</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="jenis">Jenis Arus Kas</Label>
+                  {canSeeFinancials ? (
+                    <Select value={formData.jenis} onValueChange={(value) => setFormData({ ...formData, jenis: value })} required>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Pilih jenis" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pemasukan">Pemasukan (Omset / DP Klien)</SelectItem>
+                        <SelectItem value="pengeluaran">Pengeluaran (Biaya Operasional)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="mt-1 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
+                      Pengeluaran Operasional Lapangan (Terkunci RBAC Kru)
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -216,24 +252,28 @@ const NewKeuangan = () => {
                   />
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="hasCashback"
-                    checked={formData.hasCashback}
-                    onChange={(e) => setFormData({ ...formData, hasCashback: e.target.checked })}
-                    className="rounded"
-                  />
-                  <Label htmlFor="hasCashback">Ada Cashback?</Label>
-                </div>
+                {canSeeFinancials && (
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="hasCashback"
+                        checked={formData.hasCashback}
+                        onChange={(e) => setFormData({ ...formData, hasCashback: e.target.checked })}
+                        className="rounded"
+                      />
+                      <Label htmlFor="hasCashback">Ada Cashback?</Label>
+                    </div>
 
-                {formData.hasCashback && (
-                  <RupiahInput
-                    label="Cashback"
-                    value={formData.cashback}
-                    onChange={(value) => setFormData({ ...formData, cashback: value })}
-                    placeholder="0"
-                  />
+                    {formData.hasCashback && (
+                      <RupiahInput
+                        label="Cashback"
+                        value={formData.cashback}
+                        onChange={(value) => setFormData({ ...formData, cashback: value })}
+                        placeholder="0"
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -241,7 +281,7 @@ const NewKeuangan = () => {
             <Button
               type="submit"
               className="w-full gradient-primary text-white font-semibold"
-              disabled={loading}
+              disabled={loading || (!canInputPettyCash && !canSeeFinancials)}
             >
               {loading ? "Menyimpan..." : "Simpan Transaksi"}
             </Button>

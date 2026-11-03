@@ -37,6 +37,14 @@ import {
   Zap,
   Image as ImageIcon,
   Loader2,
+  MapPin,
+  Phone,
+  Mail,
+  UserCheck,
+  Globe,
+  FileText,
+  CreditCard,
+  Landmark,
 } from "lucide-react";
 import {
   getLocalBiroProfile,
@@ -47,6 +55,8 @@ import {
   isUsingDefaultGeminiApiKey,
 } from "@/utils/biroProfile";
 import { testGeminiApiKey } from "@/utils/asistenWisataAI";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface PengaturanBiroDialogProps {
   open: boolean;
@@ -57,6 +67,8 @@ export const PengaturanBiroDialog = ({
   open,
   onOpenChange,
 }: PengaturanBiroDialogProps) => {
+  const { hasPermission } = useRole();
+  const canEditBiro = hasPermission("rule_pengaturan_biro");
   const [profile, setProfile] = useState<BiroProfile>(getLocalBiroProfile());
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -159,6 +171,10 @@ export const PengaturanBiroDialog = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEditBiro) {
+      toast.error("Akses Dibatasi: Anda tidak memiliki izin mengubah Pengaturan Biro & Rekening Bank.");
+      return;
+    }
     if (!profile.nama_biro.trim()) {
       toast.error("Nama biro wisata tidak boleh kosong");
       return;
@@ -202,6 +218,11 @@ export const PengaturanBiroDialog = ({
       await saveBiroProfile(updatedProfile);
       setProfile(updatedProfile);
       setIsKeyUnlocked(false);
+      logCrewActivity({
+        actionType: "system",
+        actionTitle: "Memperbarui Pengaturan Biro & Rekening",
+        actionDetail: `Menyimpan perubahan identitas biro "${updatedProfile.nama_biro}" (${updatedProfile.nama_bank || "-"} - ${updatedProfile.nomor_rekening || "-"})`,
+      });
       toast.success("Pengaturan profil & API Key biro berhasil disimpan!");
       onOpenChange(false);
     } catch (err: any) {
@@ -315,7 +336,7 @@ export const PengaturanBiroDialog = ({
                 onChange={(e) =>
                   setProfile({ ...profile, nama_biro: e.target.value })
                 }
-                placeholder="Contoh: Malika Tour & Travel"
+                placeholder="Contoh: Catat Biro Wisata"
                 required
                 className="h-9 text-xs sm:text-sm rounded-xl font-medium"
               />
@@ -338,6 +359,196 @@ export const PengaturanBiroDialog = ({
                 placeholder="Contoh: Sahabat Perjalanan Wisata Anda"
                 className="h-9 text-xs sm:text-sm rounded-xl"
               />
+            </div>
+
+            {/* ========================================================= */}
+            {/* DATA KOP SURAT FORMAL & PENGESAHAN DOKUMEN                */}
+            {/* ========================================================= */}
+            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Data Kop Surat Resmi & Pengesahan PDF
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-tight">
+                Data ini dicetak otomatis pada Kop Surat formal, dokumen Rundown, dan Laporan Keuangan resmi.
+              </p>
+
+              {/* Alamat Kantor */}
+              <div className="space-y-1">
+                <Label
+                  htmlFor="alamat"
+                  className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                >
+                  <MapPin className="w-3 h-3 text-slate-400" />
+                  Alamat Lengkap Kantor
+                </Label>
+                <Input
+                  id="alamat"
+                  value={profile.alamat || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, alamat: e.target.value })
+                  }
+                  placeholder="Contoh: Jl. Raya Demak - Kudus KM 4, Demak, Jawa Tengah"
+                  className="h-9 text-xs sm:text-sm rounded-xl"
+                />
+              </div>
+
+              {/* Baris Kontak: Telepon & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="telepon"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                  >
+                    <Phone className="w-3 h-3 text-slate-400" />
+                    No. Telp / WhatsApp
+                  </Label>
+                  <Input
+                    id="telepon"
+                    value={profile.telepon || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, telepon: e.target.value })
+                    }
+                    placeholder="Contoh: 0812-2578-9000"
+                    className="h-9 text-xs rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="email"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                  >
+                    <Mail className="w-3 h-3 text-slate-400" />
+                    Email Resmi
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profile.email || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, email: e.target.value })
+                    }
+                    placeholder="Contoh: info@birowisata.id"
+                    className="h-9 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Baris Website & Pimpinan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="website"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                  >
+                    <Globe className="w-3 h-3 text-slate-400" />
+                    Website / Medsos
+                  </Label>
+                  <Input
+                    id="website"
+                    value={profile.website || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, website: e.target.value })
+                    }
+                    placeholder="Contoh: www.catatbirowisata.id"
+                    className="h-9 text-xs rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="pimpinan"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                  >
+                    <UserCheck className="w-3 h-3 text-slate-400" />
+                    Nama Pimpinan / Direktur
+                  </Label>
+                  <Input
+                    id="pimpinan"
+                    value={profile.pimpinan || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, pimpinan: e.target.value })
+                    }
+                    placeholder="Contoh: H. Anjar Abidin, S.E."
+                    className="h-9 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================================= */}
+            {/* REKENING BANK PEMBAYARAN RESMI (INVOICE & KWITANSI)       */}
+            {/* ========================================================= */}
+            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Rekening Bank Pembayaran (Invoice & Kwitansi)
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-tight">
+                Rekening tujuan pembayaran resmi yang tercetak otomatis di Invoice tagihan dan Kwitansi digital.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="nama_bank"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                  >
+                    <Landmark className="w-3 h-3 text-slate-400" />
+                    Nama Bank
+                  </Label>
+                  <Input
+                    id="nama_bank"
+                    value={profile.nama_bank || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, nama_bank: e.target.value })
+                    }
+                    placeholder="Contoh: BCA / Mandiri / BRI"
+                    className="h-9 text-xs rounded-xl font-medium"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="nomor_rekening"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    Nomor Rekening
+                  </Label>
+                  <Input
+                    id="nomor_rekening"
+                    value={profile.nomor_rekening || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, nomor_rekening: e.target.value })
+                    }
+                    placeholder="Contoh: 136-00-1234567-8"
+                    className="h-9 text-xs rounded-xl font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="atas_nama_rekening"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    Atas Nama Rekening
+                  </Label>
+                  <Input
+                    id="atas_nama_rekening"
+                    value={profile.atas_nama_rekening || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, atas_nama_rekening: e.target.value })
+                    }
+                    placeholder="Contoh: Catat Biro Wisata"
+                    className="h-9 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* ========================================================= */}

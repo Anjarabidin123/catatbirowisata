@@ -8,7 +8,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    allowedHosts: ["localhost", ".vercel.run"],
+    proxy: {
+      "/supabase-api": {
+        target: "https://xirxglkwojgbzjyhhdhm.supabase.co",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/supabase-api/, ""),
+        secure: false,
+        ws: true,
+      },
+    },
   },
   envPrefix: ["VITE_", "NEXT_PUBLIC_", "SUPABASE_"],
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),

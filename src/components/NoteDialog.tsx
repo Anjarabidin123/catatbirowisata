@@ -6,7 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface Note {
   id?: string;
@@ -24,6 +27,7 @@ interface NoteDialogProps {
 }
 
 const NoteDialog = ({ open, onOpenChange, note, tripId, onSuccess }: NoteDialogProps) => {
+  const { hasPermission } = useRole();
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<any[]>([]);
   const [formData, setFormData] = useState<Note>({
@@ -50,7 +54,7 @@ const NoteDialog = ({ open, onOpenChange, note, tripId, onSuccess }: NoteDialogP
 
   const loadTrips = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -68,11 +72,16 @@ const NoteDialog = ({ open, onOpenChange, note, tripId, onSuccess }: NoteDialogP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission("rule_rundown_catatan")) {
+      toast.error("Akses tambah/edit catatan dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
+      const linkedTrip = trips.find((t) => t.id === formData.trip_id);
 
       if (note?.id) {
         const { error } = await supabase
@@ -81,6 +90,12 @@ const NoteDialog = ({ open, onOpenChange, note, tripId, onSuccess }: NoteDialogP
           .eq("id", note.id);
 
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Memperbarui Catatan Kegiatan",
+          detail: `Mengubah catatan '${formData.judul}'`,
+          tripName: linkedTrip?.nama_trip,
+        });
         toast.success("Catatan berhasil diupdate");
       } else {
         const { error } = await supabase
@@ -88,6 +103,12 @@ const NoteDialog = ({ open, onOpenChange, note, tripId, onSuccess }: NoteDialogP
           .insert({ ...formData, user_id: user.id });
 
         if (error) throw error;
+        logCrewActivity({
+          kategori: "catatan_htm",
+          aksi: "Menambahkan Catatan Kegiatan",
+          detail: `Menambahkan catatan '${formData.judul}'`,
+          tripName: linkedTrip?.nama_trip,
+        });
         toast.success("Catatan berhasil ditambahkan");
       }
 

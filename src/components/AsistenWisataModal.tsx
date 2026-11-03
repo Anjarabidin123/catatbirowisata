@@ -30,6 +30,7 @@ import {
   School,
   Heart,
   Landmark,
+  Plus,
 } from "lucide-react";
 import {
   TargetRombonganType,

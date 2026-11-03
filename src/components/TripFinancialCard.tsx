@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -47,7 +48,7 @@ export const TripFinancialCard = ({ tripId, tripName }: TripFinancialCardProps) 
   const loadNotes = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -71,7 +72,7 @@ export const TripFinancialCard = ({ tripId, tripName }: TripFinancialCardProps) 
     e.preventDefault();
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
 
       const unformatRupiah = (formatted: string): number => {

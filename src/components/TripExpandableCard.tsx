@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Calendar, MapPin, Edit, Trash2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { TripPriceNoteDialog } from "./TripPriceNoteDialog";
 import { EditTripDialog } from "./EditTripDialog";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +55,9 @@ interface TripExpandableCardProps {
 }
 
 export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpandableCardProps) => {
+  const { hasPermission } = useRole();
+  const canManageTrip = hasPermission("rule_hapus_buat_trip");
+  const canManageNotes = hasPermission("rule_rundown_catatan");
   const [isExpanded, setIsExpanded] = useState(false);
   const [priceNotes, setPriceNotes] = useState<PriceNote[]>([]);
   const [destinationNote, setDestinationNote] = useState<DestinationNote | null>(null);
@@ -70,7 +76,7 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
   const loadNotes = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       // Load price notes
@@ -104,7 +110,13 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
 
   const handleDeletePriceNote = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canManageNotes) {
+      toast.error("Akses Dibatasi: Anda tidak memiliki izin menghapus catatan harga.");
+      return;
+    }
     if (!confirm("Yakin ingin menghapus catatan harga ini?")) return;
+
+    const targetNote = priceNotes.find((n) => n.id === id);
 
     try {
       const { error } = await supabase
@@ -113,6 +125,12 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
         .eq("id", id);
 
       if (error) throw error;
+      logCrewActivity({
+        actionType: "rundown",
+        actionTitle: "Menghapus Catatan Harga Trip",
+        actionDetail: `Menghapus catatan harga "${targetNote?.keterangan || id}" pada trip ${trip.nama_trip}`,
+        tripName: trip.nama_trip,
+      });
       toast.success("Catatan berhasil dihapus");
       loadNotes();
     } catch (error: any) {
@@ -122,6 +140,10 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
   };
 
   const handleDeleteTrip = async () => {
+    if (!canManageTrip) {
+      toast.error("Akses Dibatasi: Anda tidak memiliki izin menghapus trip.");
+      return;
+    }
     try {
       const { error } = await supabase
         .from("trips")
@@ -129,6 +151,12 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
         .eq("id", trip.id);
 
       if (error) throw error;
+      logCrewActivity({
+        actionType: "system",
+        actionTitle: "Menghapus Data Trip",
+        actionDetail: `Menghapus trip "${trip.nama_trip}" tujuan ${trip.tujuan}`,
+        tripName: trip.nama_trip,
+      });
       toast.success("Trip berhasil dihapus");
       onTripUpdated?.();
     } catch (error: any) {
@@ -214,14 +242,16 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-sm">Catatan Harga</h4>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleAddPriceNote}
-                      className="h-7 text-xs"
-                    >
-                      Tambah
-                    </Button>
+                    {canManageNotes && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleAddPriceNote}
+                        className="h-7 text-xs"
+                      >
+                        Tambah
+                      </Button>
+                    )}
                   </div>
 
                   {loading ? (
@@ -238,24 +268,26 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
                             <p className="font-medium">{note.keterangan}</p>
                             <p className="text-primary font-semibold text-xs">Rp {note.jumlah.toLocaleString()}</p>
                           </div>
-                          <div className="flex gap-1 ml-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => handleEditPriceNote(note, e)}
-                              className="h-7 w-7"
-                            >
-                              <span className="text-xs">✏️</span>
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => handleDeletePriceNote(note.id, e)}
-                              className="h-7 w-7 text-destructive"
-                            >
-                              <span className="text-xs">🗑️</span>
-                            </Button>
-                          </div>
+                          {canManageNotes && (
+                            <div className="flex gap-1 ml-2">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => handleEditPriceNote(note, e)}
+                                className="h-7 w-7"
+                              >
+                                <span className="text-xs">✏️</span>
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => handleDeletePriceNote(note.id, e)}
+                                className="h-7 w-7 text-destructive"
+                              >
+                                <span className="text-xs">🗑️</span>
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -264,28 +296,44 @@ export const TripExpandableCard = ({ trip, onClick, onTripUpdated }: TripExpanda
 
                 {/* Action Buttons */}
                 <div className="border-t pt-4 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditTripDialogOpen(true);
-                    }}
-                    className="flex-1 h-8 text-xs"
-                  >
-                    Edit Trip
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteAlertOpen(true);
-                    }}
-                    className="flex-1 h-8 text-xs"
-                  >
-                    Hapus Trip
-                  </Button>
+                  {canManageTrip ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditTripDialogOpen(true);
+                        }}
+                        className="flex-1 h-8 text-xs"
+                      >
+                        Edit Trip
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteAlertOpen(true);
+                        }}
+                        className="flex-1 h-8 text-xs"
+                      >
+                        Hapus Trip
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClick();
+                      }}
+                      className="w-full h-8 text-xs font-semibold text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                    >
+                      Buka Posko Operasional Trip
+                    </Button>
+                  )}
                 </div>
               </div>
             </CollapsibleContent>

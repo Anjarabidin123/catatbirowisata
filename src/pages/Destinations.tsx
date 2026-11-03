@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
 import BottomNav from "@/components/BottomNav";
 import DestinationDialog from "@/components/DestinationDialog";
@@ -9,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Pencil, Trash2, MapPin, Clock, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import { useRole } from "@/contexts/RoleContext";
+import { logCrewActivity } from "@/utils/rbacAuditLogger";
 
 interface Destination {
   id: string;
@@ -22,6 +25,8 @@ interface Destination {
 
 const Destinations = () => {
   const navigate = useNavigate();
+  const { hasPermission } = useRole();
+  const canEditDestinations = hasPermission("rule_rundown_catatan");
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -47,7 +52,7 @@ const Destinations = () => {
 
   const loadDestinations = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getActiveUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -67,25 +72,44 @@ const Destinations = () => {
   };
 
   const handleEdit = (destination: Destination) => {
+    if (!canEditDestinations) {
+      toast.error("Akses ubah destinasi dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     setSelectedDestination(destination);
     setDialogOpen(true);
   };
 
   const handleAdd = () => {
+    if (!canEditDestinations) {
+      toast.error("Akses tambah destinasi dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     setSelectedDestination(undefined);
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
+    if (!canEditDestinations) {
+      toast.error("Akses hapus destinasi dinonaktifkan oleh Pemilik Biro");
+      return;
+    }
     if (!confirm("Hapus destinasi ini?")) return;
 
     try {
+      const target = destinations.find((d) => d.id === id);
       const { error } = await supabase
         .from("destinations")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
+      logCrewActivity({
+        kategori: "catatan_htm",
+        aksi: "Menghapus Master Destinasi Wisata",
+        detail: `Menghapus destinasi '${target?.nama_destinasi || id}'`,
+        status: "peringatan",
+      });
       toast.success("Destinasi berhasil dihapus");
       loadDestinations();
     } catch (error: any) {
@@ -126,8 +150,8 @@ const Destinations = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background pb-20 safe-top">
-        <div className="max-w-lg mx-auto p-4">
+      <div className="min-h-screen bg-background pb-20 safe-top lg:pl-64">
+        <div className="max-w-lg lg:max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Button
@@ -157,7 +181,7 @@ const Destinations = () => {
               </Button>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {destinations.map((dest) => (
                 <Card key={dest.id} className="p-4">
                   <div className="flex justify-between items-start mb-3">
