@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 // import type { Database } from './types';
 
+const runtimeEnv = typeof import.meta !== "undefined" ? import.meta.env : {};
 const SUPABASE_URL =
   (typeof window !== "undefined" && import.meta.env?.DEV)
     ? `${window.location.origin}/supabase-api`

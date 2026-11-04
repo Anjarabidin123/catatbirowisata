@@ -12,12 +12,23 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   const [loading, setLoading] = useState(() => !getInitialSessionSync());
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let active = true;
+
+    const redirectToAuth = () => {
+      if (active && window.location.pathname !== "/auth") {
+        navigate("/auth", { replace: true });
+      }
+    };
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!active) return;
+
       if (!session) {
-        navigate("/auth");
+        redirectToAuth();
       }
       setLoading(false);
-    });
+    };
 
     const {
       data: { subscription },
@@ -29,7 +40,12 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    checkSession();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (loading) {
@@ -37,7 +53,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Memuat...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Memuat sesi...</p>
         </div>
       </div>
     );

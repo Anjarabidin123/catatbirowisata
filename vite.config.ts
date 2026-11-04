@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+  envPrefix: ["VITE_", "NEXT_PUBLIC_", "SUPABASE_"],
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {

@@ -439,8 +439,8 @@ const Dashboard = () => {
     }
   };
 
-  const loadRundownData = async () => {
-    if (!currentTrip) return;
+  const loadRundownData = async (): Promise<RundownItem[]> => {
+    if (!currentTrip) return [];
     
     try {
       const { data, error } = await supabase
@@ -451,9 +451,12 @@ const Dashboard = () => {
         .order("jam_mulai", { ascending: true });
 
       if (error) throw error;
-      setRundownData(data || []);
+      const items = (data || []) as RundownItem[];
+      setRundownData(items);
+      return items;
     } catch (error: any) {
       console.error("Error loading rundown:", error);
+      return [];
     }
   };
 
@@ -688,34 +691,45 @@ const Dashboard = () => {
     }
   };
 
-  const handleShareRundownPDF = () => {
+  const handleShareRundownPDF = async () => {
     if (!currentTrip) {
       toast.error("Trip tidak ditemukan");
       return;
     }
 
-    if (rundownData.length === 0) {
-      toast.error("Belum ada data rundown acara");
-      return;
-    }
-
     try {
-      const shareText = `*Rundown Operasional: ${currentTrip.nama_trip}*\n\n📅 Tanggal: ${format(new Date(currentTrip.tanggal), "dd MMMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` s/d ${format(new Date(currentTrip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}` : ""}\n📍 Tujuan: ${currentTrip.tujuan}\n\nJadwal operasional siap dilaksanakan. Salam pariwisata!`;
-      
+      // Ambil data terbaru agar item rundown yang baru ditambahkan ikut terbawa.
+      const latestRundown = await loadRundownData();
+      if (latestRundown.length === 0) {
+        toast.error("Belum ada data rundown acara");
+        return;
+      }
+
+      const groupedRundown = latestRundown.reduce<Record<number, RundownItem[]>>((groups, item) => {
+        (groups[item.hari_ke] ||= []).push(item);
+        return groups;
+      }, {});
+
+      const rundownText = Object.entries(groupedRundown)
+        .sort(([dayA], [dayB]) => Number(dayA) - Number(dayB))
+        .map(([day, items]) => [
+          `*Hari ${day}*`,
+          ...items.map((item) => {
+            const details = item.keterangan ? `\n   ${item.keterangan}` : "";
+            return `• ${item.jam_mulai} - ${item.jam_selesai} — ${item.judul_acara}${details}`;
+          }),
+        ].join("\n"))
+        .join("\n\n");
+
+      const shareText = `*Rundown Operasional: ${currentTrip.nama_trip}*\n\n📅 Tanggal: ${format(new Date(currentTrip.tanggal), "dd MMMM yyyy", { locale: id })}${currentTrip.tanggal_selesai ? ` s/d ${format(new Date(currentTrip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}` : ""}\n📍 Tujuan: ${currentTrip.tujuan}\n\n${rundownText}\n\nJadwal operasional siap dilaksanakan.\nSalam pariwisata!`;
       const encodedText = encodeURIComponent(shareText);
       const whatsappUrl = `whatsapp://send?text=${encodedText}`;
       const whatsappWebUrl = `https://wa.me/?text=${encodedText}`;
-      
+
       if (Capacitor.isNativePlatform()) {
-        try {
-          window.location.href = whatsappUrl;
-          toast.success("Membuka WhatsApp...");
-        } catch {
-          window.open(whatsappWebUrl, '_blank');
-        }
+        window.location.assign(whatsappUrl);
       } else {
-        window.open(whatsappWebUrl, '_blank');
-        toast.success("Membuka WhatsApp...");
+        window.open(whatsappWebUrl, "_blank", "noopener,noreferrer");
       }
     } catch (error) {
       console.error("Error opening WhatsApp:", error);
@@ -724,6 +738,10 @@ const Dashboard = () => {
   };
 
   const activeRemindersCount = reminders.length;
+  const userRole = user?.user_metadata?.role || "owner";
+  const roleLabel = userRole === "employee" ? "Karyawan" : userRole === "tl" ? "Team Leader" : "Pemilik";
+  const canManageFinance = userRole === "owner" || userRole === "tl";
+  const canManageTeam = userRole === "owner";
 
   return (
     <AuthGuard>

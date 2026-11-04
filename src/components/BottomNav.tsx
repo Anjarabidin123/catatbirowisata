@@ -33,7 +33,7 @@ const BottomNav = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative lg:flex-none lg:h-14 lg:w-14 lg:rounded-2xl ${
                 isActive
                   ? isPemilik
                     ? "text-primary"
