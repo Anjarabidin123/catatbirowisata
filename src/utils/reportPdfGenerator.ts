@@ -394,13 +394,11 @@ export const generateReportPDF = async (data: ReportData): Promise<jsPDF> => {
       body: keuanganRows,
       foot: [
         [
-          "TOTAL",
-          "",
-          "",
-          "TOTAL MUTASI KAS OPERASIONAL",
-          formatRupiah(pemasukan),
-          formatRupiah(pengeluaran),
-          formatRupiah(saldo),
+          { content: "TOTAL", colSpan: 3, styles: { halign: "left", fontStyle: "bold" } },
+          { content: "TOTAL MUTASI KAS OPERASIONAL", styles: { fontStyle: "bold" } },
+          { content: formatRupiah(pemasukan), styles: { halign: "right", fontStyle: "bold" } },
+          { content: formatRupiah(pengeluaran), styles: { halign: "right", fontStyle: "bold" } },
+          { content: formatRupiah(saldo), styles: { halign: "right", fontStyle: "bold" } },
         ],
       ],
       theme: "grid",
