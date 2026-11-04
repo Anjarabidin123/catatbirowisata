@@ -27,7 +27,7 @@ const Laporan = () => {
   const [data, setData] = useState<ReportData>({ trips: [], keuangan: [], media: [] });
   const [loading, setLoading] = useState(true);
   const [selectedTripId, setSelectedTripId] = useState<string>("all");
-  const [filterMonth, setFilterMonth] = useState<string>("current");
+  const [filterMonth, setFilterMonth] = useState<string>("all");
   const [showKwitansiDialog, setShowKwitansiDialog] = useState(false);
 
   useEffect(() => {
@@ -138,11 +138,6 @@ const Laporan = () => {
   // Apply month filter
   filteredTrips = filterDataByMonth(filteredTrips, 'tanggal');
   filteredKeuangan = filterDataByMonth(filteredKeuangan, 'tanggal');
-
-  // Only show completed trips
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  filteredTrips = filteredTrips.filter(t => new Date(t.tanggal) < today);
 
   const totalPemasukan = filteredKeuangan
     .filter((k) => k.jenis === "pemasukan")
