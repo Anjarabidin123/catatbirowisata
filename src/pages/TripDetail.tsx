@@ -577,7 +577,7 @@ const TripDetail = () => {
             {/* Tab 6: Dokumentasi */}
             <TabsContent value="dokumentasi">
               <Suspense fallback={<div className="flex justify-center py-8"><div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>}>
-                <TripDocumentationTab tripId={tripId!} />
+                <TripDocumentationTab tripId={tripId!} tripName={trip?.nama_trip} />
               </Suspense>
             </TabsContent>
           </Tabs>
