@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Clock, Trash2, Pencil, Sparkles, Calendar, MapPin, FileText } from "lucide-react";
+import { Plus, Clock, Trash2, Pencil, FileText, FileDown, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RupiahInput } from "./RupiahInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRole } from "@/contexts/RoleContext";
 import { logCrewActivity } from "@/utils/rbacAuditLogger";
+import { exportTripRundownPDF, shareTripRundownWA } from "@/utils/rundownExport";
 import { ImportWordRundownDialog } from "./ImportWordRundownDialog";
 
 interface RundownItem {
@@ -29,7 +30,6 @@ interface RundownAcaraProps {
   tripName?: string;
   tripDestination?: string;
   tripDate?: string;
-  onOpenAIForTrip?: () => void;
 }
 
 export const RundownAcara = ({
@@ -37,7 +37,6 @@ export const RundownAcara = ({
   tripName,
   tripDestination,
   tripDate,
-  onOpenAIForTrip,
 }: RundownAcaraProps) => {
   const { hasPermission } = useRole();
   const canEditRundown = hasPermission("rule_rundown_catatan");
@@ -45,6 +44,7 @@ export const RundownAcara = ({
   const canInputPettyCash = hasPermission("rule_petty_cash");
   const [rundown, setRundown] = useState<RundownItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showWordImportDialog, setShowWordImportDialog] = useState(false);
   const [showTransactionDialog, setShowTransactionDialog] = useState(false);
@@ -112,6 +112,36 @@ export const RundownAcara = ({
     setLoading(false);
   };
 
+  const handleDownloadPDF = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportTripRundownPDF(tripId);
+      toast({ title: "Berhasil", description: "PDF rundown siap disimpan" });
+    } catch (err: any) {
+      console.error("Gagal export rundown:", err);
+      toast({
+        title: "Gagal membuat PDF",
+        description: err?.message || "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleShareWA = async () => {
+    try {
+      await shareTripRundownWA(tripId);
+    } catch (err: any) {
+      toast({
+        title: "Gagal membagikan",
+        description: err?.message || "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEditRundown) {
@@ -124,7 +154,7 @@ export const RundownAcara = ({
     }
     if (loading) return;
     setLoading(true);
-    
+
     const user = await getActiveUser();
     if (!user) {
       setLoading(false);
@@ -199,7 +229,7 @@ export const RundownAcara = ({
     }
     if (loading) return; // Prevent double submission
     setLoading(true);
-    
+
     const user = await getActiveUser();
     if (!user) {
       setLoading(false);
@@ -250,46 +280,60 @@ export const RundownAcara = ({
   }
 
   const groupedRundown = groupByDay();
+  const hasRundown = Object.keys(groupedRundown).length > 0;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="flex flex-col gap-2">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-blue-600" />
-              <span>Rundown Acara</span>
-            </h2>
-            {tripName && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200/90 dark:border-blue-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                Trip: {tripName}
-              </span>
-            )}
-          </div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <span>Rundown Acara</span>
+          </h2>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Jadwal operasional rombongan <span className="font-semibold text-slate-700 dark:text-slate-300">{tripName || "aktif"}</span>{tripDestination ? <> tujuan <span className="font-semibold capitalize text-slate-700 dark:text-slate-300">{tripDestination}</span></> : ""}.
+            {tripName || "Trip aktif"}
+            {tripDestination ? <> • <span className="capitalize">{tripDestination}</span></> : null}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleDownloadPDF}
+            disabled={!hasRundown || exporting}
+            className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1.5"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            <span>{exporting ? "Membuat PDF..." : "Download PDF"}</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleShareWA}
+            disabled={!hasRundown}
+            className="h-8 text-xs rounded-xl font-semibold gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Kirim WA</span>
+          </Button>
           {canEditRundown && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setShowWordImportDialog(true)}
-              className="h-8 text-xs rounded-xl border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold shadow-2xs gap-1.5"
+              className="h-8 text-xs rounded-xl font-semibold gap-1.5"
             >
               <FileText className="w-3.5 h-3.5 text-blue-600" />
-              <span>Import Word (.docx)</span>
+              <span>Import Word</span>
             </Button>
           )}
-
           {canEditRundown && (
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs">
+                <Button size="sm" variant="outline" className="h-8 text-xs rounded-xl font-semibold">
                   <Plus className="w-3.5 h-3.5 mr-1" />
                   Tambah
                 </Button>
@@ -359,7 +403,7 @@ export const RundownAcara = ({
         </div>
       </div>
 
-      {Object.keys(groupedRundown).length === 0 ? (
+      {!hasRundown ? (
         <Card className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 shadow-none">
           <CardContent className="py-6 px-4 text-center space-y-2">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center mx-auto text-blue-600">
@@ -370,11 +414,11 @@ export const RundownAcara = ({
                 Belum ada jadwal acara untuk trip ini
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Rundown terhubung ke trip: <span className="font-semibold text-blue-600 dark:text-blue-400">{tripName || "Aktif"}</span>{tripDestination ? ` (${tripDestination})` : ""}{tripDate ? ` • ${tripDate}` : ""}
+                {tripName || "Trip aktif"}{tripDestination ? ` (${tripDestination})` : ""}{tripDate ? ` • ${tripDate}` : ""}
               </p>
             </div>
             <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-              Tambahkan kegiatan manual atau gunakan Asisten AI untuk menyusun jadwal otomatis.
+              Tambahkan kegiatan satu per satu atau impor dari dokumen Word.
             </p>
             {canEditRundown && (
               <div className="flex items-center justify-center gap-2 pt-2">
@@ -386,17 +430,6 @@ export const RundownAcara = ({
                   <Plus className="w-3.5 h-3.5 mr-1" />
                   Tambah Manual
                 </Button>
-                {onOpenAIForTrip && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={onOpenAIForTrip}
-                    className="h-8 text-xs rounded-xl border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-semibold px-3 hover:bg-blue-50 dark:hover:bg-blue-950"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                    Susun via AI
-                  </Button>
-                )}
               </div>
             )}
           </CardContent>
@@ -412,9 +445,11 @@ export const RundownAcara = ({
                     <p className="text-[10px] text-primary font-medium">
                       {item.jam_mulai.substring(0, 5)} - {item.jam_selesai.substring(0, 5)}
                     </p>
-                    <p className="font-semibold text-sm truncate mt-0.5">{item.judul_acara}</p>
+                    <p className="font-semibold text-sm mt-0.5 break-words">{item.judul_acara}</p>
                     {item.keterangan && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{item.keterangan}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-line break-words leading-relaxed">
+                        {item.keterangan}
+                      </p>
                     )}
                   </div>
                   <div className="flex gap-1 flex-shrink-0">

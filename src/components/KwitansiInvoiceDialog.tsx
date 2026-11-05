@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,6 @@ import {
   CreditCard,
   Building,
   Calendar,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";

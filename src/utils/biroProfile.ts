@@ -10,29 +10,10 @@ export interface BiroProfile {
   email?: string;
   website?: string;
   pimpinan?: string;
-  gemini_api_key?: string;
   nama_bank?: string;
   nomor_rekening?: string;
   atas_nama_rekening?: string;
 }
-
-const decodeSafeKey = (encoded: string): string => {
-  try {
-    if (typeof atob === "function") {
-      return atob(encoded);
-    }
-    if (typeof Buffer !== "undefined") {
-      return Buffer.from(encoded, "base64").toString("utf-8");
-    }
-  } catch {
-    return "";
-  }
-  return "";
-};
-
-export const DEFAULT_GEMINI_API_KEY =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_GEMINI_API_KEY) ||
-  decodeSafeKey("QVEuQWI4Uk42S3pVOUhPVFRYT3RpTWx5MXZZcXJnendLUFhwS1lxWHNFR1R2SnhscmRRbnc=");
 
 const DEFAULT_PROFILE: BiroProfile = {
   nama_biro: "Catat Biro Wisata",
@@ -43,7 +24,6 @@ const DEFAULT_PROFILE: BiroProfile = {
   email: "operasional@birowisata.id",
   website: "www.catatbirowisata.id",
   pimpinan: "H. Anjar Abidin, S.E.",
-  gemini_api_key: DEFAULT_GEMINI_API_KEY,
   nama_bank: "Bank Mandiri / BCA",
   nomor_rekening: "136-00-1234567-8",
   atas_nama_rekening: "Catat Biro Wisata",
@@ -90,7 +70,6 @@ function sanitizeLegacyProfile(raw: Partial<BiroProfile>): { profile: BiroProfil
     logo_url: logoUrl,
     email,
     atas_nama_rekening: atasNama,
-    gemini_api_key: raw.gemini_api_key || DEFAULT_GEMINI_API_KEY,
   };
 
   return { profile, wasSanitized };
@@ -120,28 +99,6 @@ export function getLocalBiroProfile(): BiroProfile {
   }
   memoryProfileCache = DEFAULT_PROFILE;
   return DEFAULT_PROFILE;
-}
-
-/**
- * Mengambil API key aktif (custom dari user atau default sistem)
- */
-export function getActiveGeminiApiKey(): string {
-  const profile = getLocalBiroProfile();
-  if (profile.gemini_api_key && profile.gemini_api_key.trim().length > 10) {
-    return profile.gemini_api_key.trim();
-  }
-  return DEFAULT_GEMINI_API_KEY;
-}
-
-/**
- * Memeriksa apakah user sedang memakai default API key atau custom
- */
-export function isUsingDefaultGeminiApiKey(): boolean {
-  const profile = getLocalBiroProfile();
-  return (
-    !profile.gemini_api_key ||
-    profile.gemini_api_key.trim() === DEFAULT_GEMINI_API_KEY.trim()
-  );
 }
 
 /**
@@ -176,7 +133,6 @@ export async function fetchBiroProfile(): Promise<BiroProfile> {
         website: meta.website || DEFAULT_PROFILE.website,
         pimpinan: meta.pimpinan || DEFAULT_PROFILE.pimpinan,
         logo_url: logoUrl,
-        gemini_api_key: meta.gemini_api_key || DEFAULT_GEMINI_API_KEY,
         nama_bank: meta.nama_bank || DEFAULT_PROFILE.nama_bank,
         nomor_rekening: meta.nomor_rekening || DEFAULT_PROFILE.nomor_rekening,
         atas_nama_rekening: meta.atas_nama_rekening || DEFAULT_PROFILE.atas_nama_rekening,
@@ -245,7 +201,6 @@ export async function saveBiroProfile(profile: Partial<BiroProfile>): Promise<Bi
         website: updated.website,
         pimpinan: updated.pimpinan,
         logo_url: logoToSync,
-        gemini_api_key: updated.gemini_api_key,
         nama_bank: updated.nama_bank,
         nomor_rekening: updated.nomor_rekening,
         atas_nama_rekening: updated.atas_nama_rekening,

@@ -1,5 +1,6 @@
 import type jsPDF from "jspdf";
 import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { savePdf } from "./pdfSaver";
 import { terbilang } from "./terbilang";
 
 export interface InvoiceItem {
@@ -518,7 +519,7 @@ export async function generateInvoiceOrKwitansiPDF(
 
   if (autoDownload) {
     const filename = `${options.docType.toUpperCase()}_${options.nomorDokumen.replace(/[/\\?%*:|"<>]/g, "_")}.pdf`;
-    doc.save(filename);
+    void savePdf(doc, filename);
   }
 
   return doc;

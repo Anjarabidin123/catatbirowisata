@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,6 @@ import {
   Utensils,
   MapPin,
   Luggage,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";

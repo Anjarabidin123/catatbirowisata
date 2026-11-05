@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { CashbackTrackerWidget } from "@/components/CashbackTrackerWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
@@ -78,6 +79,11 @@ interface PriceNote {
 const TripDetail = () => {
   const { id: tripId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedTab = (location.state as { activeTab?: string } | null)?.activeTab;
+  const validTabs = ["acuan", "operasional", "kendaraan", "keuangan", "rundown", "catatan", "dokumentasi"];
+  const initialTab =
+    requestedTab && validTabs.includes(requestedTab) ? requestedTab : undefined;
   const { role, isPemilik, isKru, roleName, hasPermission } = useRole();
   const canSeeFinancials = hasPermission("rule_buku_kas_laba");
   const canPrintKwitansi = hasPermission("rule_kwitansi_invoice");
@@ -216,7 +222,7 @@ const TripDetail = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/trips")}
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/dashboard"))}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -345,7 +351,7 @@ const TripDetail = () => {
           </div>
 
           {/* Role-Adaptive Navbar Tabs - Horizontal scroll */}
-          <Tabs key={role} defaultValue={isKru ? "operasional" : "acuan"} className="w-full">
+          <Tabs key={role} defaultValue={initialTab || (isKru ? "operasional" : "acuan")} className="w-full">
             <div className="overflow-x-auto">
               <TabsList className="inline-flex w-auto mb-4 gap-1">
                 <TabsTrigger value="acuan" className="text-xs whitespace-nowrap">Perencanaan</TabsTrigger>
@@ -455,6 +461,7 @@ const TripDetail = () => {
               <TabsContent value="keuangan" className="space-y-4">
                 <Suspense fallback={<div className="flex justify-center py-8"><div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>}>
                   <TripFinancialTab tripId={tripId!} />
+                  <CashbackTrackerWidget tripId={tripId} tripName={trip.nama_trip} />
                 </Suspense>
               </TabsContent>
             )}

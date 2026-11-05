@@ -1,5 +1,5 @@
-/**
- * Helper Pencari Foto Destinasi Wisata Otomatis (AI & Curated Smart Search)
+﻿/**
+ * Helper Pencari Foto Destinasi Wisata Otomatis (Curated Smart Search)
  * Mendeteksi nama kota / destinasi yang diketikkan pengguna (misal: "Semarang", "Jogja", "Bromo")
  * dan mencarikan foto landmark ikonik secara real-time.
  */

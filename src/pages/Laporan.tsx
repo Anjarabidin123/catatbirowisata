@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { savePdf } from "@/utils/pdfSaver";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
@@ -79,7 +80,7 @@ const Laporan = () => {
       });
 
       const fileName = `Laporan_Resmi_Biro_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
-      doc.save(fileName);
+      void savePdf(doc, fileName);
       toast.success("Laporan PDF resmi dengan kop surat berhasil diunduh!");
     } catch (error) {
       console.error("Error generating PDF:", error);

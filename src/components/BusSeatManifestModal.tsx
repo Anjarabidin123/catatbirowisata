@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { savePdf } from "@/utils/pdfSaver";
 import {
   Dialog,
   DialogContent,
@@ -370,7 +371,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
       margin: { left: 14, right: 14 },
     });
 
-    doc.save(`MANIFEST_KURSI_BUS_${tripInfo?.nama_trip?.replace(/\s+/g, "_") || "TRIP"}.pdf`);
+    void savePdf(doc, `MANIFEST_KURSI_BUS_${tripInfo?.nama_trip?.replace(/\s+/g, "_") || "TRIP"}.pdf`);
     toast.success("PDF Manifest kursi bus berhasil diunduh!");
   };
 

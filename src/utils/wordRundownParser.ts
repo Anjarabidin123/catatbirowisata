@@ -1,5 +1,4 @@
 import mammoth from "mammoth";
-import { getActiveGeminiApiKey } from "./biroProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "./authHelper";
 import { logCrewActivity } from "./rbacAuditLogger";
@@ -36,7 +35,7 @@ export async function extractTextFromWordFile(file: File): Promise<string> {
 }
 
 /**
- * Pemroses cadangan (Fallback Regex) bila AI offline atau tidak ada koneksi
+ * Ekstraksi jadwal acara otomatis berbasis Regex lokal
  */
 export function extractRundownWithRegexFallback(rawText: string): ParsedRundownItem[] {
   const lines = rawText
@@ -48,7 +47,7 @@ export function extractRundownWithRegexFallback(rawText: string): ParsedRundownI
   let currentHari = 1;
 
   // Regex pola jam: 07:00, 07.00, 07:00 - 08:30, 07.00 s/d 08.30
-  const timeRegex = /(?:(\d{1,2})[.:](\d{2}))(?:\s*(?:-|–|s\/d|sd|sampai)\s*(?:(\d{1,2})[.:](\d{2})))?/i;
+  const timeRegex = /(?:(\d{1,2})[.:](\d{2}))(?:\s*(?:-|–|—|s\/d|sd|sampai)\s*(?:(\d{1,2})[.:](\d{2})))?/i;
   const dayRegex = /(?:hari|day)\s*(?:ke[- ]?)?\s*(\d{1,2})/i;
 
   for (const line of lines) {
@@ -64,51 +63,69 @@ export function extractRundownWithRegexFallback(rawText: string): ParsedRundownI
 
     const timeMatch = line.match(timeRegex);
     if (timeMatch) {
-      const startH = timeMatch[1].padStart(2, "0");
-      const startM = timeMatch[2];
-      const jamMulai = `${startH}:${startM}`;
+      const h = parseInt(timeMatch[1], 10);
+      const m = parseInt(timeMatch[2], 10);
 
-      let jamSelesai = "";
-      if (timeMatch[3] && timeMatch[4]) {
-        const endH = timeMatch[3].padStart(2, "0");
-        const endM = timeMatch[4];
-        jamSelesai = `${endH}:${endM}`;
-      } else {
-        // Buat perkiraan jam selesai 1 jam setelah jam mulai
-        const hNum = (parseInt(startH, 10) + 1) % 24;
-        jamSelesai = `${String(hNum).padStart(2, "0")}:${startM}`;
-      }
+      if (h >= 0 && h < 24 && m >= 0 && m < 60) {
+        const startH = String(h).padStart(2, "0");
+        const startM = String(m).padStart(2, "0");
+        const jamMulai = `${startH}:${startM}`;
 
-      // Bersihkan teks kegiatan dari bagian jam di awal
-      const textAfterTime = line
-        .replace(timeRegex, "")
-        .replace(/^[\s:–\-•*.]+/, "")
-        .trim();
-
-      if (textAfterTime) {
-        // Pisahkan judul acara dan keterangan jika ada tanda kurung atau strip
-        let judul = textAfterTime;
-        let keterangan = "";
-
-        if (textAfterTime.includes(" - ")) {
-          const parts = textAfterTime.split(" - ");
-          judul = parts[0].trim();
-          keterangan = parts.slice(1).join(" - ").trim();
-        } else if (textAfterTime.includes(" (") && textAfterTime.endsWith(")")) {
-          const parenIdx = textAfterTime.indexOf(" (");
-          judul = textAfterTime.substring(0, parenIdx).trim();
-          keterangan = textAfterTime.substring(parenIdx + 2, textAfterTime.length - 1).trim();
+        let jamSelesai = "";
+        if (timeMatch[3] && timeMatch[4]) {
+          const endH = parseInt(timeMatch[3], 10);
+          const endM = parseInt(timeMatch[4], 10);
+          if (endH >= 0 && endH < 24 && endM >= 0 && endM < 60) {
+            jamSelesai = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+          }
         }
 
-        results.push({
-          id: `item-${Date.now()}-${results.length}`,
-          hari_ke: currentHari,
-          jam_mulai: jamMulai,
-          jam_selesai: jamSelesai,
-          judul_acara: judul,
-          keterangan: keterangan || "",
-        });
+        if (!jamSelesai) {
+          // Perkiraan jam selesai 1 jam setelah jam mulai
+          const hNum = (h + 1) % 24;
+          jamSelesai = `${String(hNum).padStart(2, "0")}:${startM}`;
+        }
+
+        // Bersihkan teks kegiatan dari bagian jam di awal
+        const textAfterTime = line
+          .replace(timeRegex, "")
+          .replace(/^[\s:–\-•*.]+/, "")
+          .trim();
+
+        if (textAfterTime) {
+          // Pisahkan judul acara dan keterangan jika ada tanda strip atau kurung
+          let judul = textAfterTime;
+          let keterangan = "";
+
+          if (textAfterTime.includes(" - ")) {
+            const parts = textAfterTime.split(" - ");
+            judul = parts[0].trim();
+            keterangan = parts.slice(1).join(" - ").trim();
+          } else if (textAfterTime.includes(" (") && textAfterTime.endsWith(")")) {
+            const parenIdx = textAfterTime.indexOf(" (");
+            judul = textAfterTime.substring(0, parenIdx).trim();
+            keterangan = textAfterTime.substring(parenIdx + 2, textAfterTime.length - 1).trim();
+          }
+
+          results.push({
+            id: `item-${Date.now()}-${results.length}`,
+            hari_ke: currentHari,
+            jam_mulai: jamMulai,
+            jam_selesai: jamSelesai,
+            judul_acara: judul,
+            keterangan: keterangan || "",
+          });
+          continue;
+        }
       }
+    }
+
+    // Jika baris bukan format jam baru, tetapi baris lanjutan/keterangan dari acara sebelumnya
+    if (results.length > 0 && !line.match(/^(?:hari|day|itinerary|rundown|jadwal|acara)/i)) {
+      const last = results[results.length - 1];
+      last.keterangan = last.keterangan
+        ? `${last.keterangan}. ${line}`
+        : line;
     }
   }
 
@@ -116,110 +133,25 @@ export function extractRundownWithRegexFallback(rawText: string): ParsedRundownI
 }
 
 /**
- * Rangkum dokumen Word / teks itinerary menjadi daftar jadwal acara terstruktur via Google Gemini AI
+ * Rangkum dokumen Word / teks itinerary menjadi daftar jadwal acara terstruktur
  */
 export async function summarizeWordRundownWithAI(
   rawDocumentText: string,
-  tripContext?: { nama_trip?: string; tujuan?: string }
+  _tripContext?: { nama_trip?: string; tujuan?: string }
 ): Promise<ParsedRundownItem[]> {
   const trimmed = rawDocumentText.trim();
   if (!trimmed) {
     throw new Error("Dokumen kosong atau tidak memuat teks yang dapat dibaca.");
   }
 
-  const apiKey = getActiveGeminiApiKey();
-
-  // Jika tidak ada API key, gunakan langsung parser regex lokal
-  if (!apiKey) {
-    console.warn("Kunci API Gemini tidak ditemukan, menggunakan parser lokal.");
-    const fallbackItems = extractRundownWithRegexFallback(trimmed);
-    if (fallbackItems.length === 0) {
-      throw new Error(
-        "Kunci API AI belum diatur dan pola jadwal jam tidak terdeteksi otomatis pada dokumen ini. Silakan periksa isi teks dokumen."
-      );
-    }
-    return fallbackItems;
+  const items = extractRundownWithRegexFallback(trimmed);
+  if (items.length === 0) {
+    throw new Error(
+      "Jadwal jam tidak terdeteksi pada dokumen. Pastikan tiap baris acara diawali jam, contoh: 08.00 - 09.00 Berangkat"
+    );
   }
 
-  const prompt = `Anda adalah asisten khusus biro perjalanan wisata yang bertugas membaca naskah dokumen Word (itinerary/rundown) dan merangkumnya menjadi susunan jadwal acara yang terstruktur rapi.
-
-Berikut adalah teks isi dokumen Word:
----
-${trimmed.slice(0, 15000)}
----
-
-${tripContext?.nama_trip ? `Konteks Trip: ${tripContext.nama_trip} (Tujuan: ${tripContext.tujuan || "-"})` : ""}
-
-INSTRUKSI EKSTRAKSI:
-1. Ekstrak SELURUH urutan kegiatan, jam keberangkatan, jam kunjungan wisata, sholat, makan prasmanan, dan istirahat.
-2. Abaikan kop surat biro, nama pimpinan, syarat & ketentuan pembayaran, atau catatan kaki yang bukan jadwal acara.
-3. Susun jadwal acara ke dalam format JSON ARRAY murni. Format tiap item:
-   - "hari_ke": integer (1, 2, 3...)
-   - "jam_mulai": format string "HH:MM" (contoh: "07:00", "13:30"). Jika di naskah tertulis titik seperti "07.00" atau "07.00 WIB", ubah menjadi "07:00".
-   - "jam_selesai": format string "HH:MM" (contoh: "08:30"). Jika tidak ada jam selesai, buat estimasi waktu yang wajar (1-2 jam setelah jam mulai).
-   - "judul_acara": nama singkat kegiatan atau destinasi yang dituju (contoh: "Kumpul di Titik Kumpul", "Ziarah Makam Sunan Kalijaga", "Makan Siang Resto Grafika", "Perjalanan Pulang").
-   - "keterangan": catatan pendukung kegiatan jika ada (contoh: "Pembagian snack & air mineral", "Resto kapasitas Big Bus", "Sholat Dzuhur & Ashar Jamak Qashar").
-
-PENTING:
-- Keluarkan HANYA JSON array valid tanpa teks pengantar dan tanpa markdown code fence.
-- Contoh output:
-[{"hari_ke":1,"jam_mulai":"07:00","jam_selesai":"08:00","judul_acara":"Kumpul & Berangkat","keterangan":"Briefing dan pembagian snack box"}]`;
-
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.1,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn("Gemini API error, beralih ke fallback lokal:", errText);
-      const fallback = extractRundownWithRegexFallback(trimmed);
-      if (fallback.length > 0) return fallback;
-      throw new Error(`Gagal memproses dokumen dengan AI (${res.status}): ${errText}`);
-    }
-
-    const data = await res.json();
-    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    // Bersihkan pembungkus markdown jika ada
-    let cleaned = rawContent.trim();
-    if (cleaned.startsWith("```json")) {
-      cleaned = cleaned.replace(/^```json\s*/i, "").replace(/```\s*$/, "");
-    } else if (cleaned.startsWith("```")) {
-      cleaned = cleaned.replace(/^```\s*/, "").replace(/```\s*$/, "");
-    }
-
-    const parsed = JSON.parse(cleaned);
-
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.map((item: any, idx: number) => ({
-        id: `ai-${Date.now()}-${idx}`,
-        hari_ke: Number(item.hari_ke) || 1,
-        jam_mulai: String(item.jam_mulai || "08:00").trim(),
-        jam_selesai: String(item.jam_selesai || "09:00").trim(),
-        judul_acara: String(item.judul_acara || "Agenda Wisata").trim(),
-        keterangan: String(item.keterangan || "").trim(),
-      }));
-    }
-
-    // Jika hasil parsing JSON bukan array valid, fallback ke regex
-    return extractRundownWithRegexFallback(trimmed);
-  } catch (err: any) {
-    console.warn("Kesalahan parsing AI, mencoba fallback lokal:", err);
-    const fallback = extractRundownWithRegexFallback(trimmed);
-    if (fallback.length > 0) return fallback;
-    throw new Error("Gagal merangkum jadwal dari dokumen: " + (err.message || "Format tidak sesuai"));
-  }
+  return items;
 }
 
 /**

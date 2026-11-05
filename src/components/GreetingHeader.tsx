@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar, Sparkles, MapPin } from "lucide-react";
+import { Calendar, MapPin } from "lucide-react";
 import { getInstantDestinationPhoto } from "@/utils/destinationPhotoFinder";
 
 interface GreetingHeaderProps {

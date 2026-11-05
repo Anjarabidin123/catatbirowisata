@@ -1,4 +1,4 @@
-import { getLocalBiroProfile } from "./biroProfile";
+﻿import { getLocalBiroProfile } from "./biroProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "./authHelper";
 
@@ -237,9 +237,9 @@ export const DEFAULT_RBAC_RULES: RBACPermissionRule[] = [
   },
   {
     id: "rule_pengaturan_biro",
-    modul: "Profil Biro, Rekening Bank & Kunci API AI",
-    fitur: "Mengubah identitas biro, nomor rekening bank & konfigurasi Google Gemini AI",
-    deskripsi: "Pengaturan sensitif perusahaan agar nomor rekening tagihan dan API Key tidak diubah oleh kru lapangan.",
+    modul: "Profil Biro & Rekening Bank",
+    fitur: "Mengubah identitas biro & nomor rekening bank",
+    deskripsi: "Pengaturan sensitif perusahaan agar nomor rekening tagihan tidak diubah sembarangan.",
     aksesPemilik: true,
     aksesKru: false,
     keteranganKru: "Diblokir (Halaman Terkunci RBAC)",

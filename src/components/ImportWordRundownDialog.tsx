@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -236,7 +236,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
             <span>Import Rundown dari Dokumen Word (.docx)</span>
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Upload file Word atau tempel teks itinerary. AI akan otomatis membaca, merapikan format jam, dan memasukkannya ke jadwal trip tanpa perlu input satu per satu.
+            Upload file Word atau tempel teks itinerary. Sistem akan otomatis membaca, merapikan format jam, dan memasukkannya ke jadwal trip tanpa perlu input satu per satu.
           </DialogDescription>
         </DialogHeader>
 
@@ -346,7 +346,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                   className="min-h-[140px] text-xs font-mono rounded-lg border-slate-300 dark:border-slate-700"
                 />
                 <p className="text-[11px] text-slate-500">
-                  Format bebas (tabel Word, poin-poin, atau teks biasa). AI akan memisahkan jam, acara, dan keterangan secara otomatis.
+                  Format bebas (tabel Word, poin-poin, atau teks biasa). Sistem akan memisahkan jam, acara, dan keterangan secara otomatis.
                 </p>
               </div>
             )}
@@ -371,7 +371,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                 ) : (
                   <>
                     <FileText className="w-4 h-4" />
-                    <span>Rangkum Jadwal dengan AI</span>
+                    <span>Baca & Susun Jadwal</span>
                   </>
                 )}
               </Button>

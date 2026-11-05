@@ -9,7 +9,7 @@ import {
   Map,
   Settings,
   LogOut,
-  Sparkles,
+
   ShieldCheck,
   UserCheck,
   ArrowRightLeft,

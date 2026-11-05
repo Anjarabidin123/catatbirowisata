@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
@@ -173,47 +173,9 @@ const NewTrip = () => {
                     <Label htmlFor="tujuan" className="flex items-center gap-2">
                       Tujuan <span className="text-destructive">*</span>
                     </Label>
-                    <span className="text-[10px] text-muted-foreground">Pilih atau ketik rute</span>
+
                   </div>
                   <div className="mt-1 space-y-1.5">
-                    <select
-                      value={formData.tujuan}
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          setFormData({ ...formData, tujuan: e.target.value });
-                        }
-                      }}
-                      className="w-full h-9 rounded-xl border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                      <option value="">-- Rekomendasi Destinasi / Rute Populer --</option>
-                      <optgroup label="Jawa Tengah & DIY">
-                        <option value="Yogyakarta">Yogyakarta (Malioboro, Candi, Pantai)</option>
-                        <option value="Semarang">Semarang (Kota Lama, Lawang Sewu, Sam Poo Kong)</option>
-                        <option value="Magelang">Magelang (Candi Borobudur, Nepal Van Java)</option>
-                        <option value="Solo / Surakarta">Solo / Surakarta (Keraton, Pasar Klewer)</option>
-                        <option value="Dieng / Wonosobo">Dieng / Wonosobo (Sikunir, Telaga Warna)</option>
-                        <option value="Demak & Kudus">Demak & Kudus (Wisata Religi & Ziarah)</option>
-                        <option value="Karanganyar">Karanganyar (Tawangmangu, Kemuning, Candi Cetho)</option>
-                      </optgroup>
-                      <optgroup label="Jawa Barat, Jakarta & Banten">
-                        <option value="Bandung">Bandung (Lembang, Ciwidey, Kawah Putih)</option>
-                        <option value="Puncak & Bogor">Puncak & Bogor (Kebun Teh, Taman Safari)</option>
-                        <option value="Jakarta">Jakarta (Ancol, Monas, TMII, Kota Tua)</option>
-                        <option value="Pangandaran">Pangandaran (Pantai & Green Canyon)</option>
-                      </optgroup>
-                      <optgroup label="Jawa Timur">
-                        <option value="Bromo & Malang">Bromo & Malang (Sunrise Bromo, Jatim Park)</option>
-                        <option value="Batu Malang">Batu Malang (Museum Angkut, Selecta)</option>
-                        <option value="Surabaya">Surabaya (Wisata Sejarah & Kuliner)</option>
-                        <option value="Banyuwangi">Banyuwangi (Kawah Ijen, Baluran)</option>
-                        <option value="Pacitan">Pacitan (Pantai Klayar, Goa Gong)</option>
-                      </optgroup>
-                      <optgroup label="Bali & Luar Jawa">
-                        <option value="Bali">Bali (Kuta, Bedugul, Kintamani, Tanah Lot)</option>
-                        <option value="Lombok">Lombok (Gili Trawangan, Mandalika)</option>
-                        <option value="Lampung">Lampung (Pahawang, Kiluan)</option>
-                      </optgroup>
-                    </select>
                     <Input
                       id="tujuan"
                       value={formData.tujuan}

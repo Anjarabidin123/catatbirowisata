@@ -1,5 +1,6 @@
 import type jsPDF from "jspdf";
 import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { savePdf } from "./pdfSaver";
 
 export interface RundownItem {
   hari_ke?: number;
@@ -577,7 +578,7 @@ export const generateRundownPDF = async (
     const cleanTitle = (tripTitle || "Trip").replace(/[^a-zA-Z0-9_-]/g, "_");
     const safeDate = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const fileName = `Rundown_${cleanTitle}_${safeDate}.pdf`;
-    doc.save(fileName);
+    await savePdf(doc, fileName);
   }
 
   return doc;

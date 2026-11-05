@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthGuard from "@/components/AuthGuard";
 import BottomNav from "@/components/BottomNav";
@@ -219,7 +219,7 @@ const ImportWordRundown: React.FC = () => {
                   Import Rundown dari Dokumen Word (.docx)
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Upload file Word atau tempel naskah itinerary. AI akan merangkum dan memasukkan seluruh jadwal ke sistem.
+                  Upload file Word atau tempel naskah itinerary. Sistem akan membaca dan memasukkan seluruh jadwal ke sistem.
                 </p>
               </div>
             </div>
@@ -315,7 +315,7 @@ const ImportWordRundown: React.FC = () => {
                         Klik untuk memilih dokumen Word (.docx)
                       </p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Format tabel Word atau naskah rundown akan dirangkum otomatis oleh AI
+                        Format tabel Word atau naskah rundown akan dibaca otomatis oleh sistem
                       </p>
                     </div>
                   </div>
@@ -352,7 +352,7 @@ const ImportWordRundown: React.FC = () => {
                 ) : (
                   <>
                     <FileText className="w-4 h-4" />
-                    <span>Rangkum Dokumen dengan AI</span>
+                    <span>Baca & Susun Jadwal</span>
                   </>
                 )}
               </Button>

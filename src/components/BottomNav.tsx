@@ -1,4 +1,4 @@
-import { Home, Bus, Wallet, FileText, StickyNote, Users, Sparkles } from "lucide-react";
+import { Home, Bus, Wallet, FileText, StickyNote, Users } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
 

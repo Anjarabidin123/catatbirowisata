@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import Index from "./pages/Index";
@@ -27,7 +27,6 @@ const NotesNew = lazy(() => import("./pages/NotesNew"));
 const ImportWordRundown = lazy(() => import("./pages/ImportWordRundown"));
 const PengaturanBiro = lazy(() => import("./pages/PengaturanBiro"));
 const ManajemenKruRBAC = lazy(() => import("./pages/ManajemenKruRBAC"));
-const AsistenAI = lazy(() => import("./pages/AsistenAI"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const LoadingFallback = () => (
@@ -93,7 +92,7 @@ const App = () => {
                 <Route path="/keuangan/new" element={<NewKeuangan />} />
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/import-rundown" element={<ImportWordRundown />} />
-                <Route path="/asisten-ai" element={<AsistenAI />} />
+                <Route path="/asisten-ai" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/pengaturan" element={<PengaturanBiro />} />
                 <Route path="/pengaturan-biro" element={<PengaturanBiro />} />
                 <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
