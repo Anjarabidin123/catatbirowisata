@@ -247,7 +247,7 @@ const Keuangan = () => {
                     <div className="flex items-center gap-2">
                       <Wallet className="w-4 h-4 text-emerald-600" />
                       <h2 className="text-sm font-extrabold">
-                        Posko Uang Saku TL (Petty Cash Per Trip)
+                        Posko Kas Lapangan (Petty Cash Per Trip)
                       </h2>
                     </div>
                     <Select value={selectedKruTripId} onValueChange={setSelectedKruTripId}>

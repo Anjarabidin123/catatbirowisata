@@ -61,7 +61,7 @@ export interface BiroCmsData {
 
 const STORAGE_KEY = "catatbiro_cms_data_v1";
 
-const DEFAULT_CMS_DATA: BiroCmsData = {
+export const DEFAULT_CMS_DATA: BiroCmsData = {
   dokumen: {
     formatNomorSurat: "CBW/KEU/{YYYY}/{MM}/{NO}",
     footerTeksLaporan: "Dokumen resmi dan sah diterbitkan melalui Sistem Informasi Catat Biro Wisata.",
@@ -71,18 +71,18 @@ const DEFAULT_CMS_DATA: BiroCmsData = {
     tampilkanStempelDigital: true,
   },
   kategoriKeuangan: [
-    { id: "kat-in-1", nama: "Pelunasan Paket Wisata", jenis: "pemasukan", deskripsi: "Pembayaran lunas dari instansi/sekolah", isDefault: true },
-    { id: "kat-in-2", nama: "Uang Muka (DP) Rombongan", jenis: "pemasukan", deskripsi: "DP booking tanggal trip", isDefault: true },
-    { id: "kat-in-3", nama: "Sewa Bus Lepas / Carter", jenis: "pemasukan", deskripsi: "Pendapatan sewa armada saja", isDefault: true },
-    { id: "kat-in-4", nama: "Cashback & Komisi Vendor", jenis: "pemasukan", deskripsi: "Cashback resto, oleh-oleh, atau SPBU", isDefault: true },
-    { id: "kat-out-1", nama: "Bahan Bakar & Solar Bus", jenis: "pengeluaran", deskripsi: "BBM perjalanan armada", isDefault: true },
-    { id: "kat-out-2", nama: "Saldo Tol & Parkir", jenis: "pengeluaran", deskripsi: "E-Toll dan retribusi parkir wisata", isDefault: true },
-    { id: "kat-out-3", nama: "Prasmanan & Restoran", jenis: "pengeluaran", deskripsi: "Makan siang/malam rombongan", isDefault: true },
-    { id: "kat-out-4", nama: "Snack Box & Air Mineral", jenis: "pengeluaran", deskripsi: "Logistik konsumsi perjalanan", isDefault: true },
-    { id: "kat-out-5", nama: "Tiket Masuk & Shuttle Wisata", jenis: "pengeluaran", deskripsi: "HTM objek wisata, jeep, atau kapal", isDefault: true },
-    { id: "kat-out-6", nama: "Honor Sopir & Kru Armada", jenis: "pengeluaran", deskripsi: "Fee driver dan co-driver", isDefault: true },
-    { id: "kat-out-7", nama: "Honor Tour Leader & Pendamping", jenis: "pengeluaran", deskripsi: "Fee TL dan koordinator lapangan", isDefault: true },
-    { id: "kat-out-8", nama: "Operasional Darurat & P3K", jenis: "pengeluaran", deskripsi: "Banner, obat-obatan, dan insidental", isDefault: true },
+    { id: "kat-in-1", nama: "Pelunasan Paket Wisata", jenis: "pemasukan", deskripsi: "Pembayaran lunas dari instansi/sekolah" },
+    { id: "kat-in-2", nama: "Uang Muka (DP) Rombongan", jenis: "pemasukan", deskripsi: "DP booking tanggal trip" },
+    { id: "kat-in-3", nama: "Sewa Bus Lepas / Carter", jenis: "pemasukan", deskripsi: "Pendapatan sewa armada saja" },
+    { id: "kat-in-4", nama: "Cashback & Komisi Vendor", jenis: "pemasukan", deskripsi: "Cashback resto, oleh-oleh, atau SPBU" },
+    { id: "kat-out-1", nama: "Bahan Bakar & Solar Bus", jenis: "pengeluaran", deskripsi: "BBM perjalanan armada" },
+    { id: "kat-out-2", nama: "Saldo Tol & Parkir", jenis: "pengeluaran", deskripsi: "E-Toll dan retribusi parkir wisata" },
+    { id: "kat-out-3", nama: "Prasmanan & Restoran", jenis: "pengeluaran", deskripsi: "Makan siang/malam rombongan" },
+    { id: "kat-out-4", nama: "Snack Box & Air Mineral", jenis: "pengeluaran", deskripsi: "Logistik konsumsi perjalanan" },
+    { id: "kat-out-5", nama: "Tiket Masuk & Shuttle Wisata", jenis: "pengeluaran", deskripsi: "HTM objek wisata, jeep, atau kapal" },
+    { id: "kat-out-6", nama: "Honor Sopir & Kru Armada", jenis: "pengeluaran", deskripsi: "Fee driver dan co-driver" },
+    { id: "kat-out-7", nama: "Honor Kru & Tim Lapangan", jenis: "pengeluaran", deskripsi: "Fee pendamping lapangan dan logistik" },
+    { id: "kat-out-8", nama: "Operasional Darurat & P3K", jenis: "pengeluaran", deskripsi: "Banner, obat-obatan, dan insidental" },
   ],
   rekananBus: [
     {
@@ -142,11 +142,11 @@ const DEFAULT_CMS_DATA: BiroCmsData = {
   rekananGuide: [
     {
       id: "guide-1",
-      nama: "Komunitas Jeep Bromo Tengger",
+      nama: "Paguyuban Jeep Bromo Semeru",
       destinasi: "Gunung Bromo & Penanjakan",
-      telepon: "0812-3344-5566",
+      telepon: "0821-3344-5566",
       tarifStandar: 650000,
-      catatan: "Hardtop 4x4 kapasitas 6 pax, termasuk sunrise point",
+      catatan: "Sewa Hardtop 4x4 PP Sunrise & Pasir Berbisik",
     },
     {
       id: "guide-2",
@@ -178,11 +178,17 @@ export function getBiroCmsData(): BiroCmsData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const rawCategories = parsed.kategoriKeuangan || DEFAULT_CMS_DATA.kategoriKeuangan;
+      // Bersihkan kategori Tour Leader lama dan normalkan flag isDefault agar semuanya dapat dihapus
+      const sanitizedCategories = rawCategories
+        .filter((k: any) => !k.nama.toLowerCase().includes("tour leader"))
+        .map((k: any) => ({ ...k, isDefault: false }));
+
       memoryCmsCache = {
         ...DEFAULT_CMS_DATA,
         ...parsed,
         dokumen: { ...DEFAULT_CMS_DATA.dokumen, ...(parsed.dokumen || {}) },
-        kategoriKeuangan: parsed.kategoriKeuangan || DEFAULT_CMS_DATA.kategoriKeuangan,
+        kategoriKeuangan: sanitizedCategories,
         rekananBus: parsed.rekananBus || DEFAULT_CMS_DATA.rekananBus,
         rekananResto: parsed.rekananResto || DEFAULT_CMS_DATA.rekananResto,
         rekananGuide: parsed.rekananGuide || DEFAULT_CMS_DATA.rekananGuide,
@@ -217,4 +223,8 @@ export function saveBiroCmsData(newData: Partial<BiroCmsData>): BiroCmsData {
   }
 
   return updated;
+}
+
+export function resetDefaultKategoriKeuangan(): BiroCmsData {
+  return saveBiroCmsData({ kategoriKeuangan: DEFAULT_CMS_DATA.kategoriKeuangan });
 }

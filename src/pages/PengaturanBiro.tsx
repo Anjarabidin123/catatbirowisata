@@ -42,6 +42,7 @@ import {
   Settings,
   HelpCircle,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import {
   getLocalBiroProfile,
@@ -52,6 +53,7 @@ import {
 import {
   getBiroCmsData,
   saveBiroCmsData,
+  resetDefaultKategoriKeuangan,
   BiroCmsData,
   CmsKategoriItem,
   RekananBus,
@@ -706,6 +708,22 @@ const PengaturanBiro = () => {
             ========================================================= */}
             {activeTab === "kategori" && (
               <div className="space-y-4">
+                {/* Banner Penjelasan Alur Integrasi Kategori */}
+                <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-100 flex items-start gap-3 shadow-2xs">
+                  <Wallet className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-sm text-blue-950 dark:text-blue-100">
+                      💡 Di mana kategori ini digunakan?
+                    </p>
+                    <p className="text-xs text-blue-800/90 dark:text-blue-200 leading-relaxed">
+                      Setiap pos pengeluaran dan pos pemasukan di bawah ini otomatis terhubung sebagai{" "}
+                      <strong>tombol pilihan cepat</strong> saat Anda atau kru mencatat kas di menu{" "}
+                      <strong>Keuangan (+ Tambah Transaksi)</strong>, <strong>Posko Kas Lapangan (Petty Cash)</strong>, dan{" "}
+                      <strong>Buku Kas Trip</strong>. Anda bebas menghapus atau menambahkan pos sesuai sistem akuntansi biro Anda.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -713,18 +731,37 @@ const PengaturanBiro = () => {
                       <span>Manajemen Kategori Keuangan (Dinamis & Bebas Diatur)</span>
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Tambahkan pos pengeluaran dan pos pemasukan kustom yang sesuai dengan alur operasional biro Anda.
+                      Kelola pos pengeluaran dan pos pemasukan kustom yang sesuai dengan alur operasional biro Anda.
                     </p>
                   </div>
 
-                  <Button
-                    size="sm"
-                    onClick={() => setShowAddKatModal(true)}
-                    className="h-9 px-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-xs"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Tambah Kategori Baru</span>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (window.confirm("Kembalikan daftar kategori kas ke pilihan standar biro?")) {
+                          const reset = resetDefaultKategoriKeuangan();
+                          setCmsData(reset);
+                          toast.success("Daftar kategori berhasil direset ke standar.");
+                        }
+                      }}
+                      className="h-9 px-3 rounded-xl text-xs font-semibold gap-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                      title="Kembalikan ke kategori default biro"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Reset Standar</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAddKatModal(true)}
+                      className="h-9 px-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-xs"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Tambah Kategori Baru</span>
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -745,27 +782,25 @@ const PengaturanBiro = () => {
                         .map((kat) => (
                           <div
                             key={kat.id}
-                            className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-2"
+                            className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-2 hover:bg-slate-100/60 dark:hover:bg-slate-800/70 transition-colors"
                           >
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                                 {kat.nama}
                               </div>
                               {kat.deskripsi && (
-                                <p className="text-[10px] text-slate-500">{kat.deskripsi}</p>
+                                <p className="text-[10px] text-slate-500 truncate">{kat.deskripsi}</p>
                               )}
                             </div>
 
-                            {!kat.isDefault && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteKategori(kat.id, kat.nama)}
-                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                                title="Hapus kategori kustom"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteKategori(kat.id, kat.nama)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg transition-colors cursor-pointer flex-shrink-0"
+                              title={`Hapus kategori "${kat.nama}"`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         ))}
                     </div>
@@ -788,27 +823,25 @@ const PengaturanBiro = () => {
                         .map((kat) => (
                           <div
                             key={kat.id}
-                            className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-2"
+                            className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-2 hover:bg-slate-100/60 dark:hover:bg-slate-800/70 transition-colors"
                           >
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                                 {kat.nama}
                               </div>
                               {kat.deskripsi && (
-                                <p className="text-[10px] text-slate-500">{kat.deskripsi}</p>
+                                <p className="text-[10px] text-slate-500 truncate">{kat.deskripsi}</p>
                               )}
                             </div>
 
-                            {!kat.isDefault && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteKategori(kat.id, kat.nama)}
-                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                                title="Hapus kategori kustom"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteKategori(kat.id, kat.nama)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg transition-colors cursor-pointer flex-shrink-0"
+                              title={`Hapus kategori "${kat.nama}"`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         ))}
                     </div>

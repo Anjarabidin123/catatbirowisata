@@ -1,21 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Wallet,
   Plus,
   Trash2,
-  ArrowUpRight,
   RefreshCw,
-  Fuel,
-  CreditCard,
-  Coffee,
-  Coins,
-  CheckCircle2,
-  AlertCircle,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RupiahInput } from "@/components/RupiahInput";
@@ -23,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import { logCrewActivity } from "@/utils/rbacAuditLogger";
 import { useRole } from "@/contexts/RoleContext";
+import { getBiroCmsData } from "@/utils/biroCmsStore";
 
 interface PettyCashItem {
   id: string;
@@ -38,14 +32,6 @@ interface PettyCashTrackerProps {
   tripName?: string;
 }
 
-const CATEGORIES = [
-  { label: "BBM / Solar", icon: Fuel, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/40" },
-  { label: "Tol & Parkir", icon: CreditCard, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/40" },
-  { label: "Tips Driver / Kernet", icon: Coins, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40" },
-  { label: "Aqua & Snack Peserta", icon: Coffee, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/40" },
-  { label: "Lain-lain", icon: Wallet, color: "text-slate-600 bg-slate-50 dark:bg-slate-800" },
-];
-
 export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
   tripId,
   tripName,
@@ -54,6 +40,23 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
   const canUsePettyCash = hasPermission("rule_petty_cash");
   const storageKey = `petty_cash_data_${tripId}`;
   const loadedTripRef = React.useRef<string | null>(null);
+
+  // Kategori Dinamis dari CMS Biro
+  const cmsExpenseCategories = useMemo(() => {
+    const cms = getBiroCmsData();
+    const list = cms.kategoriKeuangan.filter((k) => k.jenis === "pengeluaran");
+    if (list.length > 0) return list.map((k) => k.nama);
+    return [
+      "Bahan Bakar & Solar Bus",
+      "Saldo Tol & Parkir",
+      "Prasmanan & Restoran",
+      "Snack Box & Air Mineral",
+      "Tiket Masuk & Shuttle Wisata",
+      "Honor Sopir & Kru Armada",
+      "Honor Kru & Tim Lapangan",
+      "Operasional Darurat & P3K",
+    ];
+  }, []);
 
   const [modalAwal, setModalAwal] = useState<number>(() => {
     try {
@@ -76,9 +79,16 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
   });
 
   const [newItemKet, setNewItemKet] = useState("");
-  const [newItemKategori, setNewItemKategori] = useState(CATEGORIES[0].label);
+  const [newItemKategori, setNewItemKategori] = useState(() => cmsExpenseCategories[0] || "Bahan Bakar & Solar Bus");
   const [newItemJumlah, setNewItemJumlah] = useState<number>(0);
   const [syncing, setSyncing] = useState(false);
+
+  // Sinkronisasi kategori default jika CMS berubah
+  useEffect(() => {
+    if (cmsExpenseCategories.length > 0 && !cmsExpenseCategories.includes(newItemKategori)) {
+      setNewItemKategori(cmsExpenseCategories[0]);
+    }
+  }, [cmsExpenseCategories, newItemKategori]);
 
   // Muat data saat tripId berubah
   useEffect(() => {
@@ -191,7 +201,7 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
       const inserts = unsyncedItems.map((it) => ({
         trip_id: tripId,
         user_id: user.id,
-        keterangan: `[PETTY CASH TL] ${it.kategori}: ${it.keterangan}`,
+        keterangan: `[${it.kategori}] ${it.keterangan}`,
         jumlah: it.jumlah,
         jenis: "pengeluaran",
       }));
@@ -229,7 +239,7 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Kartu Ringkasan Uang Saku TL */}
+      {/* Kartu Ringkasan Uang Saku Operasional */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Modal Kas Awal */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
@@ -260,7 +270,7 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
         {/* Sisa Kas di Tangan */}
         <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-900/50 flex flex-col justify-between">
           <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-            Sisa Kas di Tangan TL
+            Sisa Kas di Tangan Kru
           </span>
           <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1">
             {formatRupiah(sisaKasDiTangan)}
@@ -275,28 +285,27 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
       <Card className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800">
         <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-2.5 flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5 text-blue-600" />
-          <span>Tambah Pengeluaran Lapangan</span>
+          <span>Tambah Pengeluaran Lapangan (Kategori CMS Biro)</span>
         </h4>
 
         <div className="space-y-3">
-          {/* Pilihan Kategori */}
+          {/* Pilihan Kategori dari CMS Biro */}
           <div className="flex flex-wrap gap-1.5">
-            {CATEGORIES.map((cat) => {
-              const Icon = cat.icon;
-              const isSelected = newItemKategori === cat.label;
+            {cmsExpenseCategories.map((catLabel) => {
+              const isSelected = newItemKategori === catLabel;
               return (
                 <button
-                  key={cat.label}
+                  key={catLabel}
                   type="button"
-                  onClick={() => setNewItemKategori(cat.label)}
+                  onClick={() => setNewItemKategori(catLabel)}
                   className={`text-[11px] font-semibold px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all ${
                     isSelected
                       ? "bg-blue-600 text-white shadow-xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
-                  <Icon className="w-3 h-3" />
-                  <span>{cat.label}</span>
+                  <Tag className="w-3 h-3" />
+                  <span>{catLabel}</span>
                 </button>
               );
             })}
@@ -307,7 +316,7 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
               <Input
                 value={newItemKet}
                 onChange={(e) => setNewItemKet(e.target.value)}
-                placeholder="Keterangan (contoh: Solar SPBU KM 260)"
+                placeholder="Rincian (contoh: Solar SPBU Batang / Snack 45 pax)"
                 className="h-9 text-xs rounded-xl"
               />
             </div>
@@ -336,7 +345,7 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-            Daftar Pengeluaran TL ({items.length})
+            Daftar Pengeluaran Lapangan ({items.length})
           </span>
 
           <Button
@@ -375,7 +384,7 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
                       </Badge>
                     ) : (
                       <Badge className="h-4 text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 hover:bg-amber-100 border-none font-bold">
-                        Lokal TL
+                        Lokal Kru
                       </Badge>
                     )}
                   </div>

@@ -15,6 +15,7 @@ import { RupiahInput } from "./RupiahInput";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { logCrewActivity } from "@/utils/rbacAuditLogger";
+import { getBiroCmsData } from "@/utils/biroCmsStore";
 
 interface FinancialItem {
   id: string;
@@ -54,6 +55,24 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
   const [hargaSatuan, setHargaSatuan] = useState("");
   const [jumlahItem, setJumlahItem] = useState("");
   const [useCalculator, setUseCalculator] = useState(false);
+
+  const cmsCategories = useMemo(() => {
+    const cms = getBiroCmsData();
+    return cms.kategoriKeuangan.filter((k) => k.jenis === jenis);
+  }, [jenis]);
+
+  const handleSelectCategory = (katName: string) => {
+    if (!keterangan.trim()) {
+      setKeterangan(`[${katName}] `);
+      return;
+    }
+    const regex = /^\[.*?\]\s*/;
+    if (regex.test(keterangan)) {
+      setKeterangan(keterangan.replace(regex, `[${katName}] `));
+    } else {
+      setKeterangan(`[${katName}] ${keterangan}`);
+    }
+  };
 
   useEffect(() => {
     loadFinancialData();
@@ -486,6 +505,23 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
             </div>
 
             <div>
+              {cmsCategories.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  <Label className="text-xs font-semibold text-slate-500">Pilihan Cepat Pos Kategori (CMS):</Label>
+                  <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                    {cmsCategories.map((kat) => (
+                      <button
+                        key={kat.id}
+                        type="button"
+                        onClick={() => handleSelectCategory(kat.nama)}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 transition-colors"
+                      >
+                        {kat.nama}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Label className="text-sm">Keterangan</Label>
               <Textarea
                 value={keterangan}
