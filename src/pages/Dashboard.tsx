@@ -38,6 +38,7 @@ import { NotificationPermission } from "@/components/NotificationPermission";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { SystemBroadcastBanner } from "@/components/SystemBroadcastBanner";
 
 interface Trip {
   id: string;
@@ -416,6 +417,11 @@ const Dashboard = () => {
       <NotificationPermission />
 
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-12 safe-top lg:pl-64">
+        {/* Global System Broadcast & Maintenance Banner */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-3">
+          <SystemBroadcastBanner />
+        </div>
+
         {/* ========================================================
             TAMPILAN MOBILE (< lg) - Cepat, Ringkas, Ramah Lapangan
             ======================================================== */}

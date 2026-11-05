@@ -68,6 +68,14 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({
         return "Penagihan & Invoicing";
       case "websites":
         return "Web Promosi & VPS";
+      case "broadcasts":
+        return "Pusat Broadcast Pengumuman Global";
+      case "tickets":
+        return "Pusat Tiket Bantuan & Kendala";
+      case "backups":
+        return "Backup & Ekspor Basis Data Global";
+      case "settings":
+        return "Pusat Konfigurasi Platform SaaS";
       case "database":
         return "Database & SQL Manager";
       case "sandbox":

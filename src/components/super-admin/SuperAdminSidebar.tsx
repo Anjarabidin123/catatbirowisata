@@ -14,11 +14,11 @@ import {
   ShieldAlert,
   Crown,
   ArrowLeft,
-  Server,
-  Zap,
-  Activity,
-  Layers,
   X,
+  Megaphone,
+  LifeBuoy,
+  HardDrive,
+  SlidersHorizontal,
 } from "lucide-react";
 import { SUPER_ADMIN_EMAIL } from "@/utils/licenseEntitlement";
 
@@ -39,6 +39,8 @@ interface SuperAdminSidebarProps {
   tenantsCount: number;
   devicesCount: number;
   auditCount: number;
+  broadcastsCount?: number;
+  ticketsCount?: number;
   className?: string;
   onClose?: () => void;
 }
@@ -49,6 +51,8 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
   tenantsCount,
   devicesCount,
   auditCount,
+  broadcastsCount,
+  ticketsCount,
   className = "",
   onClose,
 }) => {
@@ -79,6 +83,25 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
           icon: Sliders,
           badge: "/agy-customizations",
           badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
+        },
+      ],
+    },
+    {
+      title: "Komunikasi & Layanan",
+      items: [
+        {
+          key: "broadcasts",
+          label: "Broadcast Global",
+          icon: Megaphone,
+          badge: broadcastsCount !== undefined && broadcastsCount > 0 ? `${broadcastsCount}` : undefined,
+          badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
+        },
+        {
+          key: "tickets",
+          label: "Pusat Tiket Bantuan",
+          icon: LifeBuoy,
+          badge: ticketsCount !== undefined && ticketsCount > 0 ? `${ticketsCount}` : undefined,
+          badgeColor: "bg-rose-50 text-rose-700 border-rose-200",
         },
       ],
     },
@@ -121,8 +144,20 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
       ],
     },
     {
-      title: "Sistem & Pengujian",
+      title: "Sistem & Konfigurasi",
       items: [
+        {
+          key: "backups",
+          label: "Backup & Ekspor Global",
+          icon: HardDrive,
+          badge: "1-Klik",
+          badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        },
+        {
+          key: "settings",
+          label: "Konfigurasi Platform",
+          icon: SlidersHorizontal,
+        },
         {
           key: "database",
           label: "Database & SQL Manager",
@@ -142,9 +177,11 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
   ];
 
   return (
-    <aside className={`w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 min-h-screen text-slate-700 select-none ${className}`}>
-      {/* Brand & Console Title */}
-      <div className="p-4 border-b border-slate-200 bg-slate-50">
+    <aside
+      className={`w-64 bg-white border-r-2 border-slate-300 flex flex-col flex-shrink-0 min-h-screen text-slate-700 select-none ${className}`}
+    >
+      {/* Brand & Console Title (Clean Solid 2px Border) */}
+      <div className="p-4 border-b-2 border-slate-200 bg-slate-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 flex-shrink-0">
@@ -174,8 +211,8 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
           )}
         </div>
 
-        {/* Master User Card */}
-        <div className="mt-3 p-2 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center gap-2.5">
+        {/* Master User Card (Clean Solid 2px Border) */}
+        <div className="mt-3 p-2 rounded-xl bg-white border-2 border-slate-200 shadow-xs flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">
             NA
           </div>
@@ -193,7 +230,7 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
       <nav className="flex-1 overflow-y-auto p-3 space-y-5 text-xs">
         {navGroups.map((group, idx) => (
           <div key={idx} className="space-y-1">
-            <div className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="px-3 text-[11px] font-black uppercase tracking-wider text-slate-800">
               {group.title}
             </div>
             <div className="space-y-0.5">
@@ -205,16 +242,16 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
                     key={item.key}
                     type="button"
                     onClick={() => onSelectView(item.key)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left font-medium transition-all ${
+                    className={`group w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all ${
                       isActive
-                        ? "bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold shadow-xs"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                        ? "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/20"
+                        : "text-slate-700 font-semibold hover:bg-slate-100 hover:text-slate-900"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <IconComponent
                         className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-indigo-600" : "text-slate-500"
+                          isActive ? "text-white" : "text-slate-600 group-hover:text-slate-900"
                         }`}
                       />
                       <span className="truncate">{item.label}</span>
@@ -222,8 +259,10 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
 
                     {item.badge && (
                       <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium border ${
-                          item.badgeColor || "bg-slate-100 text-slate-700 border-slate-200"
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-mono border ${
+                          isActive
+                            ? "bg-white/20 text-white border-white/30 font-bold"
+                            : item.badgeColor || "bg-slate-100 text-slate-700 border-slate-200 font-medium"
                         }`}
                       >
                         {item.badge}
@@ -238,10 +277,10 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
       </nav>
 
       {/* Bottom Footer: Back to Client App */}
-      <div className="p-3 border-t border-slate-200 bg-slate-50 space-y-2">
+      <div className="p-3 border-t-2 border-slate-200 bg-slate-50 space-y-2">
         <Link
           to="/dashboard"
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-xs transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-2 border-slate-200 shadow-xs transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
           Ke Aplikasi Biro (Client App)

@@ -45,7 +45,9 @@ import {
   HelpCircle,
   ExternalLink,
   RefreshCw,
+  LifeBuoy,
 } from "lucide-react";
+import { CreateSupportTicketModal } from "@/components/CreateSupportTicketModal";
 import {
   getLocalBiroProfile,
   saveBiroProfile,
@@ -69,6 +71,9 @@ import { isSuperAdminUser } from "@/utils/licenseEntitlement";
 const PengaturanBiro = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"identitas" | "dokumen" | "kategori" | "rekanan">("identitas");
+
+  // State Modal Bantuan / Tiket
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   // State Profil Biro
   const [profile, setProfile] = useState<BiroProfile>(getLocalBiroProfile());
@@ -276,7 +281,17 @@ const PengaturanBiro = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                <Button
+                  type="button"
+                  onClick={() => setShowSupportModal(true)}
+                  variant="outline"
+                  className="h-9 px-3 text-xs font-semibold rounded-xl border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 gap-1.5 shadow-xs"
+                >
+                  <LifeBuoy className="w-4 h-4 text-indigo-600" />
+                  <span>Laporkan Kendala / Bantuan</span>
+                </Button>
+
                 <Button
                   type="button"
                   onClick={() => navigate("/manajemen-kru")}
@@ -1284,6 +1299,13 @@ const PengaturanBiro = () => {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Modal Laporkan Kendala / Bantuan Teknis */}
+        <CreateSupportTicketModal
+          open={showSupportModal}
+          onOpenChange={setShowSupportModal}
+          profile={profile}
+        />
       </RBACOwnerGuard>
     </AuthGuard>
   );

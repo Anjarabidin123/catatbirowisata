@@ -11,6 +11,8 @@ interface SuperAdminLayoutProps {
   tenants: TenantRecord[];
   devicesCount: number;
   auditCount: number;
+  broadcastsCount?: number;
+  ticketsCount?: number;
   onRefresh: () => void;
   onOpenAddTenant?: () => void;
   children: React.ReactNode;
@@ -22,6 +24,8 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
   tenants,
   devicesCount,
   auditCount,
+  broadcastsCount,
+  ticketsCount,
   onRefresh,
   onOpenAddTenant,
   children,
@@ -43,6 +47,8 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
           tenantsCount={tenants.length}
           devicesCount={devicesCount}
           auditCount={auditCount}
+          broadcastsCount={broadcastsCount}
+          ticketsCount={ticketsCount}
         />
       </div>
 
@@ -60,6 +66,8 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
               tenantsCount={tenants.length}
               devicesCount={devicesCount}
               auditCount={auditCount}
+              broadcastsCount={broadcastsCount}
+              ticketsCount={ticketsCount}
               className="w-full min-h-0 h-full border-r-0"
               onClose={() => setMobileMenuOpen(false)}
             />

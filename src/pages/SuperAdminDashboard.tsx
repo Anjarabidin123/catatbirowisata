@@ -24,6 +24,12 @@ import { BillingView } from "@/components/super-admin/views/BillingView";
 import { WebsitesView } from "@/components/super-admin/views/WebsitesView";
 import { DatabaseManagerView } from "@/components/super-admin/views/DatabaseManagerView";
 import { SandboxTesterView } from "@/components/super-admin/views/SandboxTesterView";
+import { BroadcastsView } from "@/components/super-admin/views/BroadcastsView";
+import { TicketsView } from "@/components/super-admin/views/TicketsView";
+import { BackupsView } from "@/components/super-admin/views/BackupsView";
+import { PlatformSettingsView } from "@/components/super-admin/views/PlatformSettingsView";
+import { getBroadcasts, SystemBroadcast } from "@/utils/superAdminBroadcasts";
+import { getSupportTickets, SupportTicket } from "@/utils/superAdminTickets";
 import { GranularFeatureModal } from "@/components/super-admin/GranularFeatureModal";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,10 +50,14 @@ export const SuperAdminDashboard: React.FC = () => {
       "overview",
       "tenants",
       "feature_gating",
+      "broadcasts",
+      "tickets",
       "audit_logs",
       "devices",
       "billing",
       "websites",
+      "backups",
+      "settings",
       "database",
       "sandbox",
     ];
@@ -61,6 +71,8 @@ export const SuperAdminDashboard: React.FC = () => {
   const [tenants, setTenants] = useState<TenantRecord[]>(getAllTenants);
   const [auditLogs, setAuditLogs] = useState<SuperAdminAuditLog[]>(getAuditLogs);
   const [devices, setDevices] = useState<TenantDeviceSession[]>(getAllDevices);
+  const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>(getBroadcasts);
+  const [tickets, setTickets] = useState<SupportTicket[]>(getSupportTickets);
   const [isSuper, setIsSuper] = useState<boolean>(isSuperAdminUser);
 
   // Modal State
@@ -71,6 +83,8 @@ export const SuperAdminDashboard: React.FC = () => {
     setTenants(getAllTenants());
     setAuditLogs(getAuditLogs());
     setDevices(getAllDevices());
+    setBroadcasts(getBroadcasts());
+    setTickets(getSupportTickets());
     setIsSuper(isSuperAdminUser());
   };
 
@@ -80,23 +94,29 @@ export const SuperAdminDashboard: React.FC = () => {
     const handleTenantsUpdate = () => setTenants(getAllTenants());
     const handleAuditUpdate = () => setAuditLogs(getAuditLogs());
     const handleDevicesUpdate = () => setDevices(getAllDevices());
+    const handleBroadcastsUpdate = () => setBroadcasts(getBroadcasts());
+    const handleTicketsUpdate = () => setTickets(getSupportTickets());
     const handleEntitlementUpdate = () => setIsSuper(isSuperAdminUser());
 
     window.addEventListener("catatbiro-tenants-updated", handleTenantsUpdate);
     window.addEventListener("catatbiro-audit-updated", handleAuditUpdate);
     window.addEventListener("catatbiro-devices-updated", handleDevicesUpdate);
+    window.addEventListener("catatbiro-broadcasts-updated", handleBroadcastsUpdate);
+    window.addEventListener("catatbiro-tickets-updated", handleTicketsUpdate);
     window.addEventListener("catatbiro-entitlement-updated", handleEntitlementUpdate);
 
     return () => {
       window.removeEventListener("catatbiro-tenants-updated", handleTenantsUpdate);
       window.removeEventListener("catatbiro-audit-updated", handleAuditUpdate);
       window.removeEventListener("catatbiro-devices-updated", handleDevicesUpdate);
+      window.removeEventListener("catatbiro-broadcasts-updated", handleBroadcastsUpdate);
+      window.removeEventListener("catatbiro-tickets-updated", handleTicketsUpdate);
       window.removeEventListener("catatbiro-entitlement-updated", handleEntitlementUpdate);
     };
   }, []);
 
   const handleSelectView = (view: string) => {
-    setSearchParams({ view });
+    navigate(`/super-admin?view=${view}`);
   };
 
   const handleOpenFeatureModal = (tenant: TenantRecord) => {
@@ -167,6 +187,8 @@ export const SuperAdminDashboard: React.FC = () => {
       tenants={tenants}
       devicesCount={devices.length}
       auditCount={auditLogs.length}
+      broadcastsCount={broadcasts.filter((b) => b.isActive).length}
+      ticketsCount={tickets.filter((t) => t.status === "open").length}
       onRefresh={refreshAllData}
       onOpenAddTenant={() => handleSelectView("tenants")}
     >
@@ -197,6 +219,14 @@ export const SuperAdminDashboard: React.FC = () => {
         />
       )}
 
+      {currentView === "broadcasts" && (
+        <BroadcastsView onRefresh={refreshAllData} />
+      )}
+
+      {currentView === "tickets" && (
+        <TicketsView onRefresh={refreshAllData} />
+      )}
+
       {currentView === "audit_logs" && (
         <AuditLogsView logs={auditLogs} onRefresh={refreshAllData} />
       )}
@@ -211,6 +241,14 @@ export const SuperAdminDashboard: React.FC = () => {
 
       {currentView === "websites" && (
         <WebsitesView tenants={tenants} onRefresh={refreshAllData} />
+      )}
+
+      {currentView === "backups" && (
+        <BackupsView onRefresh={refreshAllData} />
+      )}
+
+      {currentView === "settings" && (
+        <PlatformSettingsView onRefresh={refreshAllData} />
       )}
 
       {currentView === "database" && (

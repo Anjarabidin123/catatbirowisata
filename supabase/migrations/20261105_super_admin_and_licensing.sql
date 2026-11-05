@@ -162,3 +162,83 @@ CREATE POLICY "Owner read own devices" ON public.tenant_registered_devices
         tenant_id IN (SELECT id FROM public.tenants WHERE user_id = auth.uid())
     );
 
+-- 8. TABEL BROADCAST PENGUMUMAN GLOBAL (SYSTEM BROADCASTS)
+CREATE TABLE IF NOT EXISTS public.system_broadcasts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'info', -- 'info', 'warning', 'success', 'urgent'
+    is_active BOOLEAN DEFAULT true,
+    target_tier VARCHAR(50) DEFAULT 'all', -- 'all', 'starter', 'pro', 'enterprise'
+    start_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    end_date TIMESTAMP WITH TIME ZONE,
+    created_by VARCHAR(255) DEFAULT 'anjarbdn@gmail.com',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 9. TABEL TIKET BANTUAN & LAPORAN KENDALA (SUPPORT TICKETS)
+CREATE TABLE IF NOT EXISTS public.support_tickets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ticket_number VARCHAR(100) UNIQUE NOT NULL,
+    tenant_id UUID REFERENCES public.tenants(id) ON DELETE SET NULL,
+    tenant_name VARCHAR(255) NOT NULL,
+    sender_name VARCHAR(255) NOT NULL,
+    sender_email VARCHAR(255) NOT NULL,
+    sender_phone VARCHAR(50),
+    subject VARCHAR(255) NOT NULL,
+    category VARCHAR(100) DEFAULT 'kendala_teknis', -- 'kendala_teknis', 'pertanyaan_lisensi', 'permintaan_fitur', 'tagihan', 'lainnya'
+    priority VARCHAR(50) DEFAULT 'medium', -- 'low', 'medium', 'high', 'urgent'
+    status VARCHAR(50) DEFAULT 'open', -- 'open', 'in_progress', 'resolved'
+    description TEXT NOT NULL,
+    admin_notes TEXT,
+    resolution_reply TEXT,
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    resolved_by VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 10. TABEL KONFIGURASI PLATFORM SAAS (SYSTEM PLATFORM SETTINGS)
+CREATE TABLE IF NOT EXISTS public.system_platform_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    platform_name VARCHAR(255) DEFAULT 'CatatBiro Wisata SaaS',
+    cs_whatsapp_number VARCHAR(50) DEFAULT '6281234567890',
+    cs_email VARCHAR(255) DEFAULT 'support@catatbiro.id',
+    docs_url TEXT DEFAULT 'https://catatbiro.id/docs',
+    youtube_tutorial_url TEXT DEFAULT 'https://youtube.com/@catatbiro',
+    emergency_maintenance_mode BOOLEAN DEFAULT false,
+    maintenance_message TEXT DEFAULT 'Sistem sedang dalam peningkatan performa server. Beberapa fitur mungkin mengalami respon lebih lambat.',
+    updated_by VARCHAR(255) DEFAULT 'anjarbdn@gmail.com',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- AKTIFKAN ROW LEVEL SECURITY UNTUK TABEL BARU
+ALTER TABLE public.system_broadcasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.system_platform_settings ENABLE ROW LEVEL SECURITY;
+
+-- POLICY SUPER ADMIN
+CREATE POLICY "Super admin full access broadcasts" ON public.system_broadcasts
+    FOR ALL USING (auth.jwt() ->> 'email' = 'anjarbdn@gmail.com');
+
+CREATE POLICY "Super admin full access tickets" ON public.support_tickets
+    FOR ALL USING (auth.jwt() ->> 'email' = 'anjarbdn@gmail.com');
+
+CREATE POLICY "Super admin full access platform_settings" ON public.system_platform_settings
+    FOR ALL USING (auth.jwt() ->> 'email' = 'anjarbdn@gmail.com');
+
+-- POLICY CLIENT BIRO
+CREATE POLICY "Clients read active broadcasts" ON public.system_broadcasts
+    FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Clients read public settings" ON public.system_platform_settings
+    FOR SELECT USING (true);
+
+CREATE POLICY "Clients insert and read own tickets" ON public.support_tickets
+    FOR ALL USING (
+        tenant_id IN (SELECT id FROM public.tenants WHERE user_id = auth.uid())
+        OR auth.jwt() ->> 'email' = sender_email
+    );
+
+
