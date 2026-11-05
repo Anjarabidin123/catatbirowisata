@@ -42,6 +42,7 @@ import { formatRupiah } from "@/lib/utils";
 import { BusSeatManifestModal } from "@/components/BusSeatManifestModal";
 import { WhatsAppBroadcastModal } from "@/components/WhatsAppBroadcastModal";
 import { TripChecklistCard } from "@/components/TripChecklistCard";
+import { TripCrewAssignmentCard } from "@/components/TripCrewAssignmentCard";
 import { PettyCashTracker } from "@/components/PettyCashTracker";
 import { KwitansiInvoiceDialog } from "@/components/KwitansiInvoiceDialog";
 import { useRole } from "@/contexts/RoleContext";
@@ -437,6 +438,7 @@ const TripDetail = () => {
 
             {/* Tab: Operasional Lapangan (Checklist 14 Poin & Petty Cash TL) */}
             <TabsContent value="operasional" className="space-y-4">
+              <TripCrewAssignmentCard tripId={tripId!} tripName={trip.nama_trip} />
               <TripChecklistCard tripId={tripId!} tripName={trip.nama_trip} />
               <PettyCashTracker tripId={tripId!} tripName={trip.nama_trip} />
             </TabsContent>

@@ -27,6 +27,7 @@ const NotesNew = lazy(() => import("./pages/NotesNew"));
 const ImportWordRundown = lazy(() => import("./pages/ImportWordRundown"));
 const PengaturanBiro = lazy(() => import("./pages/PengaturanBiro"));
 const ManajemenKruRBAC = lazy(() => import("./pages/ManajemenKruRBAC"));
+const AsistenAI = lazy(() => import("./pages/AsistenAI"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const LoadingFallback = () => (
@@ -92,7 +93,8 @@ const App = () => {
                 <Route path="/keuangan/new" element={<NewKeuangan />} />
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/import-rundown" element={<ImportWordRundown />} />
-                <Route path="/asisten-ai" element={<ImportWordRundown />} />
+                <Route path="/asisten-ai" element={<AsistenAI />} />
+                <Route path="/pengaturan" element={<PengaturanBiro />} />
                 <Route path="/pengaturan-biro" element={<PengaturanBiro />} />
                 <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

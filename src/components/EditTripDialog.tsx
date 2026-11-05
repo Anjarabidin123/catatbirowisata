@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { RupiahInput } from "@/components/RupiahInput";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
+import { AddCrewDialog } from "./AddCrewDialog";
 import { useRole } from "@/contexts/RoleContext";
 import { logCrewActivity, assignTripToMultipleCrewDB } from "@/utils/rbacAuditLogger";
 
@@ -50,6 +51,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
   const [budgetFormatted, setBudgetFormatted] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
+  const [showAddCrewModal, setShowAddCrewModal] = useState(false);
 
   useEffect(() => {
     if (trip && open) {
@@ -264,9 +266,21 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
                   <Users className="w-3.5 h-3.5 text-blue-600" />
                   Atur Tour Leader & Kru Bertugas
                 </Label>
-                <span className="text-[11px] text-blue-600 font-semibold">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddCrewModal(true)}
+                    className="h-6 px-2 text-[10px] font-semibold text-blue-600 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/50 gap-1 rounded-md"
+                  >
+                    <UserPlus className="w-3 h-3" />
+                    <span>+ Tambah TL</span>
+                  </Button>
+                  <span className="text-[11px] text-blue-600 font-semibold">
                   {selectedCrewIds.length} kru dipilih
                 </span>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
                 {crewList.map((crew) => {
@@ -312,6 +326,16 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
             {loading ? "Menyimpan..." : "Simpan Perubahan"}
           </Button>
         </form>
+        <AddCrewDialog
+          open={showAddCrewModal}
+          onOpenChange={setShowAddCrewModal}
+          defaultJabatan="Tour Leader"
+          defaultTripName={formData.nama_trip || trip.nama_trip}
+          defaultTripId={trip.id}
+          onCrewAdded={(newCrew) => {
+            setSelectedCrewIds((prev) => [...prev, newCrew.id]);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

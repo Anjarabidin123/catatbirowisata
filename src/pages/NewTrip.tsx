@@ -12,13 +12,15 @@ import { Label } from "@/components/ui/label";
 import FormField from "@/components/FormField";
 import { RupiahInput } from "@/components/RupiahInput";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, ChevronDown, Bus, Calendar, MapPin, User, Users } from "lucide-react";
+import { ArrowLeft, ChevronDown, Bus, Calendar, MapPin, User, Users, Plus } from "lucide-react";
+import { AddCrewDialog } from "@/components/AddCrewDialog";
 import { toast } from "sonner";
 
 const NewTrip = () => {
   const navigate = useNavigate();
   const { crewList } = useRole();
   const [loading, setLoading] = useState(false);
+  const [showAddCrewModal, setShowAddCrewModal] = useState(false);
   const [showVehicleDetails, setShowVehicleDetails] = useState(false);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [budgetFormatted, setBudgetFormatted] = useState("");
@@ -324,9 +326,21 @@ const NewTrip = () => {
                     Hak Akses Tour Leader & Kru Bertugas
                   </h3>
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddCrewModal(true)}
+                    className="h-7 px-2 text-[11px] font-semibold text-blue-600 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/50 gap-1 rounded-lg"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Tambah TL Baru</span>
+                  </Button>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                   {selectedCrewIds.length} kru dipilih
                 </span>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 Pilih siapa saja kru yang berhak mengakses trip ini. Kru yang tidak dipilih tidak akan melihat trip ini di akun mereka.
@@ -378,6 +392,15 @@ const NewTrip = () => {
           </form>
         </div>
       </div>
+        <AddCrewDialog
+          open={showAddCrewModal}
+          onOpenChange={setShowAddCrewModal}
+          defaultJabatan="Tour Leader"
+          defaultTripName={formData.nama_trip || "Trip Baru"}
+          onCrewAdded={(newCrew) => {
+            setSelectedCrewIds((prev) => [...prev, newCrew.id]);
+          }}
+        />
       </RBACOwnerGuard>
     </AuthGuard>
   );
