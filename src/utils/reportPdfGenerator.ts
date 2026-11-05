@@ -1,5 +1,6 @@
 import type jsPDF from "jspdf";
 import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { getBiroCmsData } from "./biroCmsStore";
 
 export interface Trip {
   id?: string;
@@ -477,7 +478,7 @@ export const generateReportPDF = async (data: ReportData): Promise<jsPDF> => {
       ["1", "Transportasi & Armada", "Sewa Bus, Pembelian BBM/Solar, Saldo Tol & Retribusi Parkir", formatRupiah(breakdown.transport), pengeluaran > 0 ? `${((breakdown.transport / pengeluaran) * 100).toFixed(1)}%` : "0%"],
       ["2", "Konsumsi & Logistik", "Prasmanan Restoran, Nasi Kotak, Snack Box & Air Mineral", formatRupiah(breakdown.konsumsi), pengeluaran > 0 ? `${((breakdown.konsumsi / pengeluaran) * 100).toFixed(1)}%` : "0%"],
       ["3", "Destinasi & Wisata", "Tiket Masuk Objek Wisata, Sewa Jeep/Shuttle & Guide Lokal", formatRupiah(breakdown.tiket), pengeluaran > 0 ? `${((breakdown.tiket / pengeluaran) * 100).toFixed(1)}%` : "0%"],
-      ["4", "Honor & Fee Lapangan", "Tips Driver, Co-Driver, Tour Leader & Kru Pendamping", formatRupiah(breakdown.fee), pengeluaran > 0 ? `${((breakdown.fee / pengeluaran) * 100).toFixed(1)}%` : "0%"],
+      ["4", "Honor & Fee Lapangan", "Honor Sopir, Co-Driver, Tim Lapangan & Kru Pendamping", formatRupiah(breakdown.fee), pengeluaran > 0 ? `${((breakdown.fee / pengeluaran) * 100).toFixed(1)}%` : "0%"],
       ["5", "Operasional & Lain-lain", "Obat P3K, Spanduk Banner Rombongan & Pengeluaran Darurat", formatRupiah(breakdown.lainnya), pengeluaran > 0 ? `${((breakdown.lainnya / pengeluaran) * 100).toFixed(1)}%` : "0%"],
     ];
 
@@ -551,13 +552,16 @@ export const generateReportPDF = async (data: ReportData): Promise<jsPDF> => {
   doc.text(tglPengesahan, pageWidth - 14, currentY, { align: "right" });
   currentY += 6;
 
-  // Kolom Kiri: Dibuat Oleh (Bendahara / Tour Leader)
+  const cmsData = getBiroCmsData();
+  const namaFinance = cmsData.dokumen.namaBagianKeuangan || "Staff Keuangan & Kasir";
+  const jabatanFinance = cmsData.dokumen.jabatanBagianKeuangan || "Bagian Administrasi & Keuangan";
+  // Kolom Kiri: Dibuat Oleh (Bagian Keuangan & Administrasi)
   const colLeftX = 14;
   doc.setFont("helvetica", "bold");
   doc.text("Dibuat & Dilaporkan Oleh:", colLeftX, currentY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text("Bagian Administrasi & Keuangan", colLeftX, currentY + 4);
+  doc.text(jabatanFinance, colLeftX, currentY + 4);
 
   // Kolom Kanan: Mengetahui & Menyetujui (Pimpinan Biro)
   const colRightX = pageWidth - 65;
@@ -580,7 +584,7 @@ export const generateReportPDF = async (data: ReportData): Promise<jsPDF> => {
   doc.text("( .................................................... )", colLeftX, signY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.text("Tour Leader / Bag. Kas Operasional", colLeftX, signY + 4);
+  doc.text(namaFinance, colLeftX, signY + 4);
 
   // Kanan
   const namaPimpinan = profile.pimpinan || "H. Anjar Abidin, S.E.";
@@ -606,7 +610,7 @@ export const generateReportPDF = async (data: ReportData): Promise<jsPDF> => {
     doc.setTextColor(148, 163, 184);
 
     doc.text(
-      `Dokumen Resmi ${profile.nama_biro || "Biro Wisata"} • Dicetak dari Sistem Catat Biro Wisata`,
+      cmsData.dokumen.footerTeksLaporan || `Dokumen Resmi ${profile.nama_biro || "Biro Wisata"} • Dicetak dari Sistem Catat Biro Wisata`,
       14,
       pageHeight - 5.5
     );

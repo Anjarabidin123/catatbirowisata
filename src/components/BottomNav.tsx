@@ -1,4 +1,4 @@
-import { Home, Bus, Wallet, StickyNote, Users, Settings, FileText } from "lucide-react";
+import { Home, Calendar, Wallet, StickyNote, Settings, FileText } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
 
@@ -9,14 +9,14 @@ const BottomNav = () => {
   const navItems = isPemilik
     ? [
         { icon: Home, label: "Beranda", path: "/dashboard" },
-        { icon: Bus, label: "Trip", path: "/trips" },
-        { icon: Users, label: "Kru & RBAC", path: "/manajemen-kru" },
+        { icon: Calendar, label: "Kalender", path: "/trips" },
         { icon: Wallet, label: "Keuangan", path: "/keuangan" },
-        { icon: Settings, label: "Profil", path: "/pengaturan-biro" },
+        { icon: FileText, label: "Laporan", path: "/laporan" },
+        { icon: Settings, label: "Pusat CMS", path: "/pengaturan-biro" },
       ]
     : [
         { icon: Home, label: "Posko TL", path: "/dashboard" },
-        { icon: Bus, label: "Tugas Trip", path: "/trips" },
+        { icon: Calendar, label: "Jadwal", path: "/trips" },
         { icon: Wallet, label: "Kas Saku", path: "/keuangan" },
         { icon: StickyNote, label: "Catatan", path: "/notesnew" },
         { icon: FileText, label: "Import Word", path: "/import-rundown" },

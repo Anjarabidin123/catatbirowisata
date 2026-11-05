@@ -8,6 +8,7 @@ import {
   StickyNote,
   Map,
   Settings,
+  Calendar,
   LogOut,
 
   ShieldCheck,
@@ -108,9 +109,9 @@ export const DesktopSidebar: React.FC = () => {
           badge: "Owner",
         },
         {
-          label: "Manajemen Trip",
+          label: "Kalender & Jadwal Bus",
           path: "/trips",
-          icon: Bus,
+          icon: Calendar,
         },
         {
           label: "Buku Kas & Laba",
@@ -143,9 +144,9 @@ export const DesktopSidebar: React.FC = () => {
           badge: "Kru",
         },
         {
-          label: "Jadwal Tugas Trip",
+          label: "Jadwal Keberangkatan",
           path: "/trips",
-          icon: Bus,
+          icon: Calendar,
           badge: "Tugas",
         },
         {
@@ -203,7 +204,7 @@ export const DesktopSidebar: React.FC = () => {
     ...(canEditBiro
       ? [
           {
-            label: "Profil & Rekening Biro",
+            label: "Pusat Kontrol CMS Biro",
             path: "/pengaturan-biro",
             icon: Settings,
             iconColor: "text-slate-600 dark:text-slate-300",
