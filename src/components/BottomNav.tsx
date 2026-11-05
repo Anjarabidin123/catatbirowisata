@@ -1,4 +1,4 @@
-import { Home, Bus, Wallet, FileText, StickyNote, Users } from "lucide-react";
+import { Home, Bus, Wallet, StickyNote, Users, Settings, FileText } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
 
@@ -12,7 +12,7 @@ const BottomNav = () => {
         { icon: Bus, label: "Trip", path: "/trips" },
         { icon: Users, label: "Kru & RBAC", path: "/manajemen-kru" },
         { icon: Wallet, label: "Keuangan", path: "/keuangan" },
-        { icon: FileText, label: "Laporan", path: "/laporan" },
+        { icon: Settings, label: "Profil", path: "/pengaturan-biro" },
       ]
     : [
         { icon: Home, label: "Posko TL", path: "/dashboard" },
@@ -23,8 +23,8 @@ const BottomNav = () => {
       ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom z-50 lg:bottom-auto lg:left-0 lg:top-0 lg:right-auto lg:flex lg:h-screen lg:w-64 lg:flex-col lg:border-r lg:border-t-0 lg:px-4 lg:py-6">
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto px-1 lg:h-auto lg:w-full lg:max-w-none lg:flex-col lg:items-stretch lg:gap-2 lg:px-0">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border safe-area-bottom z-50 lg:hidden shadow-lg">
+      <div className="flex justify-around items-center h-16 max-w-lg mx-auto px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -33,7 +33,7 @@ const BottomNav = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative lg:flex-row lg:justify-start lg:gap-3 lg:h-12 lg:w-full lg:rounded-xl lg:px-3 ${
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
                 isActive
                   ? isPemilik
                     ? "text-primary"
@@ -43,7 +43,7 @@ const BottomNav = () => {
             >
               {isActive && (
                 <div
-                  className={`absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 rounded-full lg:top-1/2 lg:left-0 lg:h-8 lg:w-1 lg:-translate-y-1/2 ${
+                  className={`absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full ${
                     isPemilik ? "bg-primary" : "bg-emerald-600"
                   }`}
                 />

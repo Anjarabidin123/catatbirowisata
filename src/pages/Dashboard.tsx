@@ -16,6 +16,8 @@ import {
   Search,
   Users,
   ArrowRightLeft,
+  Settings,
+  Pencil,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser, clearAuthCache } from "@/utils/authHelper";
@@ -300,15 +302,36 @@ const Dashboard = () => {
         <div className="max-w-md lg:max-w-3xl mx-auto px-3 pt-3 space-y-3">
           {/* Header ringkas */}
           <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <h1 className="text-base font-extrabold text-slate-900 dark:text-white truncate leading-tight">
-                {profileName}
-              </h1>
+            <button
+              type="button"
+              onClick={() => navigate(isPemilik ? "/pengaturan-biro" : "/dashboard")}
+              className="min-w-0 text-left group cursor-pointer focus:outline-hidden"
+              title={isPemilik ? "Klik untuk mengedit Profil & Rekening Biro" : undefined}
+            >
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-base font-extrabold text-slate-900 dark:text-white truncate leading-tight group-hover:text-blue-600 transition-colors">
+                  {profileName}
+                </h1>
+                {isPemilik && (
+                  <Pencil className="w-3 h-3 text-slate-400 group-hover:text-blue-600 transition-colors flex-shrink-0" />
+                )}
+              </div>
               <p className="text-[11px] text-slate-500 truncate">
-                {isPemilik ? "Pemilik Biro" : `${activeCrew.nama} • ${activeCrew.jabatan}`}
+                {isPemilik ? "Pemilik Biro • Edit Profil" : `${activeCrew.nama} • ${activeCrew.jabatan}`}
               </p>
-            </div>
+            </button>
             <div className="flex items-center gap-1 flex-shrink-0">
+              {isPemilik && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/pengaturan-biro")}
+                  className="h-8 w-8 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  title="Edit Profil & Rekening Biro"
+                >
+                  <Settings className="w-4 h-4 text-blue-600" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

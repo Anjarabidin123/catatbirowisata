@@ -62,18 +62,24 @@ import {
   Power,
   RefreshCw,
   UserCheck,
-  UserX,
   Eye,
   Database,
   MapPin,
   Compass,
   CheckSquare,
   Square,
-  ShieldAlert,
   Calendar,
   Bus,
   Check,
   Copy,
+  Phone,
+  Mail,
+  ShieldCheck,
+  ShieldAlert,
+  Edit,
+  ExternalLink,
+  ChevronRight,
+  Filter,
 } from "lucide-react";
 
 const JABATAN_LIST: CrewJabatan[] = [
@@ -111,6 +117,16 @@ interface TripOption {
   nama_driver?: string | null;
   nama_kendaraan?: string | null;
 }
+
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "KR";
+};
 
 const ManajemenKruRBAC: React.FC = () => {
   const navigate = useNavigate();
@@ -431,31 +447,32 @@ const ManajemenKruRBAC: React.FC = () => {
         pageTitle="Manajemen Kru, Perangkat Login & Hak Akses"
         reason="Halaman ini khusus untuk Pemilik Biro guna melihat daftar personel kru, perangkat login, penugasan trip per TL, dan batasan hak akses."
       >
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-10 lg:pl-64 font-sans text-slate-900 dark:text-slate-100">
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-            {/* Header Bersih dengan Indikator Database Real-Time */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-12 lg:pl-64 font-sans text-slate-900 dark:text-slate-100">
+          <div className="max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 space-y-5">
+            {/* Header Bersih & Responsif */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
               <div className="space-y-1">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                     Manajemen Kru & Hak Akses
                   </h1>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Database Supabase (Live)
+                    Database Live
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  Kelola personel kru, tentukan akses trip per Tour Leader (TL), nonaktifkan akun, dan pantau perangkat aktif.
+                  Kelola kru lapangan, batasi trip per Tour Leader (TL), kontrol sesi login, dan pantau audit trail.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+              {/* Action Buttons: Grid di Mobile, Flex di Desktop */}
+              <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowMigrationInfo(true)}
-                  className="h-9 rounded-lg text-xs font-medium border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1.5"
+                  className="h-9 px-2 sm:px-3 rounded-xl text-xs font-medium border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1 sm:gap-1.5"
                 >
                   <Database className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                   <span>Info SQL</span>
@@ -465,7 +482,7 @@ const ManajemenKruRBAC: React.FC = () => {
                   size="sm"
                   onClick={loadAllDataFromDB}
                   disabled={isLoadingDB}
-                  className="h-9 rounded-lg text-xs font-medium border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1.5"
+                  className="h-9 px-2 sm:px-3 rounded-xl text-xs font-medium border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1 sm:gap-1.5"
                 >
                   <RefreshCw
                     className={`w-3.5 h-3.5 text-slate-600 dark:text-slate-400 ${
@@ -477,7 +494,7 @@ const ManajemenKruRBAC: React.FC = () => {
                 <Button
                   size="sm"
                   onClick={() => setShowAddCrewModal(true)}
-                  className="h-9 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5"
+                  className="h-9 px-2.5 sm:px-4 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1 sm:gap-1.5 shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tambah Kru</span>
@@ -485,69 +502,69 @@ const ManajemenKruRBAC: React.FC = () => {
               </div>
             </div>
 
-            {/* Ringkasan Statistik Rapi */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-500 block">
+            {/* Ringkasan Statistik Responsif */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-500 block truncate">
                   Total Personel Kru
                 </span>
                 <div className="flex items-baseline justify-between mt-1">
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                     {crewMembers.length}
                   </span>
-                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                    {activeCrewCount} akun aktif
+                  <span className="text-[10px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    {activeCrewCount} aktif
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-500 block">
-                  Sesi Perangkat Aktif
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-500 block truncate">
+                  Sesi Perangkat
                 </span>
                 <div className="flex items-baseline justify-between mt-1">
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                     {activeDevicesCount}
                   </span>
-                  <span className="text-xs text-slate-500">
-                    dari {deviceSessions.length} perangkat
+                  <span className="text-[10px] sm:text-xs text-slate-500">
+                    / {deviceSessions.length} login
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-500 block">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-500 block truncate">
                   Trip di Database
                 </span>
                 <div className="flex items-baseline justify-between mt-1">
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                     {tripsList.length}
                   </span>
-                  <span className="text-xs text-slate-500">jadwal trip aktif</span>
+                  <span className="text-[10px] sm:text-xs text-slate-500">jadwal trip</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-500 block">
-                  Batasan Menu Kru
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-500 block truncate">
+                  Modul Khusus Pemilik
                 </span>
                 <div className="flex items-baseline justify-between mt-1">
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                     {rbacRules.filter((r) => !r.aksesKru).length}
                   </span>
-                  <span className="text-xs text-slate-500">modul khusus pemilik</span>
+                  <span className="text-[10px] sm:text-xs text-amber-600 font-semibold">Terkunci</span>
                 </div>
               </div>
             </div>
 
-            {/* Navigasi Tab Horizontal */}
-            <div className="border-b border-slate-200 dark:border-slate-800 flex items-center gap-1 overflow-x-auto">
+            {/* Navigasi Tab Segmented Touch-Friendly */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
               {[
-                { id: "kru", label: `Daftar Kru (${crewMembers.length})` },
-                { id: "penugasan", label: `Penugasan Trip & TL (${tripsList.length} Trip)` },
-                { id: "devices", label: `Perangkat Login (${deviceSessions.length})` },
-                { id: "aktivitas", label: `Riwayat Aktivitas (${activityLogs.length})` },
-                { id: "rbac", label: "Pengaturan Hak Akses" },
+                { id: "kru", label: `Kru (${crewMembers.length})` },
+                { id: "penugasan", label: `Akses Trip (${tripsList.length})` },
+                { id: "devices", label: `Perangkat (${deviceSessions.length})` },
+                { id: "aktivitas", label: `Log Aktivitas (${activityLogs.length})` },
+                { id: "rbac", label: "Matriks RBAC" },
               ].map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -555,10 +572,10 @@ const ManajemenKruRBAC: React.FC = () => {
                     key={tab.id}
                     type="button"
                     onClick={() => handleTabChange(tab.id)}
-                    className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors ${
+                    className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
                       isActive
-                        ? "border-slate-900 text-slate-900 dark:border-white dark:text-white"
-                        : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
                   >
                     {tab.label}
@@ -568,208 +585,371 @@ const ManajemenKruRBAC: React.FC = () => {
             </div>
 
             {/* =========================================================
-                TAB 1: DAFTAR KRU & STATUS AKUN
+                TAB 1: DAFTAR KRU & STATUS AKUN (RESPONSIF MOBILE & DESKTOP)
             ========================================================= */}
             {activeTab === "kru" && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-3">
+                {/* Search Bar */}
+                <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                       Daftar Personel Kru Lapangan
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Kelola penugasan trip per TL, aktifkan/nonaktifkan akun kru, dan kontrol izin login perangkat.
+                      Tentukan hak akses trip per TL, aktifkan/nonaktifkan akun, dan kelola penugasan.
                     </p>
                   </div>
-                  <div className="relative w-full sm:w-64">
+                  <div className="relative w-full sm:w-72">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <Input
                       value={searchCrewQuery}
                       onChange={(e) => setSearchCrewQuery(e.target.value)}
                       placeholder="Cari nama, jabatan, atau trip..."
-                      className="pl-8 h-9 text-xs rounded-lg border-slate-200 dark:border-slate-800"
+                      className="pl-8 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
                     />
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
-                        <th className="py-3 px-4">Nama & Kode Kru</th>
-                        <th className="py-3 px-4">Jabatan & Kontak</th>
-                        <th className="py-3 px-4">Trip yang Diizinkan (RBAC TL)</th>
-                        <th className="py-3 px-4">Perangkat Login</th>
-                        <th className="py-3 px-4">Status Akun</th>
-                        <th className="py-3 px-4 text-right">Tindakan</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                      {filteredCrew.map((crew) => {
-                        const crewLogsCount = activityLogs.filter(
-                          (l) => l.crewId === crew.id
-                        ).length;
-                        const assignedCount = crew.assignedTripIds?.length || 0;
-                        const isNonaktif = crew.status === "nonaktif";
+                {/* --- MOBILE VIEW: KARTU KRU RESPONSIVE (block md:hidden) --- */}
+                <div className="block md:hidden space-y-3">
+                  {filteredCrew.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                      Tidak ada personel kru yang sesuai dengan pencarian.
+                    </div>
+                  ) : (
+                    filteredCrew.map((crew) => {
+                      const crewLogsCount = activityLogs.filter((l) => l.crewId === crew.id).length;
+                      const assignedCount = crew.assignedTripIds?.length || 0;
+                      const isNonaktif = crew.status === "nonaktif";
 
-                        return (
-                          <tr
-                            key={crew.id}
-                            className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                              isNonaktif ? "bg-rose-50/30 dark:bg-rose-950/20" : ""
-                            }`}
-                          >
-                            <td className="py-3.5 px-4">
-                              <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                                <span>{crew.nama}</span>
-                                {isNonaktif && (
-                                  <span className="text-[10px] font-bold text-rose-600 uppercase">
-                                    [Nonaktif]
+                      return (
+                        <div
+                          key={crew.id}
+                          className={`p-4 rounded-2xl border transition-all space-y-3 shadow-2xs ${
+                            isNonaktif
+                              ? "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900"
+                              : "bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800"
+                          }`}
+                        >
+                          {/* Header Kru Card */}
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                                  isNonaktif
+                                    ? "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200"
+                                    : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                }`}
+                              >
+                                {getInitials(crew.nama)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                    {crew.nama}
+                                  </h3>
+                                  <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600">
+                                    {crew.kodeKru}
                                   </span>
-                                )}
+                                </div>
+                                <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                  {crew.jabatan}
+                                </div>
                               </div>
-                              <div className="text-[11px] text-slate-500 font-mono">
-                                {crew.kodeKru} • {crew.email}
-                              </div>
-                            </td>
+                            </div>
 
-                            <td className="py-3.5 px-4">
-                              <div className="font-medium text-slate-800 dark:text-slate-200">
-                                {crew.jabatan}
-                              </div>
-                              <div className="text-[11px] text-slate-500">
+                            {/* Status Akun Pill */}
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap flex-shrink-0 ${
+                                isNonaktif
+                                  ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800"
+                                  : crew.status === "bertugas"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800"
+                              }`}
+                            >
+                              {isNonaktif ? "Nonaktif" : crew.status === "bertugas" ? "Bertugas" : "Aktif"}
+                            </span>
+                          </div>
+
+                          {/* Info Kontak & Perangkat */}
+                          <div className="grid grid-cols-2 gap-2 text-[11px] p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800">
+                            <div className="space-y-0.5 min-w-0">
+                              <span className="text-[10px] text-slate-400 block font-medium">Kontak HP / WA</span>
+                              <a
+                                href={`https://wa.me/${crew.telepon.replace(/\D/g, "")}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-semibold text-blue-600 dark:text-blue-400 truncate block hover:underline"
+                              >
                                 {crew.telepon}
+                              </a>
+                            </div>
+                            <div className="space-y-0.5 min-w-0">
+                              <span className="text-[10px] text-slate-400 block font-medium">Perangkat Login</span>
+                              <div className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                <DeviceIcon type={crew.currentDevice.deviceType} className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">{crew.currentDevice.deviceName}</span>
                               </div>
-                            </td>
+                            </div>
+                          </div>
 
-                            {/* Penugasan Trip per TL */}
-                            <td className="py-3.5 px-4">
-                              <div className="space-y-1 max-w-xs">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-medium text-slate-800 dark:text-slate-200 line-clamp-1">
-                                    {crew.assignedTrip}
-                                  </span>
-                                  {assignedCount > 0 && (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                      {assignedCount} Trip
+                          {/* Trip yang Diizinkan */}
+                          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                            <div className="min-w-0">
+                              <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 block">
+                                Hak Akses Trip (RBAC TL)
+                              </span>
+                              <p className="text-[11px] text-slate-700 dark:text-slate-300 truncate font-medium">
+                                {crew.assignedTrip}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenAssignModal(crew)}
+                              className="h-7 px-2.5 text-[11px] font-bold rounded-lg border-blue-300 bg-white text-blue-700 dark:bg-slate-900 dark:text-blue-300 gap-1 flex-shrink-0"
+                            >
+                              <Compass className="w-3.5 h-3.5" />
+                              <span>{assignedCount > 0 ? `${assignedCount} Trip` : "Atur Trip"}</span>
+                            </Button>
+                          </div>
+
+                          {/* Tombol Aksi Lengkap Mobile */}
+                          <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleInspectCrewActivity(crew.id, crew.nama)}
+                                className="h-7 px-2 text-[10px] font-semibold rounded-lg"
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Log ({crewLogsCount})
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isNonaktif}
+                                onClick={() => handleSimulateAsCrew(crew)}
+                                className="h-7 px-2 text-[10px] font-semibold rounded-lg text-emerald-700 border-emerald-200 dark:text-emerald-300"
+                              >
+                                <UserCheck className="w-3 h-3 mr-1" />
+                                Mode Kru
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingCrew(crew)}
+                                className="h-7 px-2 text-[10px] font-semibold rounded-lg text-slate-600"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Edit
+                              </Button>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleAccountStatus(crew)}
+                                className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${
+                                  isNonaktif
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200"
+                                }`}
+                              >
+                                {isNonaktif ? "Buka Blokir" : "Nonaktifkan"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCrew(crew)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
+                                title="Hapus Kru"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* --- DESKTOP VIEW: TABEL KRU LENGKAP (hidden md:block) --- */}
+                <div className="hidden md:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
+                          <th className="py-3 px-4">Nama & Kode Kru</th>
+                          <th className="py-3 px-4">Jabatan & Kontak</th>
+                          <th className="py-3 px-4">Trip yang Diizinkan (RBAC TL)</th>
+                          <th className="py-3 px-4">Perangkat Login</th>
+                          <th className="py-3 px-4">Status Akun</th>
+                          <th className="py-3 px-4 text-right">Tindakan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {filteredCrew.map((crew) => {
+                          const crewLogsCount = activityLogs.filter((l) => l.crewId === crew.id).length;
+                          const assignedCount = crew.assignedTripIds?.length || 0;
+                          const isNonaktif = crew.status === "nonaktif";
+
+                          return (
+                            <tr
+                              key={crew.id}
+                              className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
+                                isNonaktif ? "bg-rose-50/30 dark:bg-rose-950/20" : ""
+                              }`}
+                            >
+                              <td className="py-3.5 px-4">
+                                <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                  <span>{crew.nama}</span>
+                                  {isNonaktif && (
+                                    <span className="text-[10px] font-bold text-rose-600 uppercase">
+                                      [Nonaktif]
                                     </span>
                                   )}
                                 </div>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleOpenAssignModal(crew)}
-                                  className="h-6 px-2 text-[10px] font-semibold rounded text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-300 dark:border-blue-800"
-                                >
-                                  <Compass className="w-3 h-3 mr-1" />
-                                  Atur Akses Trip
-                                </Button>
-                              </div>
-                            </td>
+                                <div className="text-[11px] text-slate-500 font-mono">
+                                  {crew.kodeKru} • {crew.email}
+                                </div>
+                              </td>
 
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-200">
-                                <DeviceIcon
-                                  type={crew.currentDevice.deviceType}
-                                  className="w-3.5 h-3.5 text-slate-500"
-                                />
-                                <span>{crew.currentDevice.deviceName}</span>
-                              </div>
-                              <div className="text-[11px] text-slate-500">
-                                {crew.currentDevice.os} •{" "}
-                                {formatDistanceToNow(new Date(crew.lastActive), {
-                                  addSuffix: true,
-                                  locale: localeId,
-                                })}
-                              </div>
-                            </td>
+                              <td className="py-3.5 px-4">
+                                <div className="font-medium text-slate-800 dark:text-slate-200">
+                                  {crew.jabatan}
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  {crew.telepon}
+                                </div>
+                              </td>
 
-                            {/* Status Akun & Toggle Nonaktifkan */}
-                            <td className="py-3.5 px-4">
-                              <div className="space-y-1">
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                                    isNonaktif
-                                      ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
-                                      : crew.status === "bertugas"
-                                      ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
-                                      : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                                  }`}
-                                >
-                                  {isNonaktif
-                                    ? "Akun Dinonaktifkan"
-                                    : crew.status === "bertugas"
-                                    ? "Bertugas"
-                                    : "Aktif (Online)"}
-                                </span>
-                                <div>
-                                  <button
+                              {/* Penugasan Trip per TL */}
+                              <td className="py-3.5 px-4">
+                                <div className="space-y-1 max-w-xs">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-medium text-slate-800 dark:text-slate-200 line-clamp-1">
+                                      {crew.assignedTrip}
+                                    </span>
+                                    {assignedCount > 0 && (
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                        {assignedCount} Trip
+                                      </span>
+                                    )}
+                                  </div>
+                                  <Button
                                     type="button"
-                                    onClick={() => handleToggleAccountStatus(crew)}
-                                    className={`text-[10px] font-semibold underline transition-colors ${
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenAssignModal(crew)}
+                                    className="h-6 px-2 text-[10px] font-semibold rounded-lg text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-300 dark:border-blue-800"
+                                  >
+                                    <Compass className="w-3 h-3 mr-1" />
+                                    Atur Akses Trip
+                                  </Button>
+                                </div>
+                              </td>
+
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-200">
+                                  <DeviceIcon
+                                    type={crew.currentDevice.deviceType}
+                                    className="w-3.5 h-3.5 text-slate-500"
+                                  />
+                                  <span>{crew.currentDevice.deviceName}</span>
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  {crew.currentDevice.os} •{" "}
+                                  {formatDistanceToNow(new Date(crew.lastActive), {
+                                    addSuffix: true,
+                                    locale: localeId,
+                                  })}
+                                </div>
+                              </td>
+
+                              {/* Status Akun */}
+                              <td className="py-3.5 px-4">
+                                <div className="space-y-1">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                       isNonaktif
-                                        ? "text-emerald-600 hover:text-emerald-800"
-                                        : "text-rose-600 hover:text-rose-800"
+                                        ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+                                        : crew.status === "bertugas"
+                                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+                                        : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
                                     }`}
                                   >
-                                    {isNonaktif ? "Aktifkan Akun" : "Nonaktifkan Akun"}
+                                    {isNonaktif
+                                      ? "Dinonaktifkan"
+                                      : crew.status === "bertugas"
+                                      ? "Bertugas"
+                                      : "Aktif"}
+                                  </span>
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleAccountStatus(crew)}
+                                      className={`text-[10px] font-semibold underline transition-colors ${
+                                        isNonaktif
+                                          ? "text-emerald-600 hover:text-emerald-800"
+                                          : "text-rose-600 hover:text-rose-800"
+                                      }`}
+                                    >
+                                      {isNonaktif ? "Aktifkan Akun" : "Nonaktifkan"}
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                <div className="inline-flex items-center gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleInspectCrewActivity(crew.id, crew.nama)}
+                                    className="h-7 px-2.5 text-[11px] font-medium rounded-lg border-slate-200 dark:border-slate-700"
+                                  >
+                                    <Eye className="w-3 h-3 mr-1" />
+                                    Log ({crewLogsCount})
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isNonaktif}
+                                    onClick={() => handleSimulateAsCrew(crew)}
+                                    className="h-7 px-2.5 text-[11px] font-medium rounded-lg border-slate-200 dark:border-slate-700 text-emerald-700"
+                                    title={isNonaktif ? "Akun dinonaktifkan" : "Buka mode kru"}
+                                  >
+                                    <UserCheck className="w-3 h-3 mr-1" />
+                                    Mode Kru
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingCrew(crew)}
+                                    className="h-7 px-2 text-[11px] font-medium text-slate-600 hover:text-slate-900"
+                                  >
+                                    Edit
+                                  </Button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCrew(crew)}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
+                                    title="Hapus Kru"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
-                              </div>
-                            </td>
-
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <div className="inline-flex items-center gap-1.5">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    handleInspectCrewActivity(crew.id, crew.nama)
-                                  }
-                                  className="h-7 px-2.5 text-[11px] font-medium rounded-md border-slate-200 dark:border-slate-700"
-                                >
-                                  <Eye className="w-3 h-3 mr-1" />
-                                  Log ({crewLogsCount})
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={isNonaktif}
-                                  onClick={() => handleSimulateAsCrew(crew)}
-                                  className="h-7 px-2.5 text-[11px] font-medium rounded-md border-slate-200 dark:border-slate-700"
-                                  title={
-                                    isNonaktif
-                                      ? "Akun dinonaktifkan"
-                                      : "Buka tampilan dari sisi kru ini"
-                                  }
-                                >
-                                  <UserCheck className="w-3 h-3 mr-1" />
-                                  Mode Kru
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingCrew(crew)}
-                                  className="h-7 px-2 text-[11px] font-medium text-slate-600 hover:text-slate-900"
-                                >
-                                  Edit
-                                </Button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCrew(crew)}
-                                  className="p-1.5 text-slate-400 hover:text-red-600 rounded transition-colors"
-                                  title="Hapus Kru"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -779,19 +959,19 @@ const ManajemenKruRBAC: React.FC = () => {
             ========================================================= */}
             {activeTab === "penugasan" && (
               <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <Compass className="w-4 h-4 text-blue-600" />
                       <span>Matriks Hak Akses & Penugasan Trip</span>
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Setiap Tour Leader (TL) hanya akan melihat trip yang ditugaskan kepada mereka. Trip lain otomatis disembunyikan.
+                      Tour Leader (TL) hanya dapat melihat dan mengelola trip yang ditugaskan kepada mereka.
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {tripsList.map((trip) => {
                     const assignedCrewForTrip = crewMembers.filter((c) => {
                       if (c.assignedTripIds && c.assignedTripIds.includes(trip.id)) return true;
@@ -809,66 +989,66 @@ const ManajemenKruRBAC: React.FC = () => {
                     return (
                       <div
                         key={trip.id}
-                        className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm hover:border-blue-300 transition-colors"
+                        className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-3 shadow-2xs hover:border-blue-400 transition-all flex flex-col justify-between"
                       >
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                               {trip.nama_trip}
                             </h3>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 whitespace-nowrap">
                               {trip.tanggal}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-500 flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-slate-400" />
-                            <span>Tujuan: {trip.tujuan}</span>
+                          <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                            <span className="truncate">Tujuan: {trip.tujuan}</span>
                           </p>
-                        </div>
 
-                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                          <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between">
-                            <span>TL / Kru yang Berhak Akses:</span>
-                            <span className="text-blue-600 font-bold">
-                              {assignedCrewForTrip.length} Orang
-                            </span>
-                          </div>
-
-                          {assignedCrewForTrip.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5 pt-0.5">
-                              {assignedCrewForTrip.map((c) => (
-                                <span
-                                  key={c.id}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
-                                >
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${
-                                      c.status === "nonaktif" ? "bg-rose-500" : "bg-emerald-500"
-                                    }`}
-                                  />
-                                  <span>{c.nama}</span>
-                                  <span className="text-[9px] text-slate-400">({c.jabatan})</span>
-                                </span>
-                              ))}
+                          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
+                            <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                              <span>TL / Kru yang Berhak Akses:</span>
+                              <span className="text-blue-600 font-bold">
+                                {assignedCrewForTrip.length} Orang
+                              </span>
                             </div>
-                          ) : (
-                            <p className="text-[11px] text-amber-600 dark:text-amber-400 italic">
-                              Belum ada TL yang ditugaskan ke trip ini.
-                            </p>
-                          )}
+
+                            {assignedCrewForTrip.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                {assignedCrewForTrip.map((c) => (
+                                  <span
+                                    key={c.id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
+                                  >
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full ${
+                                        c.status === "nonaktif" ? "bg-rose-500" : "bg-emerald-500"
+                                      }`}
+                                    />
+                                    <span>{c.nama}</span>
+                                    <span className="text-[9px] text-slate-400">({c.jabatan})</span>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                                Belum ada TL yang ditugaskan ke trip ini.
+                              </p>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-[11px] text-slate-400">
-                            Armada: {trip.nama_kendaraan || "Big Bus"}
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <span className="text-[11px] text-slate-400 truncate">
+                            {trip.nama_kendaraan || "Armada Bus"}
                           </span>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleTabChange("kru")}
-                            className="h-7 text-xs rounded-lg"
+                            className="h-7 text-xs font-semibold rounded-lg text-blue-600 border-blue-200 hover:bg-blue-50"
                           >
-                            Kelola di Kru
+                            Atur di Kru
                           </Button>
                         </div>
                       </div>
@@ -879,39 +1059,112 @@ const ManajemenKruRBAC: React.FC = () => {
             )}
 
             {/* =========================================================
-                TAB 3: PERANGKAT LOGIN
+                TAB 3: PERANGKAT LOGIN (RESPONSIF MOBILE & DESKTOP)
             ========================================================= */}
             {activeTab === "devices" && (
               <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300">
-                      <DeviceIcon type={currentDevice.deviceType} className="w-5 h-5" />
+                {/* Perangkat Aktif Saat Ini Card */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center flex-shrink-0">
+                    <DeviceIcon type={currentDevice.deviceType} className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                        Perangkat Anda Saat Ini: {currentDevice.deviceName}
+                      </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        Sesi Aktif
+                      </span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          Perangkat Anda Saat Ini: {currentDevice.deviceName}
-                        </span>
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
-                          {currentDevice.deviceId}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Sistem Operasi: {currentDevice.os} • Browser: {currentDevice.browser} • Tipe:{" "}
-                        {currentDevice.deviceType} ({currentDevice.resolution})
-                      </p>
-                    </div>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                      OS: {currentDevice.os} • Browser: {currentDevice.browser} • Resolusi: {currentDevice.resolution}
+                    </p>
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                {/* --- MOBILE VIEW: KARTU PERANGKAT (block md:hidden) --- */}
+                <div className="block md:hidden space-y-3">
+                  {deviceSessions.map((sess) => (
+                    <div
+                      key={sess.id}
+                      className={`p-4 rounded-2xl border transition-all space-y-3 shadow-2xs ${
+                        sess.isCurrentDevice
+                          ? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 flex-shrink-0">
+                            <DeviceIcon type={sess.deviceType} className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                              {sess.deviceName}
+                            </h3>
+                            <p className="text-[11px] text-slate-500 font-medium">
+                              {sess.crewName} • {sess.jabatan}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                            sess.isActive
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800"
+                              : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800"
+                          }`}
+                        >
+                          {sess.isActive ? "Aktif Terhubung" : "Sesi Terputus"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px] p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-medium">OS & Browser</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block">
+                            {sess.os} • {sess.browser}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-medium">Terakhir Aktif</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block">
+                            {formatDistanceToNow(new Date(sess.lastActive), {
+                              addSuffix: true,
+                              locale: localeId,
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-1 flex justify-end">
+                        <Button
+                          size="sm"
+                          variant={sess.isActive ? "outline" : "default"}
+                          onClick={() => handleToggleSession(sess)}
+                          className={`w-full h-8 text-xs font-semibold rounded-xl gap-1.5 ${
+                            sess.isActive
+                              ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
+                              : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                          }`}
+                        >
+                          <Power className="w-3.5 h-3.5" />
+                          <span>{sess.isActive ? "Putus Sesi (Force Logout)" : "Pulihkan Akses Perangkat"}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* --- DESKTOP VIEW: TABEL PERANGKAT (hidden md:block) --- */}
+                <div className="hidden md:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
                   <div className="p-4 border-b border-slate-200 dark:border-slate-800">
                     <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                       Daftar Perangkat yang Digunakan Login oleh Kru
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Anda dapat memutus akses sesi perangkat sewaktu-waktu apabila HP kru hilang atau sudah selesai bertugas.
+                      Putus sesi perangkat sewaktu-waktu apabila HP kru hilang atau kru telah selesai bertugas.
                     </p>
                   </div>
 
@@ -933,9 +1186,7 @@ const ManajemenKruRBAC: React.FC = () => {
                           <tr
                             key={sess.id}
                             className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                              sess.isCurrentDevice
-                                ? "bg-blue-50/40 dark:bg-blue-950/20"
-                                : ""
+                              sess.isCurrentDevice ? "bg-blue-50/40 dark:bg-blue-950/20" : ""
                             }`}
                           >
                             <td className="py-3.5 px-4">
@@ -947,9 +1198,7 @@ const ManajemenKruRBAC: React.FC = () => {
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-slate-500">
-                                {sess.jabatan}
-                              </div>
+                              <div className="text-[11px] text-slate-500">{sess.jabatan}</div>
                             </td>
 
                             <td className="py-3.5 px-4">
@@ -976,6 +1225,7 @@ const ManajemenKruRBAC: React.FC = () => {
                                 {formatDistanceToNow(new Date(sess.lastActive), {
                                   addSuffix: true,
                                   locale: localeId,
+                                daylight: false,
                                 })}
                               </div>
                               <div className="text-[10px] text-slate-400">
@@ -985,7 +1235,7 @@ const ManajemenKruRBAC: React.FC = () => {
 
                             <td className="py-3.5 px-4">
                               <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                   sess.isActive
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
                                     : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800"
@@ -1000,7 +1250,7 @@ const ManajemenKruRBAC: React.FC = () => {
                                 size="sm"
                                 variant={sess.isActive ? "outline" : "default"}
                                 onClick={() => handleToggleSession(sess)}
-                                className={`h-7 px-2.5 text-[11px] font-medium rounded-md gap-1 ${
+                                className={`h-7 px-2.5 text-[11px] font-medium rounded-lg gap-1 ${
                                   sess.isActive
                                     ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
                                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -1020,17 +1270,18 @@ const ManajemenKruRBAC: React.FC = () => {
             )}
 
             {/* =========================================================
-                TAB 4: RIWAYAT AKTIVITAS KRU (AUDIT TRAIL)
+                TAB 4: RIWAYAT AKTIVITAS KRU (RESPONSIF MOBILE & DESKTOP)
             ========================================================= */}
             {activeTab === "aktivitas" && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="space-y-3">
+                {/* Filters */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 shadow-2xs">
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                       Log Aktivitas Operasional & Keamanan Kru
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Setiap tindakan kru (input petty cash, checklist armada, ubah denah kursi, dll.) tercatat otomatis di database Supabase.
+                      Audit trail otomatis setiap tindakan kru di lapangan (kas saku, checklist armada, manifest kursi).
                     </p>
                   </div>
 
@@ -1041,12 +1292,12 @@ const ManajemenKruRBAC: React.FC = () => {
                         value={searchLogQuery}
                         onChange={(e) => setSearchLogQuery(e.target.value)}
                         placeholder="Cari aksi, detail, atau trip..."
-                        className="pl-8 h-9 text-xs rounded-lg border-slate-200 dark:border-slate-800"
+                        className="pl-8 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
                       />
                     </div>
 
                     <Select value={selectedCrewFilter} onValueChange={setSelectedCrewFilter}>
-                      <SelectTrigger className="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-800">
+                      <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
                         <SelectValue placeholder="Semua Personel Kru" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1062,7 +1313,7 @@ const ManajemenKruRBAC: React.FC = () => {
                     </Select>
 
                     <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
-                      <SelectTrigger className="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-800">
+                      <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
                         <SelectValue placeholder="Semua Kategori Aktivitas" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1079,157 +1330,257 @@ const ManajemenKruRBAC: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
-                        <th className="py-3 px-4">Waktu</th>
-                        <th className="py-3 px-4">Personel Kru</th>
-                        <th className="py-3 px-4">Kategori & Tindakan</th>
-                        <th className="py-3 px-4">Rincian Operasional</th>
-                        <th className="py-3 px-4">Trip</th>
-                        <th className="py-3 px-4">Perangkat</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                      {filteredLogs.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center text-xs text-slate-500">
-                            Tidak ada riwayat aktivitas yang cocok dengan filter.
-                          </td>
+                {/* --- MOBILE VIEW: KARTU TIMELINE AKTIVITAS (block md:hidden) --- */}
+                <div className="block md:hidden space-y-2.5">
+                  {filteredLogs.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                      Tidak ada riwayat aktivitas yang cocok dengan filter.
+                    </div>
+                  ) : (
+                    filteredLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {CATEGORY_LABELS[log.kategori] || log.kategori}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {format(new Date(log.timestamp), "dd MMM, HH:mm", { locale: localeId })}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                            {log.aksi}
+                          </h4>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                            {log.detail}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+                          <div className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                            {log.crewName} ({log.jabatan})
+                          </div>
+                          <div className="truncate text-slate-400">
+                            {log.tripName || log.deviceUsed}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* --- DESKTOP VIEW: TABEL LOG (hidden md:block) --- */}
+                <div className="hidden md:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
+                          <th className="py-3 px-4">Waktu</th>
+                          <th className="py-3 px-4">Personel Kru</th>
+                          <th className="py-3 px-4">Kategori & Tindakan</th>
+                          <th className="py-3 px-4">Rincian Operasional</th>
+                          <th className="py-3 px-4">Trip</th>
+                          <th className="py-3 px-4">Perangkat</th>
                         </tr>
-                      ) : (
-                        filteredLogs.map((log) => (
-                          <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                            <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                              <div className="font-medium text-slate-800 dark:text-slate-200">
-                                {format(new Date(log.timestamp), "HH:mm:ss")}
-                              </div>
-                              <div className="text-[10px] text-slate-400">
-                                {format(new Date(log.timestamp), "dd MMM yyyy", { locale: localeId })}
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-4 whitespace-nowrap">
-                              <div className="font-bold text-slate-900 dark:text-white">
-                                {log.crewName}
-                              </div>
-                              <div className="text-[11px] text-slate-500">{log.jabatan}</div>
-                            </td>
-
-                            <td className="py-3 px-4 whitespace-nowrap">
-                              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 mb-0.5">
-                                {CATEGORY_LABELS[log.kategori] || log.kategori}
-                              </span>
-                              <div className="font-semibold text-slate-800 dark:text-slate-200">
-                                {log.aksi}
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-sm">
-                              {log.detail}
-                            </td>
-
-                            <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                              {log.tripName || "-"}
-                            </td>
-
-                            <td className="py-3 px-4 whitespace-nowrap text-slate-500 text-[11px]">
-                              {log.deviceUsed}
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {filteredLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-xs text-slate-500">
+                              Tidak ada riwayat aktivitas yang cocok dengan filter.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          filteredLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                                <div className="font-medium text-slate-800 dark:text-slate-200">
+                                  {format(new Date(log.timestamp), "HH:mm:ss")}
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  {format(new Date(log.timestamp), "dd MMM yyyy", { locale: localeId })}
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                <div className="font-bold text-slate-900 dark:text-white">
+                                  {log.crewName}
+                                </div>
+                                <div className="text-[11px] text-slate-500">{log.jabatan}</div>
+                              </td>
+
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 mb-0.5">
+                                  {CATEGORY_LABELS[log.kategori] || log.kategori}
+                                </span>
+                                <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {log.aksi}
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-sm">
+                                {log.detail}
+                              </td>
+
+                              <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                                {log.tripName || "-"}
+                              </td>
+
+                              <td className="py-3 px-4 whitespace-nowrap text-slate-500 text-[11px]">
+                                {log.deviceUsed}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* =========================================================
-                TAB 5: MATRIKS ATURAN RBAC
+                TAB 5: MATRIKS ATURAN RBAC (RESPONSIF MOBILE & DESKTOP)
             ========================================================= */}
             {activeTab === "rbac" && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="space-y-3">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                     Matriks Kebijakan Hak Akses Kru vs Pemilik Biro
                   </h2>
-                  <p className="text-xs text-slate-500">
-                    Atur modul apa saja yang dapat dibuka oleh kru di lapangan. Data finansial rahasia secara default terkunci bagi kru.
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Aktifkan atau batasi modul apa saja yang dapat dibuka oleh kru di lapangan. Data finansial sensitif secara default terkunci bagi kru.
                   </p>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
-                        <th className="py-3 px-4">Modul & Fitur Aplikasi</th>
-                        <th className="py-3 px-4">Kategori Modul</th>
-                        <th className="py-3 px-4 text-center">Akses Pemilik</th>
-                        <th className="py-3 px-4 text-center">Akses Kru Lapangan</th>
-                        <th className="py-3 px-4">Keterangan Akses Kru</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                      {rbacRules.map((rule) => (
-                        <tr key={rule.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3.5 px-4">
-                            <div className="font-bold text-slate-900 dark:text-white">
-                              {rule.modul}
-                            </div>
-                            <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                              {rule.fitur}
-                            </div>
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              {rule.deskripsi}
-                            </div>
-                          </td>
+                {/* --- MOBILE VIEW: KARTU ATURAN RBAC (block md:hidden) --- */}
+                <div className="block md:hidden space-y-3">
+                  {rbacRules.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-3 shadow-2xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border mb-1.5 ${
+                              rule.kategori === "Finansial & Rahasia Dapur"
+                                ? "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800"
+                                : rule.kategori === "Manajemen & Kontrol"
+                                ? "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800"
+                                : "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800"
+                            }`}
+                          >
+                            {rule.kategori}
+                          </span>
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                            {rule.modul}
+                          </h3>
+                          <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400 mt-0.5">
+                            {rule.fitur}
+                          </p>
+                        </div>
 
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                                rule.kategori === "Finansial & Rahasia Dapur"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
-                                  : rule.kategori === "Manajemen & Kontrol"
-                                  ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800"
-                                  : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
-                              }`}
-                            >
-                              {rule.kategori}
-                            </span>
-                          </td>
+                        {/* Switch Akses Kru */}
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <Switch
+                            checked={rule.aksesKru}
+                            onCheckedChange={() => handleToggleRule(rule.id)}
+                          />
+                          <span
+                            className={`text-[9px] font-bold ${
+                              rule.aksesKru ? "text-emerald-600" : "text-amber-600"
+                            }`}
+                          >
+                            {rule.aksesKru ? "Kru Dibolehkan" : "Khusus Pemilik"}
+                          </span>
+                        </div>
+                      </div>
 
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Penuh
-                            </span>
-                          </td>
+                      <p className="text-[11px] text-slate-500 leading-relaxed pt-1 border-t border-slate-100 dark:border-slate-800">
+                        {rule.deskripsi}
+                      </p>
+                    </div>
+                  ))}
+                </div>
 
-                          <td className="py-3.5 px-4 text-center">
-                            <div className="flex items-center justify-center">
-                              <Switch
-                                checked={rule.aksesKru}
-                                onCheckedChange={() => handleToggleRule(rule.id)}
-                              />
-                            </div>
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <span
-                              className={`text-[11px] font-medium ${
-                                rule.aksesKru
-                                  ? "text-emerald-700 dark:text-emerald-400 font-semibold"
-                                  : "text-slate-500 italic"
-                              }`}
-                            >
-                              {rule.keteranganKru}
-                            </span>
-                          </td>
+                {/* --- DESKTOP VIEW: TABEL MATRIKS (hidden md:block) --- */}
+                <div className="hidden md:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
+                          <th className="py-3 px-4">Modul & Fitur Aplikasi</th>
+                          <th className="py-3 px-4">Kategori Modul</th>
+                          <th className="py-3 px-4 text-center">Akses Pemilik</th>
+                          <th className="py-3 px-4 text-center">Akses Kru Lapangan</th>
+                          <th className="py-3 px-4">Keterangan Akses Kru</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {rbacRules.map((rule) => (
+                          <tr key={rule.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="font-bold text-slate-900 dark:text-white">
+                                {rule.modul}
+                              </div>
+                              <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                                {rule.fitur}
+                              </div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                {rule.deskripsi}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                  rule.kategori === "Finansial & Rahasia Dapur"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                                    : rule.kategori === "Manajemen & Kontrol"
+                                    ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800"
+                                    : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+                                }`}
+                              >
+                                {rule.kategori}
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Penuh
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="flex items-center justify-center">
+                                <Switch
+                                  checked={rule.aksesKru}
+                                  onCheckedChange={() => handleToggleRule(rule.id)}
+                                />
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span
+                                className={`text-[11px] font-medium ${
+                                  rule.aksesKru
+                                    ? "text-emerald-700 dark:text-emerald-400 font-semibold"
+                                    : "text-slate-500 italic"
+                                }`}
+                              >
+                                {rule.keteranganKru}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -1240,14 +1591,14 @@ const ManajemenKruRBAC: React.FC = () => {
 
         {/* Modal Atur Hak Akses Trip per Kru (RBAC TL) */}
         <Dialog open={Boolean(assigningCrew)} onOpenChange={(open) => !open && setAssigningCrew(null)}>
-          <DialogContent className="sm:max-w-xl rounded-xl">
+          <DialogContent className="w-[95vw] sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <DialogTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
                 <Compass className="w-5 h-5 text-blue-600" />
                 <span>Atur Hak Akses Trip: {assigningCrew?.nama}</span>
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Pilih trip yang boleh dilihat dan dikelola oleh <strong>{assigningCrew?.nama} ({assigningCrew?.jabatan})</strong>. Trip yang tidak dicentang akan otomatis disembunyikan dari kru ini.
+                Pilih trip yang boleh dilihat dan dikelola oleh <strong>{assigningCrew?.nama} ({assigningCrew?.jabatan})</strong>. Trip yang tidak dicentang akan otomatis disembunyikan.
               </DialogDescription>
             </DialogHeader>
 
@@ -1258,8 +1609,8 @@ const ManajemenKruRBAC: React.FC = () => {
                   <Input
                     value={tripSearchQuery}
                     onChange={(e) => setTripSearchQuery(e.target.value)}
-                    placeholder="Cari trip berdasarkan nama atau kota..."
-                    className="pl-8 h-8 text-xs rounded-lg"
+                    placeholder="Cari trip atau kota..."
+                    className="pl-8 h-8 text-xs rounded-xl"
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -1268,7 +1619,7 @@ const ManajemenKruRBAC: React.FC = () => {
                     variant="outline"
                     type="button"
                     onClick={handleSelectAllTrips}
-                    className="h-8 text-[11px] px-2 rounded-lg"
+                    className="h-8 text-[11px] px-2.5 rounded-xl"
                   >
                     Pilih Semua
                   </Button>
@@ -1277,14 +1628,14 @@ const ManajemenKruRBAC: React.FC = () => {
                     variant="outline"
                     type="button"
                     onClick={handleClearAllTrips}
-                    className="h-8 text-[11px] px-2 rounded-lg text-slate-500"
+                    className="h-8 text-[11px] px-2.5 rounded-xl text-slate-500"
                   >
                     Kosongkan
                   </Button>
                 </div>
               </div>
 
-              <div className="max-h-72 overflow-y-auto space-y-2 pr-1 border border-slate-200 dark:border-slate-800 rounded-lg p-2 bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="max-h-64 sm:max-h-72 overflow-y-auto space-y-2 pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-2 bg-slate-50/50 dark:bg-slate-900/50">
                 {filteredTripsForModal.length === 0 ? (
                   <div className="py-6 text-center text-xs text-slate-500">
                     Tidak ada jadwal trip yang ditemukan.
@@ -1296,13 +1647,13 @@ const ManajemenKruRBAC: React.FC = () => {
                       <div
                         key={trip.id}
                         onClick={() => handleToggleTripSelection(trip.id)}
-                        className={`p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                           isChecked
                             ? "bg-blue-50/80 border-blue-300 dark:bg-blue-950/40 dark:border-blue-700"
                             : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
                         }`}
                       >
-                        <div className="flex items-start gap-2.5">
+                        <div className="flex items-start gap-2.5 min-w-0">
                           <button
                             type="button"
                             className="mt-0.5 text-blue-600 focus:outline-hidden"
@@ -1313,18 +1664,18 @@ const ManajemenKruRBAC: React.FC = () => {
                               <Square className="w-4 h-4 text-slate-400" />
                             )}
                           </button>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-white">
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                               {trip.nama_trip}
                             </div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 truncate">
                               <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <Calendar className="w-3 h-3 text-slate-400 flex-shrink-0" />
                                 {trip.tanggal}
                               </span>
                               <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3 text-slate-400" />
+                              <span className="flex items-center gap-1 truncate">
+                                <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                                 {trip.tujuan}
                               </span>
                             </div>
@@ -1332,7 +1683,7 @@ const ManajemenKruRBAC: React.FC = () => {
                         </div>
 
                         {isChecked && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 whitespace-nowrap">
                             Diizinkan
                           </span>
                         )}
@@ -1352,7 +1703,7 @@ const ManajemenKruRBAC: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => setAssigningCrew(null)}
-                    className="h-8 text-xs rounded-lg"
+                    className="h-8 text-xs rounded-xl"
                   >
                     Batal
                   </Button>
@@ -1360,9 +1711,9 @@ const ManajemenKruRBAC: React.FC = () => {
                     type="button"
                     size="sm"
                     onClick={handleSaveTripAssignments}
-                    className="h-8 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-slate-800 text-white"
+                    className="h-8 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    Simpan Hak Akses Trip
+                    Simpan Akses Trip
                   </Button>
                 </div>
               </div>
@@ -1372,13 +1723,13 @@ const ManajemenKruRBAC: React.FC = () => {
 
         {/* Modal Tambah Kru Baru */}
         <Dialog open={showAddCrewModal} onOpenChange={setShowAddCrewModal}>
-          <DialogContent className="sm:max-w-md rounded-xl">
+          <DialogContent className="w-[95vw] sm:max-w-md max-h-[85vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-base font-bold">
                 Tambah Personel Kru Baru
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Daftarkan kru lapangan baru. Data akan tersimpan langsung ke database Supabase.
+                Daftarkan kru lapangan baru ke database Supabase.
               </DialogDescription>
             </DialogHeader>
 
@@ -1392,11 +1743,11 @@ const ManajemenKruRBAC: React.FC = () => {
                   onChange={(e) =>
                     setNewCrewForm({ ...newCrewForm, nama: e.target.value })
                   }
-                  className="h-9 text-xs rounded-lg"
+                  className="h-9 text-xs rounded-xl"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Jabatan Lapangan *</Label>
                   <Select
@@ -1405,7 +1756,7 @@ const ManajemenKruRBAC: React.FC = () => {
                       setNewCrewForm({ ...newCrewForm, jabatan: val })
                     }
                   >
-                    <SelectTrigger className="h-9 text-xs rounded-lg">
+                    <SelectTrigger className="h-9 text-xs rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1426,7 +1777,7 @@ const ManajemenKruRBAC: React.FC = () => {
                     onChange={(e) =>
                       setNewCrewForm({ ...newCrewForm, telepon: e.target.value })
                     }
-                    className="h-9 text-xs rounded-lg"
+                    className="h-9 text-xs rounded-xl"
                   />
                 </div>
               </div>
@@ -1440,7 +1791,7 @@ const ManajemenKruRBAC: React.FC = () => {
                   onChange={(e) =>
                     setNewCrewForm({ ...newCrewForm, email: e.target.value })
                   }
-                  className="h-9 text-xs rounded-lg"
+                  className="h-9 text-xs rounded-xl"
                 />
               </div>
 
@@ -1452,7 +1803,7 @@ const ManajemenKruRBAC: React.FC = () => {
                   onChange={(e) =>
                     setNewCrewForm({ ...newCrewForm, assignedTrip: e.target.value })
                   }
-                  className="h-9 text-xs rounded-lg"
+                  className="h-9 text-xs rounded-xl"
                 />
               </div>
 
@@ -1461,13 +1812,13 @@ const ManajemenKruRBAC: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setShowAddCrewModal(false)}
-                  className="h-9 text-xs rounded-lg"
+                  className="h-9 text-xs rounded-xl"
                 >
                   Batal
                 </Button>
                 <Button
                   type="submit"
-                  className="h-9 text-xs rounded-lg font-semibold bg-slate-900 hover:bg-slate-800 text-white"
+                  className="h-9 text-xs rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Simpan Kru ke Database
                 </Button>
@@ -1478,7 +1829,7 @@ const ManajemenKruRBAC: React.FC = () => {
 
         {/* Modal Edit Kru */}
         <Dialog open={Boolean(editingCrew)} onOpenChange={(open) => !open && setEditingCrew(null)}>
-          <DialogContent className="sm:max-w-md rounded-xl">
+          <DialogContent className="w-[95vw] sm:max-w-md max-h-[85vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-base font-bold">
                 Edit Data Personel Kru
@@ -1497,11 +1848,11 @@ const ManajemenKruRBAC: React.FC = () => {
                     onChange={(e) =>
                       setEditingCrew({ ...editingCrew, nama: e.target.value })
                     }
-                    className="h-9 text-xs rounded-lg"
+                    className="h-9 text-xs rounded-xl"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Jabatan</Label>
                     <Select
@@ -1510,7 +1861,7 @@ const ManajemenKruRBAC: React.FC = () => {
                         setEditingCrew({ ...editingCrew, jabatan: val })
                       }
                     >
-                      <SelectTrigger className="h-9 text-xs rounded-lg">
+                      <SelectTrigger className="h-9 text-xs rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1531,7 +1882,7 @@ const ManajemenKruRBAC: React.FC = () => {
                         setEditingCrew({ ...editingCrew, status: val })
                       }
                     >
-                      <SelectTrigger className="h-9 text-xs rounded-lg">
+                      <SelectTrigger className="h-9 text-xs rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1559,7 +1910,7 @@ const ManajemenKruRBAC: React.FC = () => {
                     onChange={(e) =>
                       setEditingCrew({ ...editingCrew, assignedTrip: e.target.value })
                     }
-                    className="h-9 text-xs rounded-lg"
+                    className="h-9 text-xs rounded-xl"
                   />
                 </div>
 
@@ -1570,7 +1921,7 @@ const ManajemenKruRBAC: React.FC = () => {
                     onChange={(e) =>
                       setEditingCrew({ ...editingCrew, telepon: e.target.value })
                     }
-                    className="h-9 text-xs rounded-lg"
+                    className="h-9 text-xs rounded-xl"
                   />
                 </div>
 
@@ -1579,13 +1930,13 @@ const ManajemenKruRBAC: React.FC = () => {
                     type="button"
                     variant="outline"
                     onClick={() => setEditingCrew(null)}
-                    className="h-9 text-xs rounded-lg"
+                    className="h-9 text-xs rounded-xl"
                   >
                     Batal
                   </Button>
                   <Button
                     type="submit"
-                    className="h-9 text-xs rounded-lg font-semibold bg-slate-900 hover:bg-slate-800 text-white"
+                    className="h-9 text-xs rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     Simpan Perubahan
                   </Button>
@@ -1597,7 +1948,7 @@ const ManajemenKruRBAC: React.FC = () => {
 
         {/* Modal Info File Migrasi SQL Supabase */}
         <Dialog open={showMigrationInfo} onOpenChange={setShowMigrationInfo}>
-          <DialogContent className="sm:max-w-lg rounded-xl">
+          <DialogContent className="w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-base font-bold">
                 File Migrasi Database Supabase (RBAC & Kru)
@@ -1607,13 +1958,13 @@ const ManajemenKruRBAC: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px] break-all">
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px] break-all">
                 supabase/migrations/20261030093000_rbac_manajemen_kru_audit.sql
               </div>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                 Tabel aktif mencakup <strong>crew_members</strong> (penugasan trip & status akun),{" "}
                 <strong>crew_device_sessions</strong> (pelacakan login & force logout),{" "}
-                <strong>crew_activity_logs</strong> (audit trail aktivitas operasional), dan{" "}
+                <strong>crew_activity_logs</strong> (audit trail operasional), dan{" "}
                 <strong>rbac_permission_rules</strong> (kebijakan hak akses modul per biro).
               </p>
               <div className="flex justify-end gap-2 pt-1">
@@ -1628,7 +1979,7 @@ const ManajemenKruRBAC: React.FC = () => {
                     toast.success("Path file migrasi disalin");
                     setTimeout(() => setCopiedMigration(false), 2000);
                   }}
-                  className="h-8 text-xs rounded-lg gap-1.5"
+                  className="h-8 text-xs rounded-xl gap-1.5"
                 >
                   {copiedMigration ? (
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -1640,7 +1991,7 @@ const ManajemenKruRBAC: React.FC = () => {
                 <Button
                   size="sm"
                   onClick={() => setShowMigrationInfo(false)}
-                  className="h-8 text-xs rounded-lg bg-slate-900 text-white"
+                  className="h-8 text-xs rounded-xl bg-slate-900 text-white"
                 >
                   Tutup
                 </Button>
