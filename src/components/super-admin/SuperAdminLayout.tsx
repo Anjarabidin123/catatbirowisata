@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { SuperAdminSidebar } from "./SuperAdminSidebar";
 import { SuperAdminHeader } from "./SuperAdminHeader";
 import { TenantRecord } from "@/utils/licenseEntitlement";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SuperAdminLayoutProps {
@@ -34,7 +34,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
       {/* Desktop Persistent Sidebar */}
       <div className="hidden lg:flex flex-shrink-0">
         <SuperAdminSidebar
@@ -50,29 +50,19 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
       {mobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/25 backdrop-blur-xs"
             onClick={() => setMobileMenuOpen(false)}
           ></div>
-          <div className="relative z-10 w-72 max-w-[85vw] flex flex-col h-full bg-[#0a0f1d] shadow-2xl">
-            <div className="p-3 flex justify-end border-b border-slate-800">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-8 h-8 p-0 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <SuperAdminSidebar
-                currentView={currentView}
-                onSelectView={handleSelectView}
-                tenantsCount={tenants.length}
-                devicesCount={devicesCount}
-                auditCount={auditCount}
-              />
-            </div>
+          <div className="relative z-10 w-64 max-w-[85vw] flex flex-col h-full bg-white border-r border-slate-200 shadow-2xl">
+            <SuperAdminSidebar
+              currentView={currentView}
+              onSelectView={handleSelectView}
+              tenantsCount={tenants.length}
+              devicesCount={devicesCount}
+              auditCount={auditCount}
+              className="w-full min-h-0 h-full border-r-0"
+              onClose={() => setMobileMenuOpen(false)}
+            />
           </div>
         </div>
       )}
@@ -80,18 +70,18 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Mobile Top Bar toggle */}
-        <div className="lg:hidden bg-[#0a0f1d] border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
+        <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setMobileMenuOpen(true)}
-              className="border-slate-700 bg-slate-900 text-slate-300 w-8 h-8 p-0"
+              className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 w-8 h-8 p-0 shadow-xs"
             >
               <Menu className="w-4 h-4" />
             </Button>
-            <span className="font-extrabold text-sm text-white tracking-tight">
-              CATATBIRO <span className="text-amber-400 text-xs font-mono">ROOT</span>
+            <span className="font-extrabold text-sm text-slate-900 tracking-tight">
+              CATATBIRO <span className="text-amber-600 text-xs font-mono font-bold">ROOT</span>
             </span>
           </div>
         </div>

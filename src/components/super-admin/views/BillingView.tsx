@@ -82,16 +82,16 @@ export const BillingView: React.FC<BillingViewProps> = ({ tenants, onRefresh }) 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header Info */}
-      <div className="p-6 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-2">
+      <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
             <CreditCard className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-lg font-bold text-slate-900">
               Penagihan, Invoicing & Arus Kas Lisensi
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Rekapitulasi penjualan lisensi Sekali Bayar (Lifetime Deal) dan biaya langganan hosting tahunan.
             </p>
           </div>
@@ -100,61 +100,61 @@ export const BillingView: React.FC<BillingViewProps> = ({ tenants, onRefresh }) 
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-5 bg-slate-900/90 border-slate-800 rounded-2xl">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <Card className="p-5 bg-white border-slate-200 rounded-2xl shadow-xs">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
             Total Kas Masuk Lisensi
           </span>
-          <div className="text-2xl font-black text-white mt-1.5">
+          <div className="text-2xl font-black text-slate-900 mt-1.5">
             {formatRupiah(totalOmset)}
           </div>
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
             Dari {tenants.length} biro wisata
           </p>
         </Card>
 
-        <Card className="p-5 bg-slate-900/90 border-slate-800 rounded-2xl">
-          <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
+        <Card className="p-5 bg-white border-slate-200 rounded-2xl shadow-xs">
+          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
             Lisensi Sekali Bayar (Lifetime)
           </span>
-          <div className="text-2xl font-black text-amber-400 mt-1.5">
+          <div className="text-2xl font-black text-amber-600 mt-1.5">
             {formatRupiah(lifetimeTotal)}
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Paket Starter & Pro Lifetime Deal
           </p>
         </Card>
 
-        <Card className="p-5 bg-slate-900/90 border-slate-800 rounded-2xl">
-          <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">
+        <Card className="p-5 bg-white border-slate-200 rounded-2xl shadow-xs">
+          <span className="text-xs font-semibold text-purple-700 uppercase tracking-wider">
             Langganan SaaS & Domain
           </span>
-          <div className="text-2xl font-black text-purple-400 mt-1.5">
+          <div className="text-2xl font-black text-purple-600 mt-1.5">
             {formatRupiah(subscriptionTotal)}
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Paket Enterprise & Recurring VPS
           </p>
         </Card>
       </div>
 
       {/* Filter Bar */}
-      <div className="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-3">
+      <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari biro atau nama pemilik..."
-            className="pl-9 bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl"
+            className="pl-9 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 text-xs h-9 rounded-xl"
           />
         </div>
 
         <Select value={paymentModelFilter} onValueChange={setPaymentModelFilter}>
-          <SelectTrigger className="w-[180px] bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl">
+          <SelectTrigger className="w-[180px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
             <SelectValue placeholder="Model Bayar" />
           </SelectTrigger>
-          <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 text-xs">
+          <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs shadow-md">
             <SelectItem value="ALL">Semua Model</SelectItem>
             <SelectItem value="lifetime">Sekali Bayar (Lifetime)</SelectItem>
             <SelectItem value="subscription">Langganan Berkala</SelectItem>
@@ -163,10 +163,10 @@ export const BillingView: React.FC<BillingViewProps> = ({ tenants, onRefresh }) 
       </div>
 
       {/* Invoices Table */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-xl">
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
               <tr>
                 <th className="py-3.5 px-4">Biro & Pemilik</th>
                 <th className="py-3.5 px-3">Paket Lisensi</th>
@@ -177,22 +177,22 @@ export const BillingView: React.FC<BillingViewProps> = ({ tenants, onRefresh }) 
                 <th className="py-3.5 px-4 text-right">Kirim Tagihan</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-slate-200">
               {filteredTenants.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-800/40 transition-colors">
+                <tr key={t.id} className="hover:bg-slate-50 transition-colors">
                   <td className="py-4 px-4 space-y-0.5">
-                    <div className="font-bold text-white text-sm">{t.namaBiro}</div>
-                    <div className="text-[11px] text-slate-400">{t.ownerNama} • {t.ownerPhone}</div>
+                    <div className="font-bold text-slate-900 text-sm">{t.namaBiro}</div>
+                    <div className="text-[11px] text-slate-500">{t.ownerNama} • {t.ownerPhone}</div>
                   </td>
 
                   <td className="py-4 px-3">
                     <Badge
                       className={`text-[10px] uppercase font-mono ${
                         t.tier === "enterprise"
-                          ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                          ? "bg-purple-50 text-purple-700 border-purple-200"
                           : t.tier === "pro"
-                          ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
-                          : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
                       }`}
                     >
                       {t.tier}
@@ -200,20 +200,20 @@ export const BillingView: React.FC<BillingViewProps> = ({ tenants, onRefresh }) 
                   </td>
 
                   <td className="py-4 px-3">
-                    <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-300">
+                    <Badge variant="outline" className="text-[10px] border-slate-200 bg-slate-50 text-slate-700">
                       {t.paymentModel === "lifetime" ? "Sekali Bayar" : "Langganan Bulanan"}
                     </Badge>
                   </td>
 
-                  <td className="py-4 px-3 font-mono text-emerald-400 font-bold text-sm">
+                  <td className="py-4 px-3 font-mono text-emerald-600 font-bold text-sm">
                     {formatRupiah(t.nominalBayar)}
                   </td>
 
-                  <td className="py-4 px-3 font-mono text-slate-400">
+                  <td className="py-4 px-3 font-mono text-slate-600">
                     {t.tanggalBayar || "-"}
                   </td>
 
-                  <td className="py-4 px-3 font-mono text-slate-400">
+                  <td className="py-4 px-3 font-mono text-slate-600">
                     {t.tanggalJatuhTempo || (t.paymentModel === "lifetime" ? "Seumur Hidup" : "-")}
                   </td>
 
@@ -221,7 +221,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ tenants, onRefresh }) 
                     <Button
                       size="sm"
                       onClick={() => handleSendBillingWhatsApp(t)}
-                      className="bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-900/60 text-emerald-300 text-xs h-7 px-2.5 rounded-lg flex items-center gap-1 ml-auto"
+                      className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs h-7 px-2.5 rounded-lg flex items-center gap-1 ml-auto transition-colors"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       Invoice WA

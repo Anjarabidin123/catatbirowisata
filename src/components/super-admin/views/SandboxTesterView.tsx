@@ -62,8 +62,8 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
       id: "super_admin",
       title: "Mode Root Super Admin (Master Founder)",
       badge: "ROOT BYPASS",
-      badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-      icon: <Crown className="w-6 h-6 text-amber-400" />,
+      badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
+      icon: <Crown className="w-6 h-6 text-amber-500" />,
       desc: "Hak akses absolut tanpa batas. Membuka seluruh fitur, bypassing overlay desktop, dan bebas mengelola seluruh biro.",
       features: [
         "Akses konsol /super-admin penuh",
@@ -76,8 +76,8 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
       id: "starter",
       title: "Simulasi Klien: Tier Starter (Paket Murah)",
       badge: "STARTER TIER",
-      badgeColor: "bg-slate-700 text-slate-300 border-slate-600",
-      icon: <Smartphone className="w-6 h-6 text-slate-400" />,
+      badgeColor: "bg-slate-100 text-slate-700 border-slate-200",
+      icon: <Smartphone className="w-6 h-6 text-slate-600" />,
       desc: "Mensimulasikan pengalaman biro yang hanya membeli lisensi smartphone. Jika layar laptop >= 1024px, overlay gembok akan muncul.",
       features: [
         "Mode desktop laptop TERKUNCI overlay",
@@ -92,8 +92,8 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
       id: "pro",
       title: "Simulasi Klien: Tier Pro (Paket Standar Sekali Bayar)",
       badge: "PRO TIER",
-      badgeColor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-      icon: <Monitor className="w-6 h-6 text-blue-400" />,
+      badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
+      icon: <Monitor className="w-6 h-6 text-blue-600" />,
       desc: "Mensimulasikan biro paket Pro. Mode desktop terbuka penuh dengan Bento KPI, laporan PDF bersih dengan kop surat sendiri.",
       features: [
         "Mode desktop laptop TERBUKA PENUH (Bento KPI)",
@@ -107,8 +107,8 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
       id: "enterprise",
       title: "Simulasi Klien: Tier Enterprise (Langganan SaaS)",
       badge: "ENTERPRISE TIER",
-      badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-      icon: <Sparkles className="w-6 h-6 text-purple-400" />,
+      badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+      icon: <Sparkles className="w-6 h-6 text-purple-600" />,
       desc: "Mensimulasikan biro skala besar dengan kuota tak terbatas, multi-cabang, dan domain promosi tersendiri.",
       features: [
         "Seluruh fitur operasional terbuka 100%",
@@ -122,16 +122,16 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header Info */}
-      <div className="p-6 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-2">
+      <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-lg font-bold text-slate-900">
               Sandbox Persona Tester & Simulator
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Uji pengalaman pengguna secara langsung dari berbagai sudut pandang (Starter, Pro, Enterprise, atau Impersonate).
             </p>
           </div>
@@ -140,14 +140,14 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
 
       {/* Impersonation Banner if Active */}
       {impersonatedTenant && (
-        <div className="p-4 rounded-2xl bg-amber-950/40 border-2 border-amber-500/60 flex items-center justify-between gap-4">
+        <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <Building2 className="w-5 h-5 text-amber-400" />
+            <Building2 className="w-5 h-5 text-amber-600" />
             <div>
-              <div className="text-xs font-bold text-amber-300">
+              <div className="text-xs font-bold text-amber-900">
                 SEDANG MENG-IMPERSONATE: {impersonatedTenant.namaBiro}
               </div>
-              <p className="text-[11px] text-slate-300">
+              <p className="text-[11px] text-amber-800">
                 Aplikasi saat ini menampilkan hak akses persis milik biro ini (Desktop: {impersonatedTenant.canUseDesktopMode ? "Buka" : "Kunci"}, Kuota: {impersonatedTenant.maxActiveTrips}).
               </p>
             </div>
@@ -155,7 +155,7 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
           <Button
             size="sm"
             onClick={handleStopImpersonate}
-            className="bg-amber-600 hover:bg-amber-500 text-white text-xs h-8 px-3 rounded-xl flex items-center gap-1.5 whitespace-nowrap"
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 px-3 rounded-xl flex items-center gap-1.5 whitespace-nowrap shadow-xs font-semibold"
           >
             <LogOut className="w-3.5 h-3.5" />
             Hentikan Impersonasi
@@ -172,19 +172,19 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
               key={m.id}
               className={`p-6 rounded-2xl border transition-all cursor-pointer ${
                 isSelected
-                  ? "bg-slate-900 border-indigo-500 shadow-xl shadow-indigo-500/10 ring-1 ring-indigo-500"
-                  : "bg-slate-900/80 border-slate-800 hover:border-slate-700"
+                  ? "bg-white border-indigo-500 shadow-md ring-2 ring-indigo-500/20"
+                  : "bg-white border-slate-200 hover:border-slate-300 shadow-xs"
               }`}
               onClick={() => handleSelectMode(m.id)}
             >
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
                       {m.icon}
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-white">{m.title}</h3>
+                      <h3 className="text-sm font-bold text-slate-900">{m.title}</h3>
                       <Badge className={`${m.badgeColor} text-[10px] font-mono mt-1`}>
                         {m.badge}
                       </Badge>
@@ -192,21 +192,21 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
                   </div>
 
                   {isSelected && (
-                    <Badge className="bg-emerald-500 text-white font-bold text-xs flex items-center gap-1">
+                    <Badge className="bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow-xs">
                       <Check className="w-3.5 h-3.5" /> AKTIF
                     </Badge>
                   )}
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   {m.desc}
                 </p>
 
-                <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     Ketentuan Fitur:
                   </span>
-                  <ul className="space-y-1 text-xs text-slate-300">
+                  <ul className="space-y-1 text-xs text-slate-700">
                     {m.features.map((f, i) => (
                       <li key={i} className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
@@ -224,10 +224,10 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
                       e.stopPropagation();
                       handleSelectMode(m.id);
                     }}
-                    className={`text-xs h-8 px-3 rounded-xl ${
+                    className={`text-xs h-8 px-3 rounded-xl font-medium ${
                       isSelected
-                        ? "bg-indigo-600 hover:bg-indigo-500 text-white"
-                        : "border-slate-700 bg-slate-800 text-slate-300 hover:text-white"
+                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-xs"
                     }`}
                   >
                     {isSelected ? "Sedang Digunakan" : "Gunakan Mode Ini"}
@@ -239,14 +239,14 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
         })}
       </div>
 
-      <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between gap-4">
-        <div className="text-xs text-slate-400">
+      <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-4">
+        <div className="text-xs text-slate-600">
           Ingin melihat tampilan aplikasi biro setelah mengganti mode?
         </div>
         <Button
           size="sm"
           onClick={() => navigate("/dashboard")}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 px-3 rounded-xl flex items-center gap-1.5"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 px-3 rounded-xl flex items-center gap-1.5 shadow-xs font-semibold"
         >
           Ke Aplikasi Biro <ArrowRight className="w-3.5 h-3.5" />
         </Button>

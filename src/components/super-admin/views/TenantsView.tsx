@@ -185,23 +185,23 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-900/90 rounded-2xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex flex-1 items-center gap-3 flex-wrap">
           <div className="relative min-w-[240px] flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari biro, nama pemilik, email, no HP, atau domain..."
-              className="pl-9 bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl"
+              className="pl-9 bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl placeholder:text-slate-400"
             />
           </div>
 
           <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger className="w-[140px] bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl">
+            <SelectTrigger className="w-[140px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
               <SelectValue placeholder="Semua Paket" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+            <SelectContent className="bg-white border-slate-200 text-slate-900">
               <SelectItem value="all">Semua Paket</SelectItem>
               <SelectItem value="starter">Starter</SelectItem>
               <SelectItem value="pro">Pro</SelectItem>
@@ -210,10 +210,10 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl">
+            <SelectTrigger className="w-[130px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+            <SelectContent className="bg-white border-slate-200 text-slate-900">
               <SelectItem value="all">Semua Status</SelectItem>
               <SelectItem value="active">Aktif</SelectItem>
               <SelectItem value="trial">Trial</SelectItem>
@@ -225,7 +225,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
 
         <Button
           onClick={() => setShowAddModal(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold h-9 px-4 rounded-xl flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 whitespace-nowrap"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-9 px-4 rounded-xl flex items-center gap-1.5 shadow-xs whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
           Daftarkan Biro Baru
@@ -235,32 +235,32 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
       {/* Tenants Table & Cards */}
       <div className="space-y-3">
         {filteredTenants.length === 0 ? (
-          <div className="p-12 text-center bg-slate-900/60 rounded-2xl border border-slate-800 text-slate-400 space-y-2">
-            <Building2 className="w-8 h-8 mx-auto text-slate-600" />
+          <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2 shadow-xs">
+            <Building2 className="w-8 h-8 mx-auto text-slate-500" />
             <p className="text-sm font-medium">Tidak ada biro wisata yang cocok dengan pencarian</p>
           </div>
         ) : (
           filteredTenants.map((t) => (
             <Card
               key={t.id}
-              className="bg-slate-900/90 border-slate-800 hover:border-slate-700 p-5 rounded-2xl transition-all shadow-md"
+              className="bg-white border-slate-200 hover:border-slate-300 p-5 rounded-2xl transition-all shadow-xs"
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 {/* Info Utama Biro */}
                 <div className="space-y-2 max-w-xl">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-indigo-400" />
+                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-indigo-600" />
                       {t.namaBiro}
                     </h3>
 
                     <Badge
                       className={`text-xs uppercase font-mono px-2 py-0.5 ${
                         t.tier === "enterprise"
-                          ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                          ? "bg-purple-50 text-purple-700 border-purple-200"
                           : t.tier === "pro"
-                          ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
-                          : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
                       }`}
                     >
                       {t.tier} Tier
@@ -270,40 +270,40 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                       variant="outline"
                       className={`text-[10px] ${
                         t.status === "active"
-                          ? "border-emerald-500/40 text-emerald-400 bg-emerald-950/20"
-                          : "border-rose-500/40 text-rose-400 bg-rose-950/20"
+                          ? "border-emerald-200 text-emerald-700 bg-emerald-50"
+                          : "border-rose-200 text-rose-700 bg-rose-50"
                       }`}
                     >
                       {t.status.toUpperCase()}
                     </Badge>
 
-                    <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700">
+                    <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-200 bg-slate-50">
                       {t.paymentModel === "lifetime" ? "Sekali Bayar" : "Langganan SaaS"}
                     </Badge>
                   </div>
 
                   {/* Contact Info */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400">Pemilik:</span>
-                      <strong className="text-white">{t.ownerNama}</strong>
+                      <span className="text-slate-500">Pemilik:</span>
+                      <strong className="text-slate-900 font-semibold">{t.ownerNama}</strong>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-mono text-slate-200">{t.ownerPhone}</span>
+                      <Phone className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="font-mono text-slate-700">{t.ownerPhone}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-mono text-slate-300">{t.ownerEmail}</span>
+                      <Mail className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="font-mono text-slate-700">{t.ownerEmail}</span>
                     </div>
                     {t.domainName && (
                       <div className="flex items-center gap-2">
-                        <Globe className="w-3.5 h-3.5 text-blue-400" />
+                        <Globe className="w-3.5 h-3.5 text-blue-600" />
                         <a
                           href={`https://${t.domainName}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-blue-400 hover:underline flex items-center gap-1 font-mono"
+                          className="text-blue-600 hover:underline flex items-center gap-1 font-mono font-medium"
                         >
                           {t.domainName} <ExternalLink className="w-3 h-3" />
                         </a>
@@ -316,30 +316,30 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                     <span
                       className={`text-[11px] px-2 py-0.5 rounded-md border flex items-center gap-1 font-medium ${
                         t.canUseDesktopMode
-                          ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/60"
-                          : "bg-slate-950/60 text-slate-400 border-slate-800"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-100 text-slate-600 border-slate-200"
                       }`}
                     >
                       <Monitor className="w-3 h-3" />
                       {t.canUseDesktopMode ? "Mode PC: Aktif" : "Mode PC: Kunci"}
                     </span>
 
-                    <span className="text-[11px] px-2 py-0.5 rounded-md border bg-cyan-950/40 text-cyan-300 border-cyan-800/60 font-mono">
+                    <span className="text-[11px] px-2 py-0.5 rounded-md border bg-cyan-50 text-cyan-700 border-cyan-200 font-mono font-medium">
                       Trip: {t.maxActiveTrips >= 9000 ? "∞ Unlimited" : `${t.maxActiveTrips} Kuota`}
                     </span>
 
-                    <span className="text-[11px] px-2 py-0.5 rounded-md border bg-indigo-950/40 text-indigo-300 border-indigo-800/60 font-mono">
+                    <span className="text-[11px] px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200 font-mono font-medium">
                       Kru: {t.maxCrewMembers >= 9000 ? "∞ Unlimited" : `${t.maxCrewMembers} Kru`}
                     </span>
 
                     {t.canUseAI && (
-                      <span className="text-[11px] px-2 py-0.5 rounded-md border bg-amber-950/40 text-amber-300 border-amber-800/60 flex items-center gap-1">
+                      <span className="text-[11px] px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1 font-medium">
                         <Sparkles className="w-3 h-3" /> AI
                       </span>
                     )}
 
                     {t.canExportCleanPdf && (
-                      <span className="text-[11px] px-2 py-0.5 rounded-md border bg-emerald-950/40 text-emerald-300 border-emerald-800/60 flex items-center gap-1">
+                      <span className="text-[11px] px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1 font-medium">
                         <FileCheck2 className="w-3 h-3" /> PDF Bersih
                       </span>
                     )}
@@ -351,7 +351,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                   <Button
                     size="sm"
                     onClick={() => onOpenFeatureModal(t)}
-                    className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs h-8 px-3 rounded-xl shadow-md flex items-center gap-1.5"
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 px-3 rounded-xl shadow-xs flex items-center gap-1.5"
                   >
                     <Sliders className="w-3.5 h-3.5" />
                     Atur Fitur (A-Z)
@@ -362,10 +362,10 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                       size="sm"
                       variant="outline"
                       onClick={() => handleImpersonate(t)}
-                      className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs h-8 px-2.5 rounded-xl flex items-center gap-1"
+                      className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs h-8 px-2.5 rounded-xl flex items-center gap-1 shadow-xs"
                       title="Masuk ke aplikasi sebagai biro ini (Impersonate)"
                     >
-                      <LogIn className="w-3.5 h-3.5 text-indigo-400" />
+                      <LogIn className="w-3.5 h-3.5 text-indigo-600" />
                       Impersonate
                     </Button>
 
@@ -373,10 +373,10 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                       size="sm"
                       variant="outline"
                       onClick={() => handleWhatsAppChat(t)}
-                      className="border-emerald-800/60 bg-emerald-950/40 hover:bg-emerald-900 text-emerald-300 text-xs h-8 px-2.5 rounded-xl flex items-center gap-1"
+                      className="border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs h-8 px-2.5 rounded-xl flex items-center gap-1 shadow-xs"
                       title="Kirim pesan WhatsApp ke pemilik biro"
                     >
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                       WhatsApp
                     </Button>
 
@@ -384,7 +384,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                       size="sm"
                       variant="outline"
                       onClick={() => handleDelete(t)}
-                      className="border-rose-900/60 bg-rose-950/40 hover:bg-rose-900 text-rose-300 text-xs h-8 w-8 p-0 rounded-xl"
+                      className="border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs h-8 w-8 p-0 rounded-xl shadow-xs"
                       title="Hapus tenant"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -399,13 +399,13 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
 
       {/* Modal Tambah Biro Baru */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-2xl bg-[#0d1322] border-slate-800 text-slate-100 max-h-[90vh] flex flex-col p-6 rounded-2xl">
-          <DialogHeader className="border-b border-slate-800 pb-3">
-            <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-indigo-400" />
+        <DialogContent className="max-w-2xl bg-white border-slate-200 text-slate-900 max-h-[90vh] flex flex-col p-6 rounded-2xl shadow-xl">
+          <DialogHeader className="border-b border-slate-200 pb-3">
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-indigo-600" />
               Pendaftaran Klien Biro Wisata Baru
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-400">
+            <DialogDescription className="text-xs text-slate-500">
               Registrasi tenant baru langsung terhubung ke database dan audit trail.
             </DialogDescription>
           </DialogHeader>
@@ -413,65 +413,65 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
           <form onSubmit={handleCreateBiro} className="space-y-4 py-3 overflow-y-auto text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Nama Biro Wisata *</Label>
+                <Label className="text-xs text-slate-700 font-medium">Nama Biro Wisata *</Label>
                 <Input
                   required
                   value={newBiroForm.namaBiro}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, namaBiro: e.target.value })}
                   placeholder="Misal: Cahaya Tasbih Tour & Travel"
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                  className="bg-white border-slate-300 text-slate-900 text-xs"
                 />
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Slug URL Biro (Opsional)</Label>
+                <Label className="text-xs text-slate-700 font-medium">Slug URL Biro (Opsional)</Label>
                 <Input
                   value={newBiroForm.slugBiro}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, slugBiro: e.target.value })}
                   placeholder="cahaya-tasbih"
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                  className="bg-white border-slate-300 text-slate-900 text-xs font-mono"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Nama Pemilik *</Label>
+                <Label className="text-xs text-slate-700 font-medium">Nama Pemilik *</Label>
                 <Input
                   required
                   value={newBiroForm.ownerNama}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, ownerNama: e.target.value })}
                   placeholder="H. Anjar / Bambang"
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                  className="bg-white border-slate-300 text-slate-900 text-xs"
                 />
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">No. WhatsApp *</Label>
+                <Label className="text-xs text-slate-700 font-medium">No. WhatsApp *</Label>
                 <Input
                   required
                   value={newBiroForm.ownerPhone}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, ownerPhone: e.target.value })}
                   placeholder="0812-3456-7890"
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                  className="bg-white border-slate-300 text-slate-900 text-xs font-mono"
                 />
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Email Akun</Label>
+                <Label className="text-xs text-slate-700 font-medium">Email Akun</Label>
                 <Input
                   type="email"
                   value={newBiroForm.ownerEmail}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, ownerEmail: e.target.value })}
                   placeholder="owner@biro.id"
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                  className="bg-white border-slate-300 text-slate-900 text-xs"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Pilihan Paket Lisensi</Label>
+                <Label className="text-xs text-slate-700 font-medium">Pilihan Paket Lisensi</Label>
                 <Select
                   value={newBiroForm.tier}
                   onValueChange={(val: LicenseTier) => {
@@ -479,10 +479,10 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                     setNewBiroForm({ ...newBiroForm, tier: val, nominalBayar: price });
                   }}
                 >
-                  <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-200 text-xs">
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 text-xs">
+                  <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                     <SelectItem value="starter">Starter (Sekali Bayar Murah)</SelectItem>
                     <SelectItem value="pro">Pro (Sekali Bayar Standar)</SelectItem>
                     <SelectItem value="enterprise">Enterprise (SaaS Bulanan)</SelectItem>
@@ -491,15 +491,15 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Model Pembayaran</Label>
+                <Label className="text-xs text-slate-700 font-medium">Model Pembayaran</Label>
                 <Select
                   value={newBiroForm.paymentModel}
                   onValueChange={(val: PaymentModel) => setNewBiroForm({ ...newBiroForm, paymentModel: val })}
                 >
-                  <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-200 text-xs">
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 text-xs">
+                  <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                     <SelectItem value="lifetime">Sekali Bayar (Lifetime)</SelectItem>
                     <SelectItem value="subscription">Langganan SaaS</SelectItem>
                   </SelectContent>
@@ -507,26 +507,26 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Nominal Bayar (Rp)</Label>
+                <Label className="text-xs text-slate-700 font-medium">Nominal Bayar (Rp)</Label>
                 <Input
                   type="number"
                   value={newBiroForm.nominalBayar}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, nominalBayar: parseInt(e.target.value) || 0 })}
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                  className="bg-white border-slate-300 text-slate-900 text-xs font-mono"
                 />
               </div>
             </div>
 
-            <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-slate-200 cursor-pointer">
+                <Label className="text-xs font-semibold text-slate-800 cursor-pointer">
                   Termasuk Website Promosi (.com / .id)?
                 </Label>
                 <input
                   type="checkbox"
                   checked={newBiroForm.hasWebsite}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, hasWebsite: e.target.checked })}
-                  className="w-4 h-4 rounded text-indigo-600 bg-slate-950 border-slate-700"
+                  className="w-4 h-4 rounded text-indigo-600 bg-white border-slate-300"
                 />
               </div>
               {newBiroForm.hasWebsite && (
@@ -534,23 +534,23 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                   value={newBiroForm.domainName}
                   onChange={(e) => setNewBiroForm({ ...newBiroForm, domainName: e.target.value })}
                   placeholder="Nama domain yang dibeli, misal: berkahwisata.com"
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                  className="bg-white border-slate-300 text-slate-900 text-xs font-mono"
                 />
               )}
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowAddModal(false)}
-                className="text-xs border-slate-700 bg-slate-800 text-slate-300"
+                className="text-xs border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-xs"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
-                className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xs"
               >
                 Simpan & Daftarkan
               </Button>

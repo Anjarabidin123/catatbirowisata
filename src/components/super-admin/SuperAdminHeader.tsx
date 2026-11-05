@@ -84,20 +84,20 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#0a0f1d]/95 backdrop-blur-md border-b border-slate-800/80 px-6 py-3.5 flex flex-col gap-2 select-none shadow-md">
+    <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-6 py-3.5 flex flex-col gap-2 select-none shadow-xs">
       {/* Impersonation Banner if active */}
       {impersonatedTenant && (
-        <div className="p-2 rounded-xl bg-amber-950/60 border border-amber-500/60 flex items-center justify-between text-xs text-amber-200 animate-pulse">
+        <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-between text-xs text-amber-900">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-amber-400" />
+            <Building2 className="w-4 h-4 text-amber-600" />
             <span>
-              Mode Impersonasi Aktif: <strong className="text-white">{impersonatedTenant.namaBiro}</strong>
+              Mode Impersonasi Aktif: <strong className="text-amber-950 font-bold">{impersonatedTenant.namaBiro}</strong>
             </span>
           </div>
           <Button
             size="sm"
             onClick={handleStopImpersonate}
-            className="text-[11px] h-6 bg-amber-600 hover:bg-amber-500 text-white px-2 rounded-lg"
+            className="text-[11px] h-6 bg-amber-600 hover:bg-amber-700 text-white px-2 rounded-lg shadow-xs"
           >
             Hentikan Impersonasi
           </Button>
@@ -106,10 +106,10 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Breadcrumb Title */}
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="font-mono text-slate-400">ROOT CONSOLE</span>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-          <h2 className="text-sm font-bold text-white tracking-tight">
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="font-mono text-slate-500 font-semibold">ROOT CONSOLE</span>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+          <h2 className="text-sm font-bold text-slate-900 tracking-tight">
             {getViewTitle(currentView)}
           </h2>
         </div>
@@ -117,17 +117,17 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({
         {/* Right Status Indicators & Action Buttons */}
         <div className="flex items-center gap-3 flex-wrap justify-end">
           {/* Live System Time */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-mono">
-            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-mono shadow-xs">
+            <Clock className="w-3.5 h-3.5 text-cyan-600" />
             <span>{timeStr || "Memuat..."}</span>
           </div>
 
           {/* Cluster Status Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-emerald-400">Supabase Online</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400">Ping 24ms</span>
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-mono shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-emerald-700 font-semibold">Supabase Online</span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500">Ping 24ms</span>
           </div>
 
           {/* Quick Add Biro Button */}
@@ -135,7 +135,7 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({
             <Button
               size="sm"
               onClick={onOpenAddTenant}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 px-3 rounded-xl flex items-center gap-1.5 shadow-md shadow-indigo-600/30"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 px-3 rounded-xl flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               Biro Baru
@@ -147,7 +147,7 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({
             size="sm"
             variant="outline"
             onClick={onRefresh}
-            className="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs h-8 w-8 p-0 rounded-xl"
+            className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs h-8 w-8 p-0 rounded-xl shadow-xs"
             title="Muat ulang data"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({
             size="sm"
             variant="outline"
             onClick={() => navigate("/dashboard")}
-            className="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs h-8 px-2.5 rounded-xl hidden sm:flex items-center gap-1"
+            className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs h-8 px-2.5 rounded-xl hidden sm:flex items-center gap-1 shadow-xs"
           >
             Aplikasi Biro <ExternalLink className="w-3 h-3 text-slate-500" />
           </Button>

@@ -179,22 +179,22 @@ export const DatabaseManagerView: React.FC<DatabaseManagerViewProps> = ({ onRefr
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header Info */}
-      <div className="p-6 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-2">
+      <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-700 border border-cyan-200">
               <Database className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-lg font-bold text-slate-900">
                   Database Schema & Supabase SQL Manager
                 </h2>
-                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs font-mono">
+                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-mono font-medium">
                   Schema v2.4 Active
                 </Badge>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Konsol DDL migrasi SQL Supabase untuk tabel lisensi, RLS security policy, audit trail, dan perangkat.
               </p>
             </div>
@@ -203,7 +203,7 @@ export const DatabaseManagerView: React.FC<DatabaseManagerViewProps> = ({ onRefr
           <div className="flex items-center gap-2">
             <Button
               onClick={handleCopySql}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-4 rounded-xl flex items-center gap-1.5 shadow-lg shadow-indigo-600/30"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9 px-4 rounded-xl flex items-center gap-1.5 shadow-xs font-semibold"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? "Tersalin!" : "Salin Query SQL"}
@@ -211,7 +211,7 @@ export const DatabaseManagerView: React.FC<DatabaseManagerViewProps> = ({ onRefr
             <Button
               onClick={handleResetAllData}
               variant="outline"
-              className="text-xs border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 h-9 rounded-xl flex items-center gap-1.5"
+              className="text-xs border-slate-300 bg-white hover:bg-slate-50 text-slate-700 h-9 rounded-xl flex items-center gap-1.5 shadow-xs"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Reset Data Seed
@@ -222,32 +222,32 @@ export const DatabaseManagerView: React.FC<DatabaseManagerViewProps> = ({ onRefr
 
       {/* Database Status Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4 bg-slate-900/90 border-slate-800 rounded-xl space-y-1">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <Card className="p-4 bg-white border-slate-200 rounded-xl shadow-xs space-y-1">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
             Supabase Connection
           </div>
-          <div className="text-base font-bold text-emerald-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <div className="text-base font-bold text-emerald-600 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Connected (Pooler Active)
           </div>
           <p className="text-[11px] text-slate-500 font-mono">Endpoint: wss://supabase.co</p>
         </Card>
 
-        <Card className="p-4 bg-slate-900/90 border-slate-800 rounded-xl space-y-1">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <Card className="p-4 bg-white border-slate-200 rounded-xl shadow-xs space-y-1">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
             Total Tabel Enterprise
           </div>
-          <div className="text-base font-bold text-white">
+          <div className="text-base font-bold text-slate-900">
             7 Tabel Terisolasi RLS
           </div>
           <p className="text-[11px] text-slate-500">Row Level Security (anjarbdn@gmail.com bypass)</p>
         </Card>
 
-        <Card className="p-4 bg-slate-900/90 border-slate-800 rounded-xl space-y-1">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <Card className="p-4 bg-white border-slate-200 rounded-xl shadow-xs space-y-1">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
             Offline Cache Engine
           </div>
-          <div className="text-base font-bold text-cyan-400 flex items-center gap-1">
+          <div className="text-base font-bold text-cyan-700 flex items-center gap-1">
             <Check className="w-4 h-4" /> Local Fallback Ready
           </div>
           <p className="text-[11px] text-slate-500">PWA IndexedDB & Reactive State</p>
@@ -256,15 +256,15 @@ export const DatabaseManagerView: React.FC<DatabaseManagerViewProps> = ({ onRefr
 
       {/* SQL Script Display */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <span className="font-semibold text-slate-200 flex items-center gap-2">
-            <FileCode className="w-4 h-4 text-amber-400" />
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span className="font-semibold text-slate-800 flex items-center gap-2">
+            <FileCode className="w-4 h-4 text-amber-500" />
             File: supabase/migrations/20261105_super_admin_and_licensing.sql
           </span>
           <span className="text-slate-500 font-mono">PostgreSQL 15+ Dialect</span>
         </div>
 
-        <pre className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-mono text-slate-300 overflow-x-auto max-h-96 whitespace-pre-wrap leading-relaxed shadow-inner">
+        <pre className="p-4 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-mono text-slate-800 overflow-x-auto max-h-96 whitespace-pre-wrap leading-relaxed shadow-xs">
           {SQL_MIGRATION_SCRIPT}
         </pre>
       </div>

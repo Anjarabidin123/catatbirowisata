@@ -75,10 +75,10 @@ export const SuperAdminSimulatorBar: React.FC = () => {
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="fixed bottom-3 right-3 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-amber-400 border border-amber-500/60 shadow-xl backdrop-blur-md text-[11px] font-bold hover:scale-105 transition-all"
+        className="fixed bottom-3 right-3 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-amber-700 border border-amber-300 shadow-xl text-[11px] font-bold hover:bg-amber-50 transition-all"
         title="Buka Sandbox Simulator Super Admin"
       >
-        <Crown className="w-3.5 h-3.5 text-amber-400" />
+        <Crown className="w-3.5 h-3.5 text-amber-600" />
         <span>Tester Switcher</span>
         <ChevronUp className="w-3.5 h-3.5" />
       </button>
@@ -87,25 +87,25 @@ export const SuperAdminSimulatorBar: React.FC = () => {
 
   return (
     <div className="fixed bottom-3 right-3 sm:right-6 z-50 animate-fade-in font-sans">
-      <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-950/95 text-white border border-amber-500/50 shadow-2xl backdrop-blur-lg flex flex-col sm:flex-row items-center gap-2 max-w-xl">
+      <div className="p-2 sm:p-2.5 rounded-2xl bg-white text-slate-900 border border-slate-200 shadow-2xl flex flex-col sm:flex-row items-center gap-2 max-w-xl">
         {/* Badge Identitas Founder */}
-        <div className="flex items-center justify-between w-full sm:w-auto gap-2 border-b sm:border-b-0 sm:border-r border-slate-800 pb-1.5 sm:pb-0 sm:pr-2.5">
+        <div className="flex items-center justify-between w-full sm:w-auto gap-2 border-b sm:border-b-0 sm:border-r border-slate-200 pb-1.5 sm:pb-0 sm:pr-2.5">
           <div className="flex items-center gap-1.5">
-            <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/40">
+            <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
               <Crown className="w-3.5 h-3.5" />
             </div>
             <div>
-              <span className="text-[10px] font-extrabold text-amber-400 tracking-wider uppercase block">
+              <span className="text-[10px] font-extrabold text-amber-800 tracking-wider uppercase block">
                 Founder Sandbox
               </span>
-              <span className="text-[9px] text-slate-400 truncate max-w-[110px] block">
+              <span className="text-[9px] text-slate-500 truncate max-w-[110px] block">
                 {SUPER_ADMIN_EMAIL}
               </span>
             </div>
           </div>
           <button
             onClick={() => setCollapsed(true)}
-            className="text-slate-400 hover:text-white p-1 rounded-lg"
+            className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors"
             title="Sembunyikan toolbar"
           >
             <ChevronDown className="w-3.5 h-3.5" />
@@ -117,9 +117,9 @@ export const SuperAdminSimulatorBar: React.FC = () => {
           const tenant = getTenantById(impersonatedId);
           if (!tenant) return null;
           return (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-amber-950/90 border border-amber-500/60 text-xs">
-              <Building2 className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[11px] font-bold text-amber-200">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-amber-50 border border-amber-300 text-xs">
+              <Building2 className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-[11px] font-bold text-amber-900">
                 Impersonasi: {tenant.namaBiro} ({tenant.tier.toUpperCase()})
               </span>
               <button
@@ -129,7 +129,7 @@ export const SuperAdminSimulatorBar: React.FC = () => {
                   toast.success("Sesi impersonasi dihentikan. Kembali ke Super Admin.");
                   navigate("/super-admin?view=tenants");
                 }}
-                className="text-[10px] bg-rose-600 hover:bg-rose-500 text-white px-1.5 py-0.5 rounded font-bold"
+                className="text-[10px] bg-rose-600 hover:bg-rose-700 text-white px-1.5 py-0.5 rounded font-bold transition-colors"
               >
                 Keluar
               </button>
@@ -145,8 +145,8 @@ export const SuperAdminSimulatorBar: React.FC = () => {
             onClick={() => handleSwitchMode("super_admin")}
             className={`h-7 px-2 text-[10px] rounded-xl font-bold gap-1 transition-all ${
               currentMode === "super_admin"
-                ? "bg-amber-500 text-slate-950 shadow-xs"
-                : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
+                ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
             }`}
           >
             <Crown className="w-3 h-3" />
@@ -159,8 +159,8 @@ export const SuperAdminSimulatorBar: React.FC = () => {
             onClick={() => handleSwitchMode("starter")}
             className={`h-7 px-2 text-[10px] rounded-xl font-bold gap-1 transition-all ${
               currentMode === "starter"
-                ? "bg-rose-600 text-white shadow-xs"
-                : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
+                ? "bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
             }`}
             title="Simulasi Akun Murah: Mode Desktop PC Terkunci"
           >
@@ -174,8 +174,8 @@ export const SuperAdminSimulatorBar: React.FC = () => {
             onClick={() => handleSwitchMode("pro")}
             className={`h-7 px-2 text-[10px] rounded-xl font-bold gap-1 transition-all ${
               currentMode === "pro"
-                ? "bg-blue-600 text-white shadow-xs"
-                : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
             }`}
             title="Simulasi Akun Pro: Desktop Bento Terbuka Penuh"
           >
@@ -189,8 +189,8 @@ export const SuperAdminSimulatorBar: React.FC = () => {
             onClick={() => handleSwitchMode("enterprise")}
             className={`h-7 px-2 text-[10px] rounded-xl font-bold gap-1 transition-all ${
               currentMode === "enterprise"
-                ? "bg-emerald-600 text-white shadow-xs"
-                : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
             }`}
             title="Simulasi Akun Enterprise: Langganan & Website"
           >
@@ -202,7 +202,7 @@ export const SuperAdminSimulatorBar: React.FC = () => {
             <Button
               type="button"
               size="sm"
-              className="h-7 px-2.5 text-[10px] rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 gap-1 ml-1"
+              className="h-7 px-2.5 text-[10px] rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white gap-1 ml-1 shadow-xs transition-colors"
             >
               <Settings className="w-3 h-3" />
               <span>Portal Admin ↗</span>

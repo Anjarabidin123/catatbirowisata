@@ -18,6 +18,7 @@ import {
   Zap,
   Activity,
   Layers,
+  X,
 } from "lucide-react";
 import { SUPER_ADMIN_EMAIL } from "@/utils/licenseEntitlement";
 
@@ -38,6 +39,8 @@ interface SuperAdminSidebarProps {
   tenantsCount: number;
   devicesCount: number;
   auditCount: number;
+  className?: string;
+  onClose?: () => void;
 }
 
 export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
@@ -46,6 +49,8 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
   tenantsCount,
   devicesCount,
   auditCount,
+  className = "",
+  onClose,
 }) => {
   const navGroups: SuperAdminNavGroup[] = [
     {
@@ -66,14 +71,14 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
           label: "Direktori Klien Biro",
           icon: Building2,
           badge: `${tenantsCount}`,
-          badgeColor: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
+          badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
         },
         {
           key: "feature_gating",
           label: "Feature Gating A-Z",
           icon: Sliders,
           badge: "/agy-customizations",
-          badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+          badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
         },
       ],
     },
@@ -85,14 +90,14 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
           label: "Audit Logs & Aktivitas",
           icon: FileText,
           badge: `${auditCount}`,
-          badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+          badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
         },
         {
           key: "devices",
           label: "Perangkat & Sesi Login",
           icon: Smartphone,
           badge: "/teamwork-preview",
-          badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+          badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
         },
       ],
     },
@@ -104,14 +109,14 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
           label: "Penagihan & Invoicing",
           icon: CreditCard,
           badge: "/boost",
-          badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+          badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
         },
         {
           key: "websites",
           label: "Web Promosi & VPS",
           icon: Globe,
           badge: "Rp 750k/thn",
-          badgeColor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+          badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
         },
       ],
     },
@@ -123,49 +128,61 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
           label: "Database & SQL Manager",
           icon: Database,
           badge: "/learn",
-          badgeColor: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+          badgeColor: "bg-cyan-50 text-cyan-700 border-cyan-200",
         },
         {
           key: "sandbox",
           label: "Sandbox Persona Tester",
           icon: ShieldAlert,
           badge: "Simulator",
-          badgeColor: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+          badgeColor: "bg-cyan-50 text-cyan-700 border-cyan-200",
         },
       ],
     },
   ];
 
   return (
-    <aside className="w-64 bg-[#0a0f1d] border-r border-slate-800/80 flex flex-col flex-shrink-0 min-h-screen text-slate-300 select-none">
+    <aside className={`w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 min-h-screen text-slate-700 select-none ${className}`}>
       {/* Brand & Console Title */}
-      <div className="p-4 border-b border-slate-800/80 bg-slate-950/60">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 flex-shrink-0">
-            <Crown className="w-5 h-5 text-white" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-white text-sm tracking-tight">CATATBIRO</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 rounded font-mono font-bold">
-                ROOT
-              </span>
+      <div className="p-4 border-b border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 flex-shrink-0">
+              <Crown className="w-5 h-5 text-white" />
             </div>
-            <p className="text-[10px] text-slate-400 font-mono tracking-wider truncate">
-              FOUNDER CONSOLE v2.4
-            </p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-slate-900 text-sm tracking-tight">CATATBIRO</span>
+                <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-1 rounded font-mono font-bold">
+                  ROOT
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-mono tracking-wider truncate">
+                FOUNDER CONSOLE v2.4
+              </p>
+            </div>
           </div>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="w-8 h-8 p-0 text-slate-500 hover:text-slate-900 lg:hidden"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
         </div>
 
         {/* Master User Card */}
-        <div className="mt-3 p-2 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-indigo-950 border border-indigo-700/60 flex items-center justify-center text-xs font-bold text-indigo-300">
+        <div className="mt-3 p-2 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">
             NA
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-bold text-white truncate">{SUPER_ADMIN_EMAIL}</div>
-            <div className="text-[10px] text-emerald-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <div className="text-xs font-bold text-slate-900 truncate">{SUPER_ADMIN_EMAIL}</div>
+            <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               Unconditional Bypass
             </div>
           </div>
@@ -190,14 +207,14 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
                     onClick={() => onSelectView(item.key)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left font-medium transition-all ${
                       isActive
-                        ? "bg-indigo-600/20 text-white border border-indigo-500/40 font-bold shadow-sm"
-                        : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/60"
+                        ? "bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold shadow-xs"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <IconComponent
                         className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-indigo-400" : "text-slate-500"
+                          isActive ? "text-indigo-600" : "text-slate-500"
                         }`}
                       />
                       <span className="truncate">{item.label}</span>
@@ -206,7 +223,7 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
                     {item.badge && (
                       <span
                         className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium border ${
-                          item.badgeColor || "bg-slate-800 text-slate-300 border-slate-700"
+                          item.badgeColor || "bg-slate-100 text-slate-700 border-slate-200"
                         }`}
                       >
                         {item.badge}
@@ -221,12 +238,12 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
       </nav>
 
       {/* Bottom Footer: Back to Client App */}
-      <div className="p-3 border-t border-slate-800/80 bg-slate-950/60 space-y-2">
+      <div className="p-3 border-t border-slate-200 bg-slate-50 space-y-2">
         <Link
           to="/dashboard"
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-xs transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
+          <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
           Ke Aplikasi Biro (Client App)
         </Link>
         <div className="text-[10px] text-center text-slate-500 font-mono">

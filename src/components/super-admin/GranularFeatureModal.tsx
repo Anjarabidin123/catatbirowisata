@@ -143,28 +143,28 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#0d1322] border-slate-800 text-slate-100 max-h-[90vh] flex flex-col p-6 rounded-2xl shadow-2xl">
-        <DialogHeader className="border-b border-slate-800 pb-4">
+      <DialogContent className="max-w-4xl bg-white border-slate-200 text-slate-900 max-h-[90vh] flex flex-col p-6 rounded-2xl shadow-xl">
+        <DialogHeader className="border-b border-slate-200 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200">
                 <Sliders className="w-5 h-5" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
                   Pusat Kontrol Fitur & Gating A sampai Z
                 </DialogTitle>
-                <DialogDescription className="text-xs text-slate-400 mt-0.5">
-                  Biro: <span className="font-semibold text-slate-200">{tenant.namaBiro}</span> • Pemilik: {tenant.ownerNama} ({tenant.ownerPhone})
+                <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                  Biro: <span className="font-semibold text-slate-800">{tenant.namaBiro}</span> • Pemilik: {tenant.ownerNama} ({tenant.ownerPhone})
                 </DialogDescription>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs bg-slate-800/80 border-slate-700 text-slate-300">
+              <Badge variant="outline" className="text-xs bg-slate-100 border-slate-200 text-slate-700">
                 ID: {tenant.id}
               </Badge>
-              <Badge className="bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs uppercase font-mono">
+              <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs uppercase font-mono">
                 {formData.tier} Tier
               </Badge>
             </div>
@@ -175,9 +175,9 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
         <div className="flex-1 overflow-y-auto space-y-6 py-4 pr-1 text-sm">
           
           {/* Quick Preset Buttons */}
-          <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-            <div className="text-xs text-slate-400">
-              <span className="font-semibold text-slate-200">Preset Dasar:</span> Terapkan template lisensi bawaan, lalu kustomisasi sesuka Anda.
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-xs text-slate-600">
+              <span className="font-semibold text-slate-800">Preset Dasar:</span> Terapkan template lisensi bawaan, lalu kustomisasi sesuka Anda.
             </div>
             <div className="flex items-center gap-1.5">
               <Button
@@ -185,7 +185,7 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                 size="sm"
                 variant="outline"
                 onClick={() => applyTierDefaults("starter")}
-                className="text-xs h-7 border-slate-700 bg-slate-800/60 hover:bg-slate-700 text-slate-300"
+                className="text-xs h-7 border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-xs"
               >
                 Reset Starter
               </Button>
@@ -194,7 +194,7 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                 size="sm"
                 variant="outline"
                 onClick={() => applyTierDefaults("pro")}
-                className="text-xs h-7 border-blue-800/60 bg-blue-950/40 hover:bg-blue-900 text-blue-300"
+                className="text-xs h-7 border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 shadow-xs"
               >
                 Reset Pro
               </Button>
@@ -203,7 +203,7 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                 size="sm"
                 variant="outline"
                 onClick={() => applyTierDefaults("enterprise")}
-                className="text-xs h-7 border-purple-800/60 bg-purple-950/40 hover:bg-purple-900 text-purple-300"
+                className="text-xs h-7 border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 shadow-xs"
               >
                 Reset Enterprise
               </Button>
@@ -211,27 +211,27 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
           </div>
 
           {/* Section 1: MODE DESKTOP OVERRIDE (Fitur Spesial Permintaan User) */}
-          <div className="p-4 rounded-xl bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-900 border-2 border-amber-500/40 space-y-3 relative overflow-hidden">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50 via-white to-amber-50/40 border-2 border-amber-300 space-y-3 relative overflow-hidden shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Monitor className="w-5 h-5 text-amber-400" />
-                  <Label htmlFor="desktop-mode-switch" className="text-sm font-bold text-white cursor-pointer">
+                  <Monitor className="w-5 h-5 text-amber-600" />
+                  <Label htmlFor="desktop-mode-switch" className="text-sm font-bold text-slate-900 cursor-pointer">
                     Hak Akses Mode Desktop (Laptop / PC Eksekutif)
                   </Label>
                   {formData.canUseDesktopMode ? (
-                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[11px]">
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-semibold">
                       TERBUKA PENUH (Bypass)
                     </Badge>
                   ) : (
-                    <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-[11px]">
+                    <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[11px] font-semibold">
                       TERKUNCI OVERLAY
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
                   Sakelar ini memberikan wewenang penuh kepada Super Admin. Anda dapat mengaktifkan Mode Desktop di laptop bahkan jika biro ini hanya membeli 
-                  <strong className="text-amber-300"> Paket Murah Sekali Bayar (Starter)</strong>. Layar Bento KPI tidak akan pernah terkunci oleh overlay upgrade.
+                  <strong className="text-amber-800"> Paket Murah Sekali Bayar (Starter)</strong>. Layar Bento KPI tidak akan pernah terkunci oleh overlay upgrade.
                 </p>
               </div>
 
@@ -239,7 +239,7 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                 id="desktop-mode-switch"
                 checked={!!formData.canUseDesktopMode}
                 onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, canUseDesktopMode: checked }))}
-                className="data-[state=checked]:bg-amber-500"
+                className="data-[state=checked]:bg-amber-600"
               />
             </div>
           </div>
@@ -247,15 +247,15 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
           {/* Section 2: KUOTA FLEKSIBEL (TRIP & KRU) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Kuota Trip Aktif */}
-            <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-cyan-400" />
-                  <Label className="text-xs font-semibold text-slate-200">
+                  <Compass className="w-4 h-4 text-cyan-600" />
+                  <Label className="text-xs font-semibold text-slate-800">
                     Batas Kuota Trip Aktif
                   </Label>
                 </div>
-                <span className="font-mono text-xs text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
+                <span className="font-mono text-xs text-cyan-800 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200 font-semibold">
                   {formData.maxActiveTrips && formData.maxActiveTrips >= 9000 ? "Unlimited (Tanpa Batas)" : `${formData.maxActiveTrips} Trip`}
                 </span>
               </div>
@@ -264,7 +264,7 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                 min={1}
                 value={formData.maxActiveTrips || ""}
                 onChange={(e) => setFormData((prev) => ({ ...prev, maxActiveTrips: parseInt(e.target.value) || 0 }))}
-                className="bg-slate-950 border-slate-700 text-slate-100 font-mono text-sm"
+                className="bg-white border-slate-300 text-slate-900 font-mono text-sm"
                 placeholder="Misal: 5, 10, 30, atau 9999"
               />
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -275,8 +275,8 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                     onClick={() => setFormData((prev) => ({ ...prev, maxActiveTrips: val }))}
                     className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
                       formData.maxActiveTrips === val
-                        ? "bg-cyan-600 text-white border-cyan-500"
-                        : "bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200"
+                        ? "bg-cyan-600 text-white border-cyan-500 font-bold"
+                        : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-100"
                     }`}
                   >
                     {val === 9999 ? "∞ Unlimited" : `${val} Trip`}
@@ -286,15 +286,15 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
             </div>
 
             {/* Kuota Personel Kru */}
-            <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-400" />
-                  <Label className="text-xs font-semibold text-slate-200">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  <Label className="text-xs font-semibold text-slate-800">
                     Batas Kuota Personel Kru
                   </Label>
                 </div>
-                <span className="font-mono text-xs text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">
+                <span className="font-mono text-xs text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-semibold">
                   {formData.maxCrewMembers && formData.maxCrewMembers >= 9000 ? "Unlimited (Tanpa Batas)" : `${formData.maxCrewMembers} Kru`}
                 </span>
               </div>
@@ -303,7 +303,7 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                 min={1}
                 value={formData.maxCrewMembers || ""}
                 onChange={(e) => setFormData((prev) => ({ ...prev, maxCrewMembers: parseInt(e.target.value) || 0 }))}
-                className="bg-slate-950 border-slate-700 text-slate-100 font-mono text-sm"
+                className="bg-white border-slate-300 text-slate-900 font-mono text-sm"
                 placeholder="Misal: 2, 5, 10, atau 9999"
               />
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -314,8 +314,8 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
                     onClick={() => setFormData((prev) => ({ ...prev, maxCrewMembers: val }))}
                     className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
                       formData.maxCrewMembers === val
-                        ? "bg-indigo-600 text-white border-indigo-500"
-                        : "bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200"
+                        ? "bg-indigo-600 text-white border-indigo-500 font-bold"
+                        : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-100"
                     }`}
                   >
                     {val === 9999 ? "∞ Unlimited" : `${val} Kru`}
@@ -326,21 +326,21 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
           </div>
 
           {/* Section 3: FITUR PREMIUM & AI */}
-          <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-4">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 shadow-xs">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
               Fitur Tambahan & Kecerdasan Buatan (AI)
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Asisten AI */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 shadow-xs">
                 <div className="space-y-0.5">
-                  <Label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 cursor-pointer">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <Label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 cursor-pointer">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     Asisten AI Wisata (Gemini)
                   </Label>
-                  <p className="text-[11px] text-slate-400">Generator rundown & rekomendasi otomatis</p>
+                  <p className="text-[11px] text-slate-500">Generator rundown & rekomendasi otomatis</p>
                 </div>
                 <Switch
                   checked={!!formData.canUseAI}
@@ -350,29 +350,29 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
               </div>
 
               {/* PDF Tanpa Watermark */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 shadow-xs">
                 <div className="space-y-0.5">
-                  <Label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 cursor-pointer">
-                    <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <Label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 cursor-pointer">
+                    <FileCheck2 className="w-3.5 h-3.5 text-emerald-600" />
                     Ekspor PDF Tanpa Watermark
                   </Label>
-                  <p className="text-[11px] text-slate-400">Kop surat resmi biro tanpa cap CatatBiro</p>
+                  <p className="text-[11px] text-slate-500">Kop surat resmi biro tanpa cap CatatBiro</p>
                 </div>
                 <Switch
                   checked={!!formData.canExportCleanPdf}
                   onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, canExportCleanPdf: checked }))}
-                  className="data-[state=checked]:bg-emerald-500"
+                  className="data-[state=checked]:bg-emerald-600"
                 />
               </div>
 
               {/* Custom Branding */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 shadow-xs">
                 <div className="space-y-0.5">
-                  <Label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 cursor-pointer">
-                    <Palette className="w-3.5 h-3.5 text-rose-400" />
+                  <Label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 cursor-pointer">
+                    <Palette className="w-3.5 h-3.5 text-rose-500" />
                     Custom Branding & Logo Sendiri
                   </Label>
-                  <p className="text-[11px] text-slate-400">Gunakan logo dan warna tema biro sendiri</p>
+                  <p className="text-[11px] text-slate-500">Gunakan logo dan warna tema biro sendiri</p>
                 </div>
                 <Switch
                   checked={!!formData.customBranding}
@@ -382,41 +382,41 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
               </div>
 
               {/* RBAC Matriks */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 shadow-xs">
                 <div className="space-y-0.5">
-                  <Label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 cursor-pointer">
-                    <Users className="w-3.5 h-3.5 text-blue-400" />
+                  <Label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 cursor-pointer">
+                    <Users className="w-3.5 h-3.5 text-blue-600" />
                     Manajemen Kru & RBAC Lanjutan
                   </Label>
-                  <p className="text-[11px] text-slate-400">Pengaturan akses granular per kru lapangan</p>
+                  <p className="text-[11px] text-slate-500">Pengaturan akses granular per kru lapangan</p>
                 </div>
                 <Switch
                   checked={!!formData.canUseAdvancedRbac}
                   onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, canUseAdvancedRbac: checked }))}
-                  className="data-[state=checked]:bg-blue-500"
+                  className="data-[state=checked]:bg-blue-600"
                 />
               </div>
             </div>
           </div>
 
           {/* Section 4: MODEL PENAGIHAN & STATUS AKUN */}
-          <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-4">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-emerald-400" />
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 shadow-xs">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-emerald-600" />
               Paket Lisensi, Status Akun & Penagihan
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Tier Lisensi</Label>
+                <Label className="text-xs text-slate-600">Tier Lisensi</Label>
                 <Select
                   value={formData.tier || "starter"}
                   onValueChange={(val: LicenseTier) => setFormData((prev) => ({ ...prev, tier: val }))}
                 >
-                  <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-200">
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
                     <SelectItem value="starter">Starter (Paket Murah)</SelectItem>
                     <SelectItem value="pro">Pro (Paket Standar)</SelectItem>
                     <SelectItem value="enterprise">Enterprise (SaaS)</SelectItem>
@@ -425,15 +425,15 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Model Pembayaran</Label>
+                <Label className="text-xs text-slate-600">Model Pembayaran</Label>
                 <Select
                   value={formData.paymentModel || "lifetime"}
                   onValueChange={(val: PaymentModel) => setFormData((prev) => ({ ...prev, paymentModel: val }))}
                 >
-                  <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-200">
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
                     <SelectItem value="lifetime">Sekali Bayar (Lifetime Deal)</SelectItem>
                     <SelectItem value="subscription">Langganan Berkala (SaaS)</SelectItem>
                   </SelectContent>
@@ -441,15 +441,15 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Status Akun</Label>
+                <Label className="text-xs text-slate-600">Status Akun</Label>
                 <Select
                   value={formData.status || "active"}
                   onValueChange={(val: any) => setFormData((prev) => ({ ...prev, status: val }))}
                 >
-                  <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-200">
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
                     <SelectItem value="active">Aktif (Normal)</SelectItem>
                     <SelectItem value="trial">Masa Trial (Percobaan)</SelectItem>
                     <SelectItem value="suspended">Ditangguhkan (Suspended)</SelectItem>
@@ -461,46 +461,46 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Nominal Pembayaran (Rp)</Label>
+                <Label className="text-xs text-slate-600">Nominal Pembayaran (Rp)</Label>
                 <Input
                   type="number"
                   value={formData.nominalBayar || 0}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nominalBayar: parseInt(e.target.value) || 0 }))}
-                  className="bg-slate-950 border-slate-700 text-slate-200 font-mono text-sm"
+                  className="bg-white border-slate-300 text-slate-900 font-mono text-sm"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Tanggal Bayar</Label>
+                <Label className="text-xs text-slate-600">Tanggal Bayar</Label>
                 <Input
                   type="date"
                   value={formData.tanggalBayar || ""}
                   onChange={(e) => setFormData((prev) => ({ ...prev, tanggalBayar: e.target.value }))}
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-sm"
+                  className="bg-white border-slate-300 text-slate-900 text-sm"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Tanggal Jatuh Tempo</Label>
+                <Label className="text-xs text-slate-600">Tanggal Jatuh Tempo</Label>
                 <Input
                   type="date"
                   value={formData.tanggalJatuhTempo || ""}
                   onChange={(e) => setFormData((prev) => ({ ...prev, tanggalJatuhTempo: e.target.value }))}
-                  className="bg-slate-950 border-slate-700 text-slate-200 text-sm"
+                  className="bg-white border-slate-300 text-slate-900 text-sm"
                 />
               </div>
             </div>
           </div>
 
           {/* Section 5: WEBSITE PROMOSI, DOMAIN & VPS */}
-          <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-4">
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 shadow-xs">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <Globe className="w-4 h-4 text-blue-400" />
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <Globe className="w-4 h-4 text-blue-600" />
                 Layanan Website Promosi, Domain & Hosting VPS
               </h4>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Status Paket Website:</span>
+                <span className="text-xs text-slate-600">Status Paket Website:</span>
                 <Switch
                   checked={!!formData.hasWebsite}
                   onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, hasWebsite: checked }))}
@@ -510,57 +510,57 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
             </div>
 
             {formData.hasWebsite && (
-              <div className="space-y-3 pt-2 border-t border-slate-800/80 animate-fade-in">
+              <div className="space-y-3 pt-2 border-t border-slate-200 animate-fade-in">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Domain Kustom Utama</Label>
+                    <Label className="text-xs text-slate-600">Domain Kustom Utama</Label>
                     <Input
                       value={formData.domainName || ""}
                       onChange={(e) => setFormData((prev) => ({ ...prev, domainName: e.target.value }))}
                       placeholder="contoh: berkahwisata.id"
-                      className="bg-slate-950 border-slate-700 text-slate-200 font-mono text-sm"
+                      className="bg-white border-slate-300 text-slate-900 font-mono text-sm"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Subdomain Sistem</Label>
+                    <Label className="text-xs text-slate-600">Subdomain Sistem</Label>
                     <Input
                       value={formData.subdomain || ""}
                       onChange={(e) => setFormData((prev) => ({ ...prev, subdomain: e.target.value }))}
                       placeholder="contoh: berkah.catatbiro.id"
-                      className="bg-slate-950 border-slate-700 text-slate-200 font-mono text-sm"
+                      className="bg-white border-slate-300 text-slate-900 font-mono text-sm"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">IP Node VPS</Label>
+                    <Label className="text-xs text-slate-600">IP Node VPS</Label>
                     <Input
                       value={formData.vpsIp || ""}
                       onChange={(e) => setFormData((prev) => ({ ...prev, vpsIp: e.target.value }))}
                       placeholder="103.186.201.44"
-                      className="bg-slate-950 border-slate-700 text-slate-200 font-mono text-xs"
+                      className="bg-white border-slate-300 text-slate-900 font-mono text-xs"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Kadaluarsa Domain</Label>
+                    <Label className="text-xs text-slate-600">Kadaluarsa Domain</Label>
                     <Input
                       type="date"
                       value={formData.domainExpiredAt || ""}
                       onChange={(e) => setFormData((prev) => ({ ...prev, domainExpiredAt: e.target.value }))}
-                      className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                      className="bg-white border-slate-300 text-slate-900 text-xs"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Kadaluarsa VPS Hosting</Label>
+                    <Label className="text-xs text-slate-600">Kadaluarsa VPS Hosting</Label>
                     <Input
                       type="date"
                       value={formData.hostingExpiredAt || ""}
                       onChange={(e) => setFormData((prev) => ({ ...prev, hostingExpiredAt: e.target.value }))}
-                      className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                      className="bg-white border-slate-300 text-slate-900 text-xs"
                     />
                   </div>
                 </div>
@@ -570,37 +570,37 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
 
           {/* Section 6: CATATAN FOUNDER */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-300">
+            <Label className="text-xs font-semibold text-slate-800">
               Catatan Rahasia Super Admin / Founder
             </Label>
             <Textarea
               value={formData.catatan || ""}
               onChange={(e) => setFormData((prev) => ({ ...prev, catatan: e.target.value }))}
               placeholder="Catatan khusus, nomor perjanjian, kesepakatan via WhatsApp, atau catatan pembayaran..."
-              className="bg-slate-950 border-slate-800 text-slate-200 text-xs min-h-[70px]"
+              className="bg-white border-slate-300 text-slate-900 text-xs min-h-[70px] placeholder:text-slate-400"
             />
           </div>
 
         </div>
 
         {/* Modal Actions */}
-        <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
+        <div className="pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
           <div className="text-xs text-slate-500 hidden sm:block">
-            Semua perubahan akan diverifikasi dan dicatat ke tabel <code className="text-slate-400 font-mono">super_admin_audit_logs</code>.
+            Semua perubahan akan diverifikasi dan dicatat ke tabel <code className="text-slate-700 font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200">super_admin_audit_logs</code>.
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs"
+              className="border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs shadow-xs"
             >
               Batal
             </Button>
             <Button
               type="button"
               onClick={handleSave}
-              className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-600/20"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs"
             >
               <Save className="w-4 h-4" />
               Simpan Konfigurasi & Terapkan
