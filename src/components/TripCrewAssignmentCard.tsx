@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, UserPlus, Phone, MessageSquare, Compass, ShieldCheck, CheckSquare, Square } from "lucide-react";
+import { Users, UserPlus, Phone, MessageSquare, Compass, CheckSquare, Square } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { assignTripToMultipleCrewDB, CrewMember } from "@/utils/rbacAuditLogger";
 import { AddCrewDialog } from "./AddCrewDialog";
@@ -60,7 +60,7 @@ export const TripCrewAssignmentCard: React.FC<TripCrewAssignmentCardProps> = ({
     try {
       await assignTripToMultipleCrewDB(tripId, tripName, selectedIds);
       refreshCrewList();
-      toast.success("Penugasan Tour Leader & Kru berhasil diperbarui!");
+      toast.success("Penugasan kru berhasil diperbarui!");
       setShowAssignDialog(false);
     } catch (err: any) {
       toast.error("Gagal menyimpan penugasan kru: " + (err.message || ""));
@@ -78,61 +78,63 @@ export const TripCrewAssignmentCard: React.FC<TripCrewAssignmentCardProps> = ({
 
   return (
     <Card className="p-4 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl bg-white dark:bg-slate-900">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center border border-blue-200/60 dark:border-blue-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center border border-blue-200/60 dark:border-blue-800 shrink-0">
             <Users className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>Tour Leader & Kru Bertugas</span>
-              <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                {assignedCrew.length} Orang
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Kru & Tim Lapangan Bertugas
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                {assignedCrew.length} Personel
               </span>
-            </h3>
-            <p className="text-[11px] text-muted-foreground">
-              Personel lapangan yang memegang kendali trip & kas saku
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Personel lapangan yang memegang kendali trip & operasional
             </p>
           </div>
         </div>
 
         {isPemilik && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-auto">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleOpenAssignModal}
-              className="h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700 font-medium"
+              className="h-8 text-xs rounded-xl border-slate-200 dark:border-slate-700 font-medium px-3 flex-1 sm:flex-initial"
             >
-              Atur Kru
+              Atur Penugasan
             </Button>
             <Button
               type="button"
               size="sm"
               onClick={() => setShowAddDialog(true)}
-              className="h-8 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1"
+              className="h-8 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1 px-3 flex-1 sm:flex-initial"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>+ Tambah TL</span>
+              <span>+ Tambah Kru</span>
             </Button>
           </div>
         )}
       </div>
 
       {assignedCrew.length === 0 ? (
-        <div className="py-6 text-center space-y-2">
+        <div className="py-6 px-2 text-center space-y-2.5">
           <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
             <Compass className="w-5 h-5" />
           </div>
           <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Belum ada Tour Leader (TL) atau kru yang ditugaskan untuk trip ini.
+            Belum ada kru yang ditugaskan untuk trip ini.
           </p>
-          <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-            Kru yang ditugaskan akan dapat mengakses kas saku lapangan, checklist kesiapan bus, dan koordinasi jamaah/wisatawan.
+          <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            Kru yang ditugaskan dapat mengakses checklist kesiapan armada, uang saku operasional, dan koordinasi rombongan.
           </p>
           {isPemilik && (
-            <div className="pt-2 flex justify-center gap-2">
+            <div className="pt-2 flex flex-col sm:flex-row justify-center gap-2 max-w-xs sm:max-w-none mx-auto">
               <Button
                 type="button"
                 variant="outline"
@@ -149,7 +151,7 @@ export const TripCrewAssignmentCard: React.FC<TripCrewAssignmentCardProps> = ({
                 className="h-8 text-xs font-semibold rounded-xl gradient-primary text-white gap-1"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>+ Tambah Personel TL Baru</span>
+                <span>+ Tambah Personel Kru Baru</span>
               </Button>
             </div>
           )}
@@ -262,7 +264,7 @@ export const TripCrewAssignmentCard: React.FC<TripCrewAssignmentCardProps> = ({
                 className="h-8 text-xs rounded-xl text-blue-600 gap-1"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>+ Buat TL Baru</span>
+                <span>+ Buat Kru Baru</span>
               </Button>
 
               <div className="flex items-center gap-2">
@@ -290,11 +292,11 @@ export const TripCrewAssignmentCard: React.FC<TripCrewAssignmentCardProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Modal Dialog Tambah TL Baru */}
+      {/* Modal Dialog Tambah Kru Baru */}
       <AddCrewDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
-        defaultJabatan="Tour Leader"
+        defaultJabatan="Koordinator Lapangan"
         defaultTripName={tripName}
         defaultTripId={tripId}
         onCrewAdded={handleCrewCreated}

@@ -80,7 +80,7 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
   {
     id: "mic_audio",
     category: "logistik",
-    label: "Mic Wireless & Audio Guide TL",
+    label: "Mic Wireless & Audio Guide Pemandu",
     detail: "Baterai terisi penuh untuk pemandu dan ice breaking",
   },
   {
@@ -95,7 +95,7 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
     id: "briefing_driver",
     category: "armada",
     label: "Briefing Driver & Kernet",
-    detail: "Sosialisasi rute, estimasi rest area, dan contact TL aktif",
+    detail: "Sosialisasi rute, estimasi rest area, dan kontak koordinator aktif",
   },
   {
     id: "cek_kabin_ac",

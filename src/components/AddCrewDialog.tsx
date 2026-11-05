@@ -41,7 +41,7 @@ const JABATAN_OPTIONS: CrewJabatan[] = [
 export const AddCrewDialog: React.FC<AddCrewDialogProps> = ({
   open,
   onOpenChange,
-  defaultJabatan = "Tour Leader",
+  defaultJabatan = "Koordinator Lapangan",
   defaultTripName = "Standby Operasional",
   defaultTripId,
   onCrewAdded,
@@ -104,7 +104,7 @@ export const AddCrewDialog: React.FC<AddCrewDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <UserCheck className="w-5 h-5 text-blue-600" />
-            <span>Tambah Tour Leader / Personel Kru Baru</span>
+            <span>Tambah Personel Kru Baru</span>
           </DialogTitle>
           <DialogDescription className="text-xs">
             Data personel akan langsung tersimpan di database Supabase dan dapat ditugaskan ke jadwal trip.
@@ -165,7 +165,7 @@ export const AddCrewDialog: React.FC<AddCrewDialogProps> = ({
             </Label>
             <Input
               type="email"
-              placeholder="tl@birowisata.id"
+              placeholder="kru@birowisata.id"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="h-9 text-xs rounded-xl"

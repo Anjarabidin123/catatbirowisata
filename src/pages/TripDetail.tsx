@@ -356,7 +356,7 @@ const TripDetail = () => {
               <TabsList className="inline-flex w-auto mb-4 gap-1">
                 <TabsTrigger value="acuan" className="text-xs whitespace-nowrap">Perencanaan</TabsTrigger>
                 <TabsTrigger value="operasional" className="text-xs whitespace-nowrap">
-                  Operasional & Kas TL
+                  Operasional & Kas Lapangan
                   {isKru && <span className="ml-1 px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">Utama</span>}
                 </TabsTrigger>
                 <TabsTrigger value="kendaraan" className="text-xs whitespace-nowrap">Kendaraan</TabsTrigger>

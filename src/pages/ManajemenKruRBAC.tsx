@@ -164,7 +164,7 @@ const ManajemenKruRBAC: React.FC = () => {
 
   const [newCrewForm, setNewCrewForm] = useState({
     nama: "",
-    jabatan: "Tour Leader" as CrewJabatan,
+    jabatan: "Koordinator Lapangan" as CrewJabatan,
     telepon: "",
     email: "",
     assignedTrip: "Standby Operasional",
@@ -445,7 +445,7 @@ const ManajemenKruRBAC: React.FC = () => {
       <RBACOwnerGuard
         ruleId="rule_manajemen_kru"
         pageTitle="Manajemen Kru, Perangkat Login & Hak Akses"
-        reason="Halaman ini khusus untuk Pemilik Biro guna melihat daftar personel kru, perangkat login, penugasan trip per TL, dan batasan hak akses."
+        reason="Halaman ini khusus untuk Pemilik Biro guna melihat daftar personel kru, perangkat login, penugasan trip per personel, dan batasan hak akses."
       >
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-12 lg:pl-64 font-sans text-slate-900 dark:text-slate-100">
           <div className="max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 space-y-5">
@@ -462,7 +462,7 @@ const ManajemenKruRBAC: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  Kelola kru lapangan, batasi trip per Tour Leader (TL), kontrol sesi login, dan pantau audit trail.
+                  Kelola kru lapangan, batasi penugasan trip per personel, kontrol sesi login perangkat, dan pantau audit trail.
                 </p>
               </div>
 
