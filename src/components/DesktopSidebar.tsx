@@ -10,13 +10,14 @@ import {
   Settings,
   Calendar,
   LogOut,
-
   ShieldCheck,
   UserCheck,
   ArrowRightLeft,
   Users,
   Smartphone,
+  Crown,
 } from "lucide-react";
+import { isSuperAdminUser } from "@/utils/licenseEntitlement";
 import { getLocalBiroProfile, fetchBiroProfile, BiroProfile, clearBiroProfileCache } from "@/utils/biroProfile";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,6 +209,19 @@ export const DesktopSidebar: React.FC = () => {
             path: "/pengaturan-biro",
             icon: Settings,
             iconColor: "text-slate-600 dark:text-slate-300",
+          },
+        ]
+      : []),
+    ...(isSuperAdminUser()
+      ? [
+          {
+            label: "Super Admin Panel",
+            path: "/super-admin",
+            icon: Crown,
+            iconColor: "text-amber-500",
+            badge: "Founder",
+            badgeClass:
+              "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800",
           },
         ]
       : []),
@@ -415,7 +429,7 @@ export const DesktopSidebar: React.FC = () => {
       {/* Footer User, Device Status & Logout */}
       <div className="p-3.5 border-t border-slate-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm space-y-2">
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg">
-          <Smartphone className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+          <Smartphone className="w-3 text-emerald-600 flex-shrink-0" />
           <span className="truncate">
             Device: {currentDevice.os} • {currentDevice.browser}
           </span>

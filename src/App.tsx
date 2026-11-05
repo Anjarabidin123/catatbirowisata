@@ -10,6 +10,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
+import { DesktopModeLockOverlay } from "@/components/DesktopModeLockOverlay";
+import { SuperAdminSimulatorBar } from "@/components/SuperAdminSimulatorBar";
 import { initAuthListener } from "@/utils/authHelper";
 
 // Lazy load heavy pages
@@ -27,6 +29,7 @@ const NotesNew = lazy(() => import("./pages/NotesNew"));
 const ImportWordRundown = lazy(() => import("./pages/ImportWordRundown"));
 const PengaturanBiro = lazy(() => import("./pages/PengaturanBiro"));
 const ManajemenKruRBAC = lazy(() => import("./pages/ManajemenKruRBAC"));
+const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard").then((m) => ({ default: m.SuperAdminDashboard })));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const LoadingFallback = () => (
@@ -76,6 +79,8 @@ const App = () => {
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <RoleProvider>
             <DesktopSidebar />
+            <DesktopModeLockOverlay />
+            <SuperAdminSimulatorBar />
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -96,6 +101,7 @@ const App = () => {
                 <Route path="/pengaturan" element={<PengaturanBiro />} />
                 <Route path="/pengaturan-biro" element={<PengaturanBiro />} />
                 <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
+                <Route path="/super-admin" element={<SuperAdminDashboard />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
