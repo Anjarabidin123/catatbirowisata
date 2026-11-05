@@ -141,7 +141,8 @@ All colors MUST be HSL.
   }
   
   .ios-card:active {
-    @apply scale-[0.98];
+    /* Dihilangkan agar form input stabil dan tidak goyang/geser */
+    transform: none;
   }
   
   .gradient-primary {

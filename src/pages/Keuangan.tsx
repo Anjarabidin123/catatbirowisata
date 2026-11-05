@@ -384,8 +384,37 @@ const Keuangan = () => {
                 </div>
               </div>
 
-              {/* 3 Kartu Metrik Utama Bento: Omset, Beban, Laba */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Ringkasan Finansial Mobile: Super Ringkas & Hemat Ruang (~80px) */}
+              <div className="md:hidden p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+                <div className="grid grid-cols-3 gap-1 divide-x divide-slate-100 dark:divide-slate-800 text-center">
+                  <div className="px-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight block">Omset</span>
+                    <span className="text-xs font-black text-emerald-600 truncate block mt-0.5">{formatRupiah(totalOmset)}</span>
+                    <span className="text-[9px] text-slate-400 block">{pemasukanCount} trx</span>
+                  </div>
+                  <div className="px-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight block">Beban</span>
+                    <span className="text-xs font-black text-rose-600 truncate block mt-0.5">{formatRupiah(totalBeban)}</span>
+                    <span className="text-[9px] text-slate-400 block">{pengeluaranCount} trx</span>
+                  </div>
+                  <div className="px-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight block">Laba</span>
+                    <span className={`text-xs font-black truncate block mt-0.5 ${totalLaba >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                      {formatRupiah(totalLaba)}
+                    </span>
+                    <span className={`text-[9px] font-bold px-1 rounded inline-block ${totalLaba >= 0 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"}`}>
+                      {marginLaba}%
+                    </span>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                  <div className="bg-emerald-500 h-full" style={{ width: `${totalOmset > 0 ? Math.max(0, 100 - rasioBeban) : 0}%` }} />
+                  <div className="bg-rose-500 h-full" style={{ width: `${totalOmset > 0 ? rasioBeban : 0}%` }} />
+                </div>
+              </div>
+
+              {/* 3 Kartu Metrik Utama Bento: Omset, Beban, Laba (Desktop Only) */}
+              <div className="hidden md:grid md:grid-cols-3 gap-3">
                 {/* 1. Total Omset (Pemasukan) */}
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
@@ -476,8 +505,8 @@ const Keuangan = () => {
                 </div>
               </div>
 
-              {/* Bar Visualisasi Proporsi Cashflow & Distribusi Pos Biaya Terbesar */}
-              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
+              {/* Bar Visualisasi Proporsi Cashflow & Distribusi Pos Biaya Terbesar (Desktop Only) */}
+              <div className="hidden md:block p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2">
                     <PieChart className="w-4 h-4 text-blue-600" />
