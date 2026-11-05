@@ -1,5 +1,6 @@
 import type jsPDF from "jspdf";
 import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { getCurrentEntitlements } from "./licenseEntitlement";
 import { savePdf } from "./pdfSaver";
 import { terbilang } from "./terbilang";
 
@@ -516,6 +517,20 @@ export async function generateInvoiceOrKwitansiPDF(
   doc.setTextColor(148, 163, 184);
   const footerLegal = `Dokumen ini diterbitkan sah secara digital oleh ${profile.nama_biro}. Bukti transaksi resmi sah tanpa tanda tangan basah berdasarkan ketentuan hukum digital.`;
   doc.text(footerLegal, pageWidth / 2, pageHeight - 10, { align: "center" });
+
+  // Watermark proteksi jika fitur Clean PDF belum diaktifkan oleh Super Admin
+  const entitlements = getCurrentEntitlements();
+  if (!entitlements.canExportCleanPdf) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(220, 38, 38);
+    doc.text(
+      "⚡ Diterbitkan via CatatBiro Wisata (Paket Starter) • Hubungi Founder untuk Cetak Bersih Bebas Watermark",
+      pageWidth / 2,
+      pageHeight - 4,
+      { align: "center" }
+    );
+  }
 
   if (autoDownload) {
     const filename = `${options.docType.toUpperCase()}_${options.nomorDokumen.replace(/[/\\?%*:|"<>]/g, "_")}.pdf`;

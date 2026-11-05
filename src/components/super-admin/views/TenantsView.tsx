@@ -1,0 +1,563 @@
+import React, { useState, useMemo } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  TenantRecord,
+  LicenseTier,
+  PaymentModel,
+  createTenant,
+  deleteTenant,
+  impersonateTenant,
+} from "@/utils/licenseEntitlement";
+import {
+  Building2,
+  Search,
+  Plus,
+  Sliders,
+  LogIn,
+  MessageSquare,
+  Globe,
+  Trash2,
+  Monitor,
+  Smartphone,
+  Sparkles,
+  FileCheck2,
+  Users,
+  Compass,
+  AlertTriangle,
+  ExternalLink,
+  Phone,
+  Mail,
+  Copy,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+
+interface TenantsViewProps {
+  tenants: TenantRecord[];
+  onOpenFeatureModal: (tenant: TenantRecord) => void;
+  onRefresh: () => void;
+}
+
+export const TenantsView: React.FC<TenantsViewProps> = ({
+  tenants,
+  onOpenFeatureModal,
+  onRefresh,
+}) => {
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Modal Tambah Biro Baru
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newBiroForm, setNewBiroForm] = useState({
+    namaBiro: "",
+    slugBiro: "",
+    ownerNama: "",
+    ownerEmail: "",
+    ownerPhone: "",
+    tier: "starter" as LicenseTier,
+    paymentModel: "lifetime" as PaymentModel,
+    nominalBayar: 750000,
+    hasWebsite: false,
+    domainName: "",
+    catatan: "",
+  });
+
+  const filteredTenants = useMemo(() => {
+    return tenants.filter((t) => {
+      if (tierFilter !== "all" && t.tier !== tierFilter) return false;
+      if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          t.namaBiro.toLowerCase().includes(q) ||
+          t.ownerNama.toLowerCase().includes(q) ||
+          t.ownerEmail.toLowerCase().includes(q) ||
+          t.ownerPhone.includes(q) ||
+          (t.domainName || "").toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [tenants, tierFilter, statusFilter, searchQuery]);
+
+  const handleCreateBiro = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBiroForm.namaBiro.trim() || !newBiroForm.ownerNama.trim() || !newBiroForm.ownerPhone.trim()) {
+      toast.error("Nama biro, nama pemilik, dan nomor WhatsApp wajib diisi!");
+      return;
+    }
+
+    const slug =
+      newBiroForm.slugBiro.trim() ||
+      newBiroForm.namaBiro
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-");
+
+    const canDesktop = newBiroForm.tier === "pro" || newBiroForm.tier === "enterprise";
+    const canPdf = newBiroForm.tier === "pro" || newBiroForm.tier === "enterprise";
+    const canAI = newBiroForm.tier === "pro" || newBiroForm.tier === "enterprise";
+    const maxTrips = newBiroForm.tier === "enterprise" ? 9999 : newBiroForm.tier === "pro" ? 30 : 5;
+    const maxCrew = newBiroForm.tier === "enterprise" ? 9999 : newBiroForm.tier === "pro" ? 10 : 2;
+
+    createTenant({
+      namaBiro: newBiroForm.namaBiro,
+      slugBiro: slug,
+      ownerNama: newBiroForm.ownerNama,
+      ownerEmail: newBiroForm.ownerEmail || `${slug}@catatbiro.com`,
+      ownerPhone: newBiroForm.ownerPhone,
+      tier: newBiroForm.tier,
+      paymentModel: newBiroForm.paymentModel,
+      status: "active",
+      canUseDesktopMode: canDesktop,
+      canExportCleanPdf: canPdf,
+      canUseAI: canAI,
+      maxActiveTrips: maxTrips,
+      maxCrewMembers: maxCrew,
+      customBranding: canDesktop,
+      hasWebsite: newBiroForm.hasWebsite,
+      domainName: newBiroForm.domainName,
+      subdomain: `${slug}.catatbiro.id`,
+      nominalBayar: Number(newBiroForm.nominalBayar) || 750000,
+      tanggalBayar: new Date().toISOString().slice(0, 10),
+      catatan: newBiroForm.catatan,
+    });
+
+    toast.success(`Biro "${newBiroForm.namaBiro}" berhasil ditambahkan & dicatat ke Audit Trail!`);
+    setShowAddModal(false);
+    setNewBiroForm({
+      namaBiro: "",
+      slugBiro: "",
+      ownerNama: "",
+      ownerEmail: "",
+      ownerPhone: "",
+      tier: "starter",
+      paymentModel: "lifetime",
+      nominalBayar: 750000,
+      hasWebsite: false,
+      domainName: "",
+      catatan: "",
+    });
+    onRefresh();
+  };
+
+  const handleImpersonate = (tenant: TenantRecord) => {
+    impersonateTenant(tenant.id);
+    toast.success(`Mengaktifkan sesi impersonasi sebagai biro "${tenant.namaBiro}"!`);
+    navigate("/dashboard");
+  };
+
+  const handleDelete = (tenant: TenantRecord) => {
+    if (confirm(`Yakin ingin menghapus biro "${tenant.namaBiro}"? Tindakan ini akan dicatat di log audit.`)) {
+      deleteTenant(tenant.id);
+      toast.success(`Biro "${tenant.namaBiro}" berhasil dihapus`);
+      onRefresh();
+    }
+  };
+
+  const handleWhatsAppChat = (tenant: TenantRecord) => {
+    const cleanPhone = tenant.ownerPhone.replace(/[^0-9]/g, "");
+    const formatted = cleanPhone.startsWith("0") ? "62" + cleanPhone.slice(1) : cleanPhone;
+    const msg = `Halo ${tenant.ownerNama} (${tenant.namaBiro}), ini Mas Anjar (Founder CatatBiro). Bagaimana pengalaman operasional biro Anda hari ini? Ada fitur atau bantuan yang perlu disesuaikan? 😊`;
+    window.open(`https://wa.me/${formatted}?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-900/90 rounded-2xl border border-slate-800">
+        <div className="flex flex-1 items-center gap-3 flex-wrap">
+          <div className="relative min-w-[240px] flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari biro, nama pemilik, email, no HP, atau domain..."
+              className="pl-9 bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl"
+            />
+          </div>
+
+          <Select value={tierFilter} onValueChange={setTierFilter}>
+            <SelectTrigger className="w-[140px] bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl">
+              <SelectValue placeholder="Semua Paket" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectItem value="all">Semua Paket</SelectItem>
+              <SelectItem value="starter">Starter</SelectItem>
+              <SelectItem value="pro">Pro</SelectItem>
+              <SelectItem value="enterprise">Enterprise</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[130px] bg-slate-950 border-slate-700 text-slate-200 text-xs h-9 rounded-xl">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="active">Aktif</SelectItem>
+              <SelectItem value="trial">Trial</SelectItem>
+              <SelectItem value="suspended">Suspended</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          onClick={() => setShowAddModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold h-9 px-4 rounded-xl flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" />
+          Daftarkan Biro Baru
+        </Button>
+      </div>
+
+      {/* Tenants Table & Cards */}
+      <div className="space-y-3">
+        {filteredTenants.length === 0 ? (
+          <div className="p-12 text-center bg-slate-900/60 rounded-2xl border border-slate-800 text-slate-400 space-y-2">
+            <Building2 className="w-8 h-8 mx-auto text-slate-600" />
+            <p className="text-sm font-medium">Tidak ada biro wisata yang cocok dengan pencarian</p>
+          </div>
+        ) : (
+          filteredTenants.map((t) => (
+            <Card
+              key={t.id}
+              className="bg-slate-900/90 border-slate-800 hover:border-slate-700 p-5 rounded-2xl transition-all shadow-md"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                {/* Info Utama Biro */}
+                <div className="space-y-2 max-w-xl">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-indigo-400" />
+                      {t.namaBiro}
+                    </h3>
+
+                    <Badge
+                      className={`text-xs uppercase font-mono px-2 py-0.5 ${
+                        t.tier === "enterprise"
+                          ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                          : t.tier === "pro"
+                          ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
+                          : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                      }`}
+                    >
+                      {t.tier} Tier
+                    </Badge>
+
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${
+                        t.status === "active"
+                          ? "border-emerald-500/40 text-emerald-400 bg-emerald-950/20"
+                          : "border-rose-500/40 text-rose-400 bg-rose-950/20"
+                      }`}
+                    >
+                      {t.status.toUpperCase()}
+                    </Badge>
+
+                    <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700">
+                      {t.paymentModel === "lifetime" ? "Sekali Bayar" : "Langganan SaaS"}
+                    </Badge>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">Pemilik:</span>
+                      <strong className="text-white">{t.ownerNama}</strong>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-mono text-slate-200">{t.ownerPhone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-mono text-slate-300">{t.ownerEmail}</span>
+                    </div>
+                    {t.domainName && (
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-3.5 h-3.5 text-blue-400" />
+                        <a
+                          href={`https://${t.domainName}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-400 hover:underline flex items-center gap-1 font-mono"
+                        >
+                          {t.domainName} <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Feature Status Badges */}
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    <span
+                      className={`text-[11px] px-2 py-0.5 rounded-md border flex items-center gap-1 font-medium ${
+                        t.canUseDesktopMode
+                          ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/60"
+                          : "bg-slate-950/60 text-slate-400 border-slate-800"
+                      }`}
+                    >
+                      <Monitor className="w-3 h-3" />
+                      {t.canUseDesktopMode ? "Mode PC: Aktif" : "Mode PC: Kunci"}
+                    </span>
+
+                    <span className="text-[11px] px-2 py-0.5 rounded-md border bg-cyan-950/40 text-cyan-300 border-cyan-800/60 font-mono">
+                      Trip: {t.maxActiveTrips >= 9000 ? "∞ Unlimited" : `${t.maxActiveTrips} Kuota`}
+                    </span>
+
+                    <span className="text-[11px] px-2 py-0.5 rounded-md border bg-indigo-950/40 text-indigo-300 border-indigo-800/60 font-mono">
+                      Kru: {t.maxCrewMembers >= 9000 ? "∞ Unlimited" : `${t.maxCrewMembers} Kru`}
+                    </span>
+
+                    {t.canUseAI && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-md border bg-amber-950/40 text-amber-300 border-amber-800/60 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> AI
+                      </span>
+                    )}
+
+                    {t.canExportCleanPdf && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-md border bg-emerald-950/40 text-emerald-300 border-emerald-800/60 flex items-center gap-1">
+                        <FileCheck2 className="w-3 h-3" /> PDF Bersih
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-end justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() => onOpenFeatureModal(t)}
+                    className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs h-8 px-3 rounded-xl shadow-md flex items-center gap-1.5"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    Atur Fitur (A-Z)
+                  </Button>
+
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleImpersonate(t)}
+                      className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs h-8 px-2.5 rounded-xl flex items-center gap-1"
+                      title="Masuk ke aplikasi sebagai biro ini (Impersonate)"
+                    >
+                      <LogIn className="w-3.5 h-3.5 text-indigo-400" />
+                      Impersonate
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleWhatsAppChat(t)}
+                      className="border-emerald-800/60 bg-emerald-950/40 hover:bg-emerald-900 text-emerald-300 text-xs h-8 px-2.5 rounded-xl flex items-center gap-1"
+                      title="Kirim pesan WhatsApp ke pemilik biro"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                      WhatsApp
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(t)}
+                      className="border-rose-900/60 bg-rose-950/40 hover:bg-rose-900 text-rose-300 text-xs h-8 w-8 p-0 rounded-xl"
+                      title="Hapus tenant"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Modal Tambah Biro Baru */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-2xl bg-[#0d1322] border-slate-800 text-slate-100 max-h-[90vh] flex flex-col p-6 rounded-2xl">
+          <DialogHeader className="border-b border-slate-800 pb-3">
+            <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-indigo-400" />
+              Pendaftaran Klien Biro Wisata Baru
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              Registrasi tenant baru langsung terhubung ke database dan audit trail.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateBiro} className="space-y-4 py-3 overflow-y-auto text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">Nama Biro Wisata *</Label>
+                <Input
+                  required
+                  value={newBiroForm.namaBiro}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, namaBiro: e.target.value })}
+                  placeholder="Misal: Cahaya Tasbih Tour & Travel"
+                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">Slug URL Biro (Opsional)</Label>
+                <Input
+                  value={newBiroForm.slugBiro}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, slugBiro: e.target.value })}
+                  placeholder="cahaya-tasbih"
+                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">Nama Pemilik *</Label>
+                <Input
+                  required
+                  value={newBiroForm.ownerNama}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, ownerNama: e.target.value })}
+                  placeholder="H. Anjar / Bambang"
+                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">No. WhatsApp *</Label>
+                <Input
+                  required
+                  value={newBiroForm.ownerPhone}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, ownerPhone: e.target.value })}
+                  placeholder="0812-3456-7890"
+                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">Email Akun</Label>
+                <Input
+                  type="email"
+                  value={newBiroForm.ownerEmail}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, ownerEmail: e.target.value })}
+                  placeholder="owner@biro.id"
+                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">Pilihan Paket Lisensi</Label>
+                <Select
+                  value={newBiroForm.tier}
+                  onValueChange={(val: LicenseTier) => {
+                    const price = val === "starter" ? 750000 : val === "pro" ? 2250000 : 350000;
+                    setNewBiroForm({ ...newBiroForm, tier: val, nominalBayar: price });
+                  }}
+                >
+                  <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-200 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 text-xs">
+                    <SelectItem value="starter">Starter (Sekali Bayar Murah)</SelectItem>
+                    <SelectItem value="pro">Pro (Sekali Bayar Standar)</SelectItem>
+                    <SelectItem value="enterprise">Enterprise (SaaS Bulanan)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">Model Pembayaran</Label>
+                <Select
+                  value={newBiroForm.paymentModel}
+                  onValueChange={(val: PaymentModel) => setNewBiroForm({ ...newBiroForm, paymentModel: val })}
+                >
+                  <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-200 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 text-xs">
+                    <SelectItem value="lifetime">Sekali Bayar (Lifetime)</SelectItem>
+                    <SelectItem value="subscription">Langganan SaaS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-300">Nominal Bayar (Rp)</Label>
+                <Input
+                  type="number"
+                  value={newBiroForm.nominalBayar}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, nominalBayar: parseInt(e.target.value) || 0 })}
+                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-slate-200 cursor-pointer">
+                  Termasuk Website Promosi (.com / .id)?
+                </Label>
+                <input
+                  type="checkbox"
+                  checked={newBiroForm.hasWebsite}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, hasWebsite: e.target.checked })}
+                  className="w-4 h-4 rounded text-indigo-600 bg-slate-950 border-slate-700"
+                />
+              </div>
+              {newBiroForm.hasWebsite && (
+                <Input
+                  value={newBiroForm.domainName}
+                  onChange={(e) => setNewBiroForm({ ...newBiroForm, domainName: e.target.value })}
+                  placeholder="Nama domain yang dibeli, misal: berkahwisata.com"
+                  className="bg-slate-950 border-slate-700 text-slate-200 text-xs font-mono"
+                />
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddModal(false)}
+                className="text-xs border-slate-700 bg-slate-800 text-slate-300"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+              >
+                Simpan & Daftarkan
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};

@@ -102,6 +102,11 @@ const App = () => {
                 <Route path="/pengaturan-biro" element={<PengaturanBiro />} />
                 <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
                 <Route path="/super-admin" element={<SuperAdminDashboard />} />
+                <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
+                <Route path="/teamwork-preview" element={<Navigate to="/super-admin?view=devices" replace />} />
+                <Route path="/agy-customizations" element={<Navigate to="/super-admin?view=feature_gating" replace />} />
+                <Route path="/learn" element={<Navigate to="/super-admin?view=database" replace />} />
+                <Route path="/boost" element={<Navigate to="/super-admin?view=billing" replace />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -114,3 +119,4 @@ const App = () => {
 };
 
 export default App;
+

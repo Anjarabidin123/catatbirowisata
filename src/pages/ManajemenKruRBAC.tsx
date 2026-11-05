@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRole } from "@/contexts/RoleContext";
+import { getCurrentEntitlements } from "@/utils/licenseEntitlement";
 import {
   CrewMember,
   DeviceSession,
@@ -234,6 +235,14 @@ const ManajemenKruRBAC: React.FC = () => {
     e.preventDefault();
     if (!newCrewForm.nama.trim()) {
       toast.error("Nama kru wajib diisi");
+      return;
+    }
+
+    const entitlements = getCurrentEntitlements();
+    if (crewMembers.length >= entitlements.maxCrewMembers) {
+      toast.error(
+        `Batas kuota personel kru (${entitlements.maxCrewMembers} orang) telah tercapai untuk biro ini. Hubungi Super Admin untuk menambah kuota.`
+      );
       return;
     }
 
@@ -493,7 +502,14 @@ const ManajemenKruRBAC: React.FC = () => {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => setShowAddCrewModal(true)}
+                  onClick={() => {
+                    const ent = getCurrentEntitlements();
+                    if (crewMembers.length >= ent.maxCrewMembers) {
+                      toast.error(`Batas kuota kru (${ent.maxCrewMembers} personel) telah tercapai. Hubungi Super Admin / Founder untuk menambah kuota!`);
+                      return;
+                    }
+                    setShowAddCrewModal(true);
+                  }}
                   className="h-9 px-2.5 sm:px-4 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1 sm:gap-1.5 shadow-sm"
                 >
                   <Plus className="w-4 h-4" />

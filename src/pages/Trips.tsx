@@ -38,6 +38,8 @@ import {
 } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useRole } from "@/contexts/RoleContext";
+import { getCurrentEntitlements } from "@/utils/licenseEntitlement";
+import { toast } from "sonner";
 
 interface Trip {
   id: string;
@@ -202,6 +204,15 @@ const Trips = () => {
                 <Badge variant="outline" className="text-[11px] bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200">
                   {filteredTrips.length} Total Trip
                 </Badge>
+                {(() => {
+                  const ent = getCurrentEntitlements();
+                  const full = trips.length >= ent.maxActiveTrips;
+                  return (
+                    <Badge variant="outline" className={`text-[11px] font-mono ${full ? "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-300 font-bold" : "bg-cyan-50 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300 border-cyan-200"}`}>
+                      Kuota: {trips.length} / {ent.maxActiveTrips >= 9000 ? "∞ Unlimited" : `${ent.maxActiveTrips} Max`}
+                    </Badge>
+                  );
+                })()}
               </div>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                 Pantau ketersediaan tanggal, jadwal keberangkatan armada bus, dan rute perjalanan.
@@ -237,7 +248,14 @@ const Trips = () => {
               {canManageTrips && (
                 <Button
                   size="sm"
-                  onClick={() => navigate("/trips/new")}
+                  onClick={() => {
+                    const ent = getCurrentEntitlements();
+                    if (trips.length >= ent.maxActiveTrips) {
+                      toast.error(`Batas kuota trip aktif (${ent.maxActiveTrips} trip) telah tercapai. Hubungi Super Admin / Founder untuk menambah kuota!`);
+                      return;
+                    }
+                    navigate("/trips/new");
+                  }}
                   className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
                 >
                   <Plus className="w-4 h-4" />

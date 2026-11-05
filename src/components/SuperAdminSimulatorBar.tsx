@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   ShieldAlert,
@@ -12,6 +12,8 @@ import {
   ChevronUp,
   ChevronDown,
   X,
+  Building2,
+  LogOut,
 } from "lucide-react";
 import {
   isSuperAdminUser,
@@ -19,14 +21,19 @@ import {
   setActivePerspective,
   TesterPerspective,
   SUPER_ADMIN_EMAIL,
+  getImpersonatedTenantId,
+  getTenantById,
+  stopImpersonation,
 } from "@/utils/licenseEntitlement";
 import { toast } from "sonner";
 
 export const SuperAdminSimulatorBar: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSuper, setIsSuper] = useState(false);
   const [currentMode, setCurrentMode] = useState<TesterPerspective>("normal");
   const [collapsed, setCollapsed] = useState(false);
+  const [impersonatedId, setImpersonatedId] = useState<string | null>(getImpersonatedTenantId);
 
   useEffect(() => {
     setIsSuper(isSuperAdminUser());
@@ -35,6 +42,7 @@ export const SuperAdminSimulatorBar: React.FC = () => {
     const handleUpdate = () => {
       setIsSuper(isSuperAdminUser());
       setCurrentMode(getActivePerspective());
+      setImpersonatedId(getImpersonatedTenantId());
     };
 
     window.addEventListener("catatbiro-entitlement-updated", handleUpdate);
@@ -43,10 +51,11 @@ export const SuperAdminSimulatorBar: React.FC = () => {
     };
   }, []);
 
-  // Jika bukan Super Admin (bukan anjarbdn@gmail.com), jangan tampilkan bar ini
-  if (!isSuper) {
+  // Jika bukan Super Admin atau sedang berada di konsol Super Admin sendiri, sembunyikan floating bar
+  if (!isSuper || location.pathname.startsWith("/super-admin")) {
     return null;
   }
+
 
   const handleSwitchMode = (mode: TesterPerspective) => {
     setActivePerspective(mode);
@@ -102,6 +111,31 @@ export const SuperAdminSimulatorBar: React.FC = () => {
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {/* Impersonated Tenant Pill */}
+        {impersonatedId && (() => {
+          const tenant = getTenantById(impersonatedId);
+          if (!tenant) return null;
+          return (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-amber-950/90 border border-amber-500/60 text-xs">
+              <Building2 className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[11px] font-bold text-amber-200">
+                Impersonasi: {tenant.namaBiro} ({tenant.tier.toUpperCase()})
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  stopImpersonation();
+                  toast.success("Sesi impersonasi dihentikan. Kembali ke Super Admin.");
+                  navigate("/super-admin?view=tenants");
+                }}
+                className="text-[10px] bg-rose-600 hover:bg-rose-500 text-white px-1.5 py-0.5 rounded font-bold"
+              >
+                Keluar
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Pilihan Mode Tester */}
         <div className="flex items-center gap-1 flex-wrap justify-center sm:justify-start">

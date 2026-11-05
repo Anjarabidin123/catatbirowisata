@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import AuthGuard from "@/components/AuthGuard";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
 import { toast } from "sonner";
 import {
   Building2,
+  Crown,
   Upload,
   Trash2,
   Image as ImageIcon,
@@ -62,6 +64,7 @@ import {
 } from "@/utils/biroCmsStore";
 import RBACOwnerGuard from "@/components/RBACOwnerGuard";
 import { logCrewActivity } from "@/utils/rbacAuditLogger";
+import { isSuperAdminUser } from "@/utils/licenseEntitlement";
 
 const PengaturanBiro = () => {
   const navigate = useNavigate();
@@ -294,6 +297,31 @@ const PengaturanBiro = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Master Super Admin Banner (Hanya Muncul untuk Founder) */}
+            {isSuperAdminUser() && (
+              <Card className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-indigo-950/40 to-slate-900 border-2 border-amber-500/50 shadow-xl mb-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Crown className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-white text-sm">Konsol Master Super Admin</h3>
+                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px] font-mono">FOUNDER ROOT</Badge>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Buka pusat kendali enterprise terpisah: kelola seluruh biro, matriks gating A-Z, sesi perangkat, audit log, dan hosting VPS.
+                    </p>
+                  </div>
+                </div>
+                <Link to="/super-admin" className="w-full sm:w-auto flex-shrink-0">
+                  <Button className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold text-xs h-9 px-4 rounded-xl shadow-lg">
+                    Buka Super Admin ↗
+                  </Button>
+                </Link>
+              </Card>
+            )}
 
             {/* Segmented Tab Bar CMS */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">

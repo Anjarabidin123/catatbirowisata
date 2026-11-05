@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -16,6 +17,7 @@ import {
 import { getCurrentEntitlements, SUPER_ADMIN_EMAIL } from "@/utils/licenseEntitlement";
 
 export const DesktopModeLockOverlay: React.FC = () => {
+  const location = useLocation();
   const [entitlements, setEntitlements] = useState(getCurrentEntitlements);
   const [isDesktopScreen, setIsDesktopScreen] = useState(false);
 
@@ -37,10 +39,20 @@ export const DesktopModeLockOverlay: React.FC = () => {
     };
   }, []);
 
+  // Jangan pernah blokir halaman Super Admin, Login, atau Landing Page
+  if (
+    location.pathname.startsWith("/super-admin") ||
+    location.pathname === "/auth" ||
+    location.pathname === "/"
+  ) {
+    return null;
+  }
+
   // Jika di layar mobile (< 1024px) ATAU tenant memiliki izin desktop, jangan tampilkan overlay
   if (!isDesktopScreen || entitlements.canUseDesktopMode) {
     return null;
   }
+
 
   const handleContactFounder = () => {
     const message = `Halo Mas Anjar (Founder CatatBiro), saya ingin upgrade lisensi biro wisata saya ke Paket Pro agar bisa membuka Mode Desktop Eksekutif & Bento KPI di laptop. Mohon informasi aktivasi dan rekening pembayarannya. Terima kasih! 🙏`;

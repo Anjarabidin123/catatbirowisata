@@ -45,6 +45,7 @@ export const DesktopSidebar: React.FC = () => {
   const canEditBiro = hasPermission("rule_pengaturan_biro");
   const [profile, setProfile] = useState<BiroProfile>(getLocalBiroProfile());
   const [userEmail, setUserEmail] = useState<string>("");
+  const [isSuper, setIsSuper] = useState<boolean>(isSuperAdminUser);
 
   useEffect(() => {
     fetchBiroProfile().then(setProfile);
@@ -66,8 +67,12 @@ export const DesktopSidebar: React.FC = () => {
       setUserEmail(session?.user?.email || "");
     });
 
+    const handleEntitlementUpdate = () => setIsSuper(isSuperAdminUser());
+    window.addEventListener("catatbiro-entitlement-updated", handleEntitlementUpdate);
+
     return () => {
       window.removeEventListener("biro-profile-updated", handleProfileUpdate);
+      window.removeEventListener("catatbiro-entitlement-updated", handleEntitlementUpdate);
       subscription.unsubscribe();
     };
   }, []);
@@ -212,7 +217,7 @@ export const DesktopSidebar: React.FC = () => {
           },
         ]
       : []),
-    ...(isSuperAdminUser()
+    ...(isSuper
       ? [
           {
             label: "Super Admin Panel",
@@ -227,8 +232,12 @@ export const DesktopSidebar: React.FC = () => {
       : []),
   ];
 
-  // Jangan tampilkan di halaman landing (/) atau login (/auth)
-  if (location.pathname === "/" || location.pathname === "/auth") {
+  // Jangan tampilkan di landing (/), login (/auth), atau seluruh rute Super Admin terpisah (/super-admin)
+  if (
+    location.pathname === "/" ||
+    location.pathname === "/auth" ||
+    location.pathname.startsWith("/super-admin")
+  ) {
     return null;
   }
 

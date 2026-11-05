@@ -20,6 +20,7 @@ import { UserCheck, Users, Plus, Phone, Mail, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { CrewJabatan, CrewMember, addCrewMemberDB } from "@/utils/rbacAuditLogger";
 import { useRole } from "@/contexts/RoleContext";
+import { getCurrentEntitlements } from "@/utils/licenseEntitlement";
 
 interface AddCrewDialogProps {
   open: boolean;
@@ -46,7 +47,7 @@ export const AddCrewDialog: React.FC<AddCrewDialogProps> = ({
   defaultTripId,
   onCrewAdded,
 }) => {
-  const { refreshCrewList } = useRole();
+  const { refreshCrewList, crewList } = useRole();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     nama: "",
@@ -59,6 +60,14 @@ export const AddCrewDialog: React.FC<AddCrewDialogProps> = ({
     e.preventDefault();
     if (!form.nama.trim()) {
       toast.error("Nama personel wajib diisi");
+      return;
+    }
+
+    const entitlements = getCurrentEntitlements();
+    if (crewList.length >= entitlements.maxCrewMembers) {
+      toast.error(
+        `Batas kuota kru (${entitlements.maxCrewMembers} personel) telah tercapai untuk biro ini. Hubungi Super Admin untuk penambahan kuota.`
+      );
       return;
     }
 

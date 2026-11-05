@@ -6,6 +6,7 @@ import AuthGuard from "@/components/AuthGuard";
 import { RBACOwnerGuard } from "@/components/RBACOwnerGuard";
 import { logCrewActivity, assignTripToMultipleCrewDB } from "@/utils/rbacAuditLogger";
 import { useRole } from "@/contexts/RoleContext";
+import { getCurrentEntitlements } from "@/utils/licenseEntitlement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,20 @@ const NewTrip = () => {
     try {
       const user = await getActiveUser();
       if (!user) throw new Error("User not authenticated");
+
+      // Verifikasi Kuota Trip Aktif Granular (Feature Gating)
+      const entitlements = getCurrentEntitlements();
+      const { count: currentTripCount } = await supabase
+        .from("trips")
+        .select("*", { count: "exact", head: true });
+
+      if (typeof currentTripCount === "number" && currentTripCount >= entitlements.maxActiveTrips) {
+        toast.error(
+          `Batas kuota trip aktif (${entitlements.maxActiveTrips} trip) telah tercapai untuk biro ini. Hubungi Super Admin / Founder untuk menambah kuota.`
+        );
+        setLoading(false);
+        return;
+      }
 
       const budgetNumber = budgetFormatted ? Number(budgetFormatted.replace(/\./g, "").replace(/,/g, ".")) : null;
 

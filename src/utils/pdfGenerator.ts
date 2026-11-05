@@ -1,5 +1,6 @@
 import type jsPDF from "jspdf";
 import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { getCurrentEntitlements } from "./licenseEntitlement";
 import { savePdf } from "./pdfSaver";
 
 export interface RundownItem {
