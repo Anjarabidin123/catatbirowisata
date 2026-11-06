@@ -41,6 +41,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SystemBroadcastBanner } from "@/components/SystemBroadcastBanner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface Trip {
   id: string;
@@ -425,246 +432,364 @@ const Dashboard = () => {
         </div>
 
         {/* ========================================================
-            TAMPILAN MOBILE (< lg) - Cepat, Ringkas, Ramah Lapangan
+            TAMPILAN MOBILE (< lg) - Visual Hero Banner & Travel Atmosphere
             ======================================================== */}
-        <div className="lg:hidden max-w-md mx-auto px-3 pt-3 space-y-3">
-          {/* Header ringkas mobile */}
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => navigate(isPemilik ? "/pengaturan-biro" : "/dashboard")}
-              className="min-w-0 text-left group cursor-pointer focus:outline-hidden"
-              title={isPemilik ? "Klik untuk mengedit Profil & Rekening Biro" : undefined}
-            >
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-base font-extrabold text-slate-900 dark:text-white truncate leading-tight group-hover:text-blue-600 transition-colors">
-                  {profile.nama_biro}
-                </h1>
-                {isPemilik && (
-                  <Pencil className="w-3 h-3 text-slate-400 group-hover:text-blue-600 transition-colors flex-shrink-0" />
-                )}
-              </div>
-              <p className="text-[11px] text-slate-500 truncate">
-                {isPemilik ? "Pemilik Biro • Edit Profil" : `${activeCrew.nama} • ${activeCrew.jabatan}`}
-              </p>
-            </button>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <ThemeToggle variant="button" className="h-8 w-8" />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => window.dispatchEvent(new CustomEvent("open-ai-copilot"))}
-                className="h-8 w-8 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                title="Buka AI Copilot CLI"
-              >
-                <Terminal className="w-4 h-4" />
-              </Button>
-              {isPemilik && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate("/pengaturan-biro")}
-                  className="h-8 w-8 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  title="Edit Profil & Rekening Biro"
+        <div className="lg:hidden">
+          {/* Visual Hero Header Container (sekitar 32-38% tinggi layar / tidak separuh banget) */}
+          <div className="relative overflow-hidden rounded-b-[2.25rem] bg-slate-900 text-white shadow-xl border-b border-slate-800/80">
+            {/* Foto Latar Belakang Wisata (Bromo / Bali) dengan Filter Estetik */}
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 brightness-[0.65] saturate-[1.25]"
+              style={{ backgroundImage: "url('/hero-bromo.jpg')" }}
+            />
+            {/* Gradient Overlay Gelap agar Teks & Konten Selalu Terbaca Tajam */}
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-slate-900/80 to-slate-950/95 backdrop-blur-[1px]" />
+
+            {/* Konten Hero Mobile */}
+            <div className="relative z-10 px-4 pt-4 pb-5 space-y-3.5 max-w-md mx-auto">
+              {/* Baris Atas: Brand Biro (Logo + Nama) & Aksi Cepat Terorganisir */}
+              <div className="flex items-center justify-between gap-2.5">
+                {/* Logo & Nama Biro */}
+                <div
+                  onClick={() => navigate(isPemilik ? "/pengaturan-biro" : "/dashboard")}
+                  className="flex items-center gap-3 min-w-0 cursor-pointer group flex-1"
+                  title="Klik untuk kelola Profil Biro"
                 >
-                  <Settings className="w-4 h-4 text-blue-600" />
-                </Button>
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 dark:bg-slate-800/80 backdrop-blur-md border border-white/20 p-1 flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-105 transition-transform overflow-hidden">
+                    {profile.logo_url ? (
+                      <img
+                        src={profile.logo_url}
+                        alt={profile.nama_biro}
+                        className="w-full h-full object-contain rounded-xl"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/pwa-icon.svg";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-inner">
+                        {profile.nama_biro.charAt(0) || "B"}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h1 className="text-base font-black tracking-tight text-white truncate leading-tight group-hover:text-blue-300 transition-colors">
+                        {profile.nama_biro}
+                      </h1>
+                      <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-black flex-shrink-0 shadow-xs">
+                        ✓
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 truncate font-medium flex items-center gap-1.5 mt-0.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="truncate">{isPemilik ? profile.pimpinan || "Pemilik Biro" : `${activeCrew.nama} • ${activeCrew.jabatan}`}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tombol Aksi Kanan (AI Copilot, Tema, Notifikasi, Dropdown Menu Rapi) */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* AI Copilot Button */}
+                  <Button
+                    size="sm"
+                    onClick={() => window.dispatchEvent(new CustomEvent("open-ai-copilot"))}
+                    className="h-8 px-2.5 rounded-xl bg-blue-600/90 hover:bg-blue-600 text-white border border-blue-400/30 text-xs font-bold gap-1 shadow-md shadow-blue-500/25 backdrop-blur-xs"
+                    title="Buka AI Copilot CLI"
+                  >
+                    <Terminal className="w-3.5 h-3.5 text-cyan-200" />
+                    <span className="text-[11px]">AI</span>
+                  </Button>
+
+                  {/* Mode Terang / Gelap Fast Button */}
+                  <ThemeToggle
+                    variant="button"
+                    className="h-8 w-8 rounded-xl bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-xs backdrop-blur-xs"
+                  />
+
+                  {/* Pengingat / Notifikasi Bell */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowReminder(true)}
+                    className="h-8 w-8 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white relative backdrop-blur-xs"
+                    title="Pengingat Operasional"
+                  >
+                    <Bell className="w-3.5 h-3.5 text-amber-300" />
+                    {reminderCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[9px] bg-red-500 text-white rounded-full">
+                        {reminderCount}
+                      </Badge>
+                    )}
+                  </Button>
+
+                  {/* More Menu Dropdown (Rapi & Bersih) */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white backdrop-blur-xs"
+                        title="Menu Pengaturan & Akun"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5 z-50">
+                      {isPemilik && (
+                        <DropdownMenuItem
+                          onClick={() => navigate("/pengaturan-biro")}
+                          className="text-xs font-bold gap-2 py-2 cursor-pointer rounded-xl"
+                        >
+                          <Settings className="w-4 h-4 text-blue-600" />
+                          <span>Pengaturan & CMS Biro</span>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={loadData}
+                        className="text-xs font-semibold gap-2 py-2 cursor-pointer rounded-xl"
+                      >
+                        <RefreshCw className="w-4 h-4 text-slate-600" />
+                        <span>Segarkan Data</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={toggleRole}
+                        className="text-xs font-semibold gap-2 py-2 cursor-pointer rounded-xl"
+                      >
+                        <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
+                        <span>Mode {isKru ? "Pemilik (Owner)" : "Kru Lapangan"}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleSignOut}
+                        className="text-xs font-bold gap-2 py-2 cursor-pointer rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Keluar Akun</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              {/* Kartu Ringkasan Operasional & Finansial (Glassmorphism Elegan) */}
+              {canSeeFinancials && (
+                <div
+                  onClick={() => navigate("/keuangan")}
+                  className="p-3.5 rounded-2xl bg-white/10 dark:bg-slate-900/80 backdrop-blur-md border border-white/20 dark:border-slate-800 shadow-lg cursor-pointer active:scale-[0.99] transition-all space-y-2"
+                >
+                  <div className="flex items-center justify-between text-xs text-slate-200">
+                    <span className="font-extrabold uppercase tracking-wider text-[10px] text-blue-200 flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5 text-blue-300" /> Arus Kas & Laba
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 rounded-full font-bold">
+                      Margin {profitMargin}%
+                    </span>
+                  </div>
+
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div>
+                      <div className="text-xl font-black text-white tracking-tight">
+                        {rupiah(stats.laba)}
+                      </div>
+                      <p className="text-[11px] text-slate-300">Estimasi Laba Bersih</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-slate-200">
+                        Omset: <span className="text-white font-black">{rupiah(stats.pemasukan)}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300">
+                        Beban: {rupiah(stats.pengeluaran)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={loadData}
-                className="h-8 w-8 rounded-xl"
-                title="Segarkan"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowReminder(true)}
-                className="relative h-8 w-8 rounded-xl"
-                title="Pengingat"
-              >
-                <Bell className="w-4 h-4" />
-                {reminderCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[10px] bg-red-500 text-white rounded-full">
-                    {reminderCount}
-                  </Badge>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleRole}
-                className="h-8 w-8 rounded-xl"
-                title={isKru ? "Pindah ke mode Pemilik" : "Pindah ke mode Kru"}
-              >
-                <ArrowRightLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleSignOut}
-                className="h-8 w-8 rounded-xl text-red-600"
-                title="Keluar"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
 
-          {/* Ringkasan keuangan 1 baris mobile */}
-          {canSeeFinancials && (
-            <button
-              type="button"
-              onClick={() => navigate("/keuangan")}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-[11px]"
-            >
-              <span className="text-slate-500">
-                Omset <b className="text-slate-900 dark:text-white">{rupiah(stats.pemasukan)}</b>
-              </span>
-              <span className="text-slate-500">
-                Beban <b className="text-slate-900 dark:text-white">{rupiah(stats.pengeluaran)}</b>
-              </span>
-              <span className={stats.laba >= 0 ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
-                Laba <b>{rupiah(stats.laba)}</b>
-              </span>
-            </button>
-          )}
-
-          {/* Cari + trip baru mobile */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cari trip, tujuan, atau kru..."
-                className="pl-8 h-9 text-xs rounded-xl bg-white dark:bg-slate-900"
-              />
-            </div>
-            {canManageTrips && (
-              <Button
-                onClick={() => navigate("/trips/new")}
-                size="sm"
-                className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold gap-1 px-3 flex-shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Trip
-              </Button>
-            )}
-          </div>
-
-          {/* Filter pills mobile */}
-          <div className="flex items-center gap-1.5 overflow-x-auto -mx-3 px-3">
-            {FILTERS.map((f) => {
-              const active = filter === f.key;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setFilter(f.key)}
-                  className={`px-3 h-7 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-colors ${
-                    active
-                      ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
-                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                  }`}
+              {/* Spotlight Mini jika ada trip hari ini */}
+              {todayTrips.length > 0 && (
+                <div
+                  onClick={() => openTrip(todayTrips[0].id, "operasional")}
+                  className="px-3.5 py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-white flex items-center justify-between gap-2 text-xs cursor-pointer active:scale-[0.99] transition-all backdrop-blur-xs shadow-md"
                 >
-                  {f.label}
-                </button>
-              );
-            })}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0"></span>
+                    <span className="font-bold truncate text-[11px]">
+                      Hari Ini: {todayTrips[0].nama_trip} ({todayTrips[0].tujuan})
+                    </span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-200 flex-shrink-0" />
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Daftar trip mobile */}
-          {loading ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-20 rounded-2xl bg-slate-200/60 dark:bg-slate-800 animate-pulse" />
-              ))}
-            </div>
-          ) : sections.length === 0 ? (
-            <div className="py-12 text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                <Bus className="w-6 h-6" />
+          {/* ========================================================
+              BAGIAN BAWAH: DAFTAR TRIP (Search, Filter, Cards)
+              ======================================================== */}
+          <div className="max-w-md mx-auto px-3.5 pt-4 space-y-3.5">
+            {/* Cari + Tombol Tambah Trip */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Cari trip, destinasi, armada, atau kru..."
+                  className="pl-8 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-medium"
+                />
               </div>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                {visibleTrips.length === 0
-                  ? isKru
-                    ? "Belum ada trip yang ditugaskan"
-                    : "Belum ada trip"
-                  : "Tidak ada trip yang cocok"}
-              </p>
-              {visibleTrips.length === 0 && isPemilik && canManageTrips && (
+              {canManageTrips && (
                 <Button
                   onClick={() => navigate("/trips/new")}
                   size="sm"
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                  className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1 px-3.5 flex-shrink-0 shadow-sm shadow-blue-500/20"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  Buat Trip Pertama
+                  <Plus className="w-4 h-4" />
+                  <span>Trip</span>
                 </Button>
               )}
             </div>
-          ) : (
-            sections.map((section) => (
-              <section key={section.status} className="space-y-1.5">
-                <div className="flex items-center justify-between px-1">
-                  <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    {SECTION_TITLE[section.status]}
-                  </h2>
-                  <span className="text-[11px] text-slate-400">{section.items.length}</span>
-                </div>
 
-                {section.items.map((t) => {
-                  const st = getTripStatus(t);
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => openTrip(t.id)}
-                      className={`w-full text-left p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs active:scale-[0.99] transition-all flex items-center gap-3 ${
-                        st === "berlangsung"
-                          ? "border-emerald-300 dark:border-emerald-800"
-                          : "border-slate-200/80 dark:border-slate-800"
-                      } ${st === "selesai" ? "opacity-80" : ""}`}
+            {/* Filter Pills Mobile dengan Counter */}
+            <div className="flex items-center gap-1.5 overflow-x-auto -mx-3.5 px-3.5 no-scrollbar">
+              {FILTERS.map((f) => {
+                const active = filter === f.key;
+                const count =
+                  f.key === "semua"
+                    ? visibleTrips.length
+                    : visibleTrips.filter((t) => getTripStatus(t) === f.key).length;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1.5 shadow-2xs ${
+                      active
+                        ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white shadow-xs"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>{f.label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        active
+                          ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                      }`}
                     >
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_STYLE[st].className}`}
-                          >
-                            {STATUS_STYLE[st].label}
-                          </span>
-                          {t.jumlah_penumpang ? (
-                            <span className="text-[10px] text-slate-500 flex items-center gap-0.5">
-                              <Users className="w-3 h-3" />
-                              {t.jumlah_penumpang}
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Header Daftar Trip */}
+            <div className="flex items-center justify-between px-0.5 pt-1">
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Daftar Jadwal Perjalanan
+              </h2>
+              <span className="text-[11px] font-bold text-slate-400">
+                {filteredTrips.length} Trip
+              </span>
+            </div>
+
+            {/* Daftar trip mobile */}
+            {loading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-20 rounded-2xl bg-slate-200/60 dark:bg-slate-800 animate-pulse" />
+                ))}
+              </div>
+            ) : sections.length === 0 ? (
+              <div className="py-12 text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                  <Bus className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {visibleTrips.length === 0
+                    ? isKru
+                      ? "Belum ada trip yang ditugaskan"
+                      : "Belum ada trip"
+                    : "Tidak ada trip yang cocok"}
+                </p>
+                {visibleTrips.length === 0 && isPemilik && canManageTrips && (
+                  <Button
+                    onClick={() => navigate("/trips/new")}
+                    size="sm"
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Buat Trip Pertama
+                  </Button>
+                )}
+              </div>
+            ) : (
+              sections.map((section) => (
+                <section key={section.status} className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      {SECTION_TITLE[section.status]}
+                    </h2>
+                    <span className="text-[11px] text-slate-400">{section.items.length}</span>
+                  </div>
+
+                  {section.items.map((t) => {
+                    const st = getTripStatus(t);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => openTrip(t.id)}
+                        className={`w-full text-left p-3.5 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs active:scale-[0.99] transition-all flex items-center gap-3.5 ${
+                          st === "berlangsung"
+                            ? "border-emerald-300 dark:border-emerald-800 ring-2 ring-emerald-500/20"
+                            : "border-slate-200/80 dark:border-slate-800 hover:border-blue-400/50"
+                        } ${st === "selesai" ? "opacity-85" : ""}`}
+                      >
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${STATUS_STYLE[st].className}`}
+                            >
+                              {STATUS_STYLE[st].label}
                             </span>
-                          ) : null}
+                            {t.jumlah_penumpang ? (
+                              <span className="text-[10px] text-slate-500 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-semibold">
+                                <Users className="w-3 h-3 text-slate-400" />
+                                {t.jumlah_penumpang} Pax
+                              </span>
+                            ) : null}
+                            {t.nama_kendaraan && (
+                              <span className="text-[10px] text-slate-500 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-semibold truncate max-w-[130px]">
+                                <Bus className="w-3 h-3 text-slate-400" />
+                                {t.nama_kendaraan}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug break-words">
+                            {t.nama_trip}
+                          </p>
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                            <span className="flex items-center gap-1 min-w-0">
+                              <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-rose-500" />
+                              <span className="truncate capitalize font-medium">{t.tujuan}</span>
+                            </span>
+                            <span className="flex items-center gap-1 flex-shrink-0">
+                              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                              <span className="font-medium">{formatRange(t)}</span>
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug break-words">
-                          {t.nama_trip}
-                        </p>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-500">
-                          <span className="flex items-center gap-1 min-w-0">
-                            <MapPin className="w-3 h-3 flex-shrink-0 text-rose-500" />
-                            <span className="truncate capitalize">{t.tujuan}</span>
-                          </span>
-                          <span className="flex items-center gap-1 flex-shrink-0">
-                            <Calendar className="w-3 h-3 text-blue-500" />
-                            {formatRange(t)}
-                          </span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
-                    </button>
-                  );
-                })}
-              </section>
-            ))
-          )}
+                        <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
+                      </button>
+                    );
+                  })}
+                </section>
+              ))
+            )}
+          </div>
         </div>
 
         {/* ========================================================
