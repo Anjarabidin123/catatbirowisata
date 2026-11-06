@@ -32,7 +32,7 @@ export const SuperAdminSimulatorBar: React.FC = () => {
   const location = useLocation();
   const [isSuper, setIsSuper] = useState(false);
   const [currentMode, setCurrentMode] = useState<TesterPerspective>("normal");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [impersonatedId, setImpersonatedId] = useState<string | null>(getImpersonatedTenantId);
 
   useEffect(() => {

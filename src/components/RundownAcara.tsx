@@ -276,125 +276,137 @@ export const RundownAcara = ({
   };
 
   if (loading) {
-    return <div className="text-center py-8">Memuat jadwal...</div>;
+    return <div className="text-center py-8 font-bold text-slate-500 text-xs">Memuat jadwal acara...</div>;
   }
 
   const groupedRundown = groupByDay();
   const hasRundown = Object.keys(groupedRundown).length > 0;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2">
+    <div className="space-y-4">
+      {/* Header Rundown: Judul Tebal & Action Buttons Tegas */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-300/90 dark:border-slate-800 shadow-xs">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-blue-600" />
-            <span>Rundown Acara</span>
+          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+            <Clock className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <span>Rundown Jadwal Kegiatan</span>
           </h2>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-1">
             {tripName || "Trip aktif"}
-            {tripDestination ? <> • <span className="capitalize">{tripDestination}</span></> : null}
+            {tripDestination ? <> • <span className="capitalize text-slate-900 dark:text-white">{tripDestination}</span></> : null}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             size="sm"
             onClick={handleDownloadPDF}
             disabled={!hasRundown || exporting}
-            className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1.5"
+            className="h-9 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1.5 px-3.5 shadow-2xs"
           >
-            <FileDown className="w-3.5 h-3.5" />
+            <FileDown className="w-4 h-4" />
             <span>{exporting ? "Membuat PDF..." : "Download PDF"}</span>
           </Button>
+
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={handleShareWA}
             disabled={!hasRundown}
-            className="h-8 text-xs rounded-xl font-semibold gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+            className="h-9 text-xs rounded-xl font-bold gap-1.5 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 bg-white dark:bg-slate-900 px-3.5 shadow-2xs"
           >
-            <MessageSquare className="w-3.5 h-3.5" />
+            <MessageSquare className="w-4 h-4 text-emerald-600" />
             <span>Kirim WA</span>
           </Button>
+
           {canEditRundown && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setShowWordImportDialog(true)}
-              className="h-8 text-xs rounded-xl font-semibold gap-1.5"
+              className="h-9 text-xs rounded-xl font-bold gap-1.5 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 hover:bg-blue-50 bg-white dark:bg-slate-900 px-3.5 shadow-2xs"
             >
-              <FileText className="w-3.5 h-3.5 text-blue-600" />
+              <FileText className="w-4 h-4 text-blue-600" />
               <span>Import Word</span>
             </Button>
           )}
+
           {canEditRundown && (
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="h-8 text-xs rounded-xl font-semibold">
-                  <Plus className="w-3.5 h-3.5 mr-1" />
+                <Button size="sm" className="h-9 text-xs rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 px-3.5 shadow-2xs">
+                  <Plus className="w-4 h-4 mr-1" />
                   Tambah
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-2xl">
                 <DialogHeader>
-                  <DialogTitle>Tambah Jadwal Acara {tripName ? `- ${tripName}` : ""}</DialogTitle>
+                  <DialogTitle className="text-base font-bold">Tambah Jadwal Acara {tripName ? `- ${tripName}` : ""}</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label>Hari Ke-</Label>
+                <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Hari Ke-</Label>
                     <Input
                       type="number"
                       min="1"
                       value={formData.hari_ke}
                       onChange={(e) => setFormData({ ...formData, hari_ke: parseInt(e.target.value) })}
+                      className="text-xs font-semibold"
                       required
                     />
                   </div>
-                  <div>
-                    <Label>Judul Acara</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Judul Kegiatan / Rute</Label>
                     <Input
                       value={formData.judul_acara}
                       onChange={(e) => setFormData({ ...formData, judul_acara: e.target.value })}
                       required
-                      placeholder="Contoh: Berkunjung ke Museum"
+                      placeholder="Contoh: Kunjungan Wisata Candi Borobudur"
+                      className="text-xs"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Jam Mulai</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Jam Mulai</Label>
                       <Input
                         type="time"
                         value={formData.jam_mulai}
                         onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
                         required
+                        className="text-xs font-semibold"
                       />
                     </div>
-                    <div>
-                      <Label>Jam Selesai</Label>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Jam Selesai</Label>
                       <Input
                         type="time"
                         value={formData.jam_selesai}
                         onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
                         required
+                        className="text-xs font-semibold"
                       />
                     </div>
                   </div>
-                  <div>
-                    <Label>Keterangan (Opsional)</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Catatan / Detail Kegiatan (Opsional)</Label>
                     <Textarea
                       value={formData.keterangan}
                       onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                      placeholder="Detail tambahan acara..."
+                      placeholder="Informasi dress code, parkir bus, tiket masuk, atau briefing..."
+                      className="text-xs"
+                      rows={3}
                     />
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)} className="h-9 text-xs">
                       Batal
                     </Button>
-                    <Button type="submit">Simpan</Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-9 text-xs px-4">
+                      Simpan Jadwal
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
@@ -404,31 +416,40 @@ export const RundownAcara = ({
       </div>
 
       {!hasRundown ? (
-        <Card className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 shadow-none">
-          <CardContent className="py-6 px-4 text-center space-y-2">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center mx-auto text-blue-600">
-              <Clock className="w-5 h-5" />
+        <Card className="rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-none">
+          <CardContent className="py-10 px-6 text-center space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center mx-auto text-blue-600 border border-blue-200 dark:border-blue-800 shadow-2xs">
+              <Clock className="w-7 h-7" />
             </div>
             <div>
-              <p className="font-bold text-xs text-slate-800 dark:text-slate-200">
+              <p className="font-black text-sm text-slate-900 dark:text-white">
                 Belum ada jadwal acara untuk trip ini
               </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-1">
                 {tripName || "Trip aktif"}{tripDestination ? ` (${tripDestination})` : ""}{tripDate ? ` • ${tripDate}` : ""}
               </p>
             </div>
-            <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-              Tambahkan kegiatan satu per satu atau impor dari dokumen Word.
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+              Tambahkan kegiatan satu per satu atau gunakan fitur impor otomatis dari file Word rundown.
             </p>
             {canEditRundown && (
-              <div className="flex items-center justify-center gap-2 pt-2">
+              <div className="flex items-center justify-center gap-3 pt-3">
                 <Button
                   size="sm"
                   onClick={() => setShowAddDialog(true)}
-                  className="h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3"
+                  className="h-9 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 shadow-xs"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  <Plus className="w-4 h-4 mr-1.5" />
                   Tambah Manual
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowWordImportDialog(true)}
+                  className="h-9 text-xs rounded-xl border-slate-300 font-bold px-4 shadow-2xs"
+                >
+                  <FileText className="w-4 h-4 mr-1.5 text-blue-600" />
+                  Impor Dokumen Word
                 </Button>
               </div>
             )}
@@ -436,45 +457,59 @@ export const RundownAcara = ({
         </Card>
       ) : (
         Object.entries(groupedRundown).map(([day, items]) => (
-          <Card key={day} className="p-2.5">
-            <h3 className="text-xs font-bold mb-2">Hari {day}</h3>
-            <div className="space-y-1.5">
+          <Card key={day} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/90 dark:border-slate-800 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-blue-600 text-white text-xs flex items-center justify-center font-black">
+                  {day}
+                </span>
+                <span>Hari Ke-{day}</span>
+              </h3>
+              <span className="text-xs font-bold text-slate-500">
+                {items.length} Agenda
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
               {items.map((item) => (
-                <div key={item.id} className="flex items-start gap-2 p-2 bg-background border rounded text-xs">
+                <div key={item.id} className="flex items-start gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl transition-all hover:border-blue-400">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-primary font-medium">
-                      {item.jam_mulai.substring(0, 5)} - {item.jam_selesai.substring(0, 5)}
-                    </p>
-                    <p className="font-semibold text-sm mt-0.5 break-words">{item.judul_acara}</p>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 text-xs font-black font-mono">
+                      <Clock className="w-3 h-3 text-blue-600" />
+                      <span>{item.jam_mulai.substring(0, 5)} - {item.jam_selesai.substring(0, 5)} WIB</span>
+                    </div>
+                    <p className="font-black text-sm text-slate-900 dark:text-white mt-1.5 break-words">{item.judul_acara}</p>
                     {item.keterangan && (
-                      <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-line break-words leading-relaxed">
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-line break-words leading-relaxed">
                         {item.keterangan}
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
+                  <div className="flex gap-1.5 flex-shrink-0">
                     {(canInputPettyCash || canSeeFinancials) && (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-6 w-6 p-0"
+                        className="h-8 w-8 p-0 border-slate-300 rounded-lg hover:bg-slate-200"
+                        title="Catat Kas Cepat"
                         onClick={() => {
                           setSelectedRundown(item.id);
                           setTransactionForm({ ...transactionForm, keterangan: item.judul_acara, jenis: "pengeluaran" });
                           setShowTransactionDialog(true);
                         }}
                       >
-                        <Pencil className="w-3 h-3" />
+                        <Pencil className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
                       </Button>
                     )}
                     {canEditRundown && (
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 w-6 p-0"
+                        className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 rounded-lg"
+                        title="Hapus Agenda"
                         onClick={() => handleDelete(item.id)}
                       >
-                        <Trash2 className="w-3 h-3 text-destructive" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     )}
                   </div>
@@ -486,49 +521,52 @@ export const RundownAcara = ({
       )}
 
       <Dialog open={showTransactionDialog} onOpenChange={setShowTransactionDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Tambah Transaksi Cepat</DialogTitle>
+            <DialogTitle className="text-base font-bold">Tambah Transaksi Kas Cepat dari Rundown</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleAddTransaction} className="space-y-4">
-            <div>
-              <Label>Keterangan</Label>
+          <form onSubmit={handleAddTransaction} className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Keterangan Biaya / Pembayaran</Label>
               <Input
                 value={transactionForm.keterangan}
                 onChange={(e) => setTransactionForm({ ...transactionForm, keterangan: e.target.value })}
                 required
-                placeholder="Contoh: Bayar tiket masuk"
+                placeholder="Contoh: Tiket Masuk Objek Wisata, Parkir Bus"
+                className="text-xs"
               />
             </div>
-            <div>
-              <Label>Jenis</Label>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Jenis Transaksi</Label>
               <Select
                 value={canSeeFinancials ? transactionForm.jenis : "pengeluaran"}
                 onValueChange={(value) => setTransactionForm({ ...transactionForm, jenis: value })}
                 disabled={!canSeeFinancials}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-xs font-semibold">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {canSeeFinancials && <SelectItem value="pemasukan">Pemasukan</SelectItem>}
+                  {canSeeFinancials && <SelectItem value="pemasukan">Pemasukan (Uang Diterima)</SelectItem>}
                   <SelectItem value="pengeluaran">Pengeluaran (Operasional Lapangan)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Jumlah</Label>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Nominal (Rupiah)</Label>
               <RupiahInput
                 label=""
                 value={transactionForm.jumlah}
                 onChange={(value) => setTransactionForm({ ...transactionForm, jumlah: value })}
               />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowTransactionDialog(false)}>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowTransactionDialog(false)} className="h-9 text-xs">
                 Batal
               </Button>
-              <Button type="submit">Simpan</Button>
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-xs px-4">
+                Simpan Transaksi
+              </Button>
             </div>
           </form>
         </DialogContent>

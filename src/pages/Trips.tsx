@@ -214,7 +214,7 @@ const Trips = () => {
                   );
                 })()}
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
                 Pantau ketersediaan tanggal, jadwal keberangkatan armada bus, dan rute perjalanan.
               </p>
             </div>
@@ -454,22 +454,22 @@ const Trips = () => {
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
-                                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
+                                <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight truncate">
                                   {trip.nama_trip}
                                 </h4>
-                                <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                                  <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 mt-0.5">
+                                  <MapPin className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
                                   <span className="truncate">{trip.tujuan}</span>
                                 </p>
                               </div>
 
                               <span
-                                className={`text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap flex-shrink-0 ${
+                                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap flex-shrink-0 ${
                                   st === "berlangsung"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200"
                                     : st === "mendatang"
-                                    ? "bg-blue-50 text-blue-700 border-blue-200"
-                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                    ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-200"
+                                    : "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200"
                                 }`}
                               >
                                 {st === "berlangsung" ? "Berlangsung" : st === "mendatang" ? "Akan Datang" : "Selesai"}
@@ -477,16 +477,16 @@ const Trips = () => {
                             </div>
 
                             {/* Info Armada & Penumpang */}
-                            <div className="grid grid-cols-2 gap-2 text-[10px] p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                            <div className="grid grid-cols-2 gap-2 text-[11px] p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                               <div>
-                                <span className="text-slate-400 block font-medium">Armada Bus</span>
-                                <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block">
+                                <span className="text-slate-500 block font-bold text-[10px]">Armada Bus</span>
+                                <span className="font-extrabold text-slate-900 dark:text-slate-100 truncate block">
                                   {trip.nama_kendaraan || "Big Bus"}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-slate-400 block font-medium">Sopir / Kru</span>
-                                <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block">
+                                <span className="text-slate-500 block font-bold text-[10px]">Sopir / Kru</span>
+                                <span className="font-extrabold text-slate-900 dark:text-slate-100 truncate block">
                                   {trip.nama_driver || "Tim Kru"}
                                 </span>
                               </div>
@@ -496,9 +496,9 @@ const Trips = () => {
                             <Button
                               size="sm"
                               onClick={() => openTripDetail(trip.id)}
-                              className="w-full h-8 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5 shadow-2xs"
+                              className="w-full h-9 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5 shadow-sm"
                             >
-                              <FileText className="w-3.5 h-3.5" />
+                              <FileText className="w-4 h-4" />
                               <span>Buka Rundown Acara</span>
                             </Button>
                           </div>
@@ -525,48 +525,48 @@ const Trips = () => {
                     return (
                       <div
                         key={trip.id}
-                        className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-3 shadow-2xs hover:border-blue-400 transition-all flex flex-col justify-between"
+                        className="p-4.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-700 space-y-3.5 shadow-xs hover:border-blue-500 transition-all flex flex-col justify-between"
                       >
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
+                            <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight truncate">
                               {trip.nama_trip}
                             </h3>
                             <span
-                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap flex-shrink-0 ${
+                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap flex-shrink-0 ${
                                 st === "berlangsung"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200"
                                   : st === "mendatang"
-                                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                                  : "bg-slate-100 text-slate-600 border-slate-200"
+                                  ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-200"
+                                  : "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200"
                               }`}
                             >
                               {st === "berlangsung" ? "Berlangsung" : st === "mendatang" ? "Akan Datang" : "Selesai"}
                             </span>
                           </div>
 
-                          <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
                             <span className="truncate">{trip.tujuan}</span>
                           </p>
 
-                          <div className="text-[11px] p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-1">
+                          <div className="text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-slate-400 font-medium">Tanggal:</span>
-                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                              <span className="text-slate-500 font-bold">Tanggal:</span>
+                              <span className="font-extrabold text-slate-900 dark:text-slate-100">
                                 {format(parseISO(trip.tanggal), "dd MMM yyyy", { locale: localeId })}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-slate-400 font-medium">Armada:</span>
-                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                              <span className="text-slate-500 font-bold">Armada:</span>
+                              <span className="font-extrabold text-slate-900 dark:text-slate-100">
                                 {trip.nama_kendaraan || "Big Bus"}
                               </span>
                             </div>
                             {trip.nama_driver && (
                               <div className="flex items-center justify-between">
-                                <span className="text-slate-400 font-medium">Sopir:</span>
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                <span className="text-slate-500 font-bold">Sopir:</span>
+                                <span className="font-extrabold text-slate-900 dark:text-slate-100">
                                   {trip.nama_driver}
                                 </span>
                               </div>
@@ -577,9 +577,9 @@ const Trips = () => {
                         <Button
                           size="sm"
                           onClick={() => openTripDetail(trip.id)}
-                          className="w-full h-8 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5"
+                          className="w-full h-9 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5 shadow-sm"
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <FileText className="w-4 h-4" />
                           <span>Buka Rundown Acara</span>
                         </Button>
                       </div>

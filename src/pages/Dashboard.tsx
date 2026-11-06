@@ -94,15 +94,15 @@ export const determineActiveTrip = (trips: Trip[], preferredTripId?: string): Tr
 const STATUS_STYLE: Record<TripStatus, { label: string; className: string }> = {
   berlangsung: {
     label: "Berlangsung",
-    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-extrabold",
   },
   mendatang: {
     label: "Mendatang",
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+    className: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-extrabold",
   },
   selesai: {
     label: "Selesai",
-    className: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+    className: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-extrabold",
   },
 };
 
@@ -1044,27 +1044,27 @@ const Dashboard = () => {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
                   {filteredTrips.map((t) => {
                     const st = getTripStatus(t);
                     return (
                       <div
                         key={t.id}
-                        className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border transition-all hover:shadow-md flex flex-col justify-between group ${
+                        className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all hover:shadow-md flex flex-col justify-between group ${
                           st === "berlangsung"
-                            ? "border-emerald-300 dark:border-emerald-700/80 ring-1 ring-emerald-500/20"
-                            : "border-slate-200/80 dark:border-slate-800 hover:border-slate-300"
-                        } ${st === "selesai" ? "opacity-85" : ""}`}
+                            ? "border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-500/20"
+                            : "border-slate-300/90 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500"
+                        } shadow-xs`}
                       >
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           {/* Card Header: Status & Pax */}
                           <div className="flex items-center justify-between gap-2">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[st].className}`}>
+                            <span className={`text-[11px] px-2.5 py-0.5 rounded-full ${STATUS_STYLE[st].className}`}>
                               {STATUS_STYLE[st].label}
                             </span>
                             {t.jumlah_penumpang && (
-                              <span className="flex items-center gap-1 text-xs font-bold text-slate-600 dark:text-slate-300">
-                                <Users className="w-3.5 h-3.5 text-blue-500" />
+                              <span className="flex items-center gap-1.5 text-xs font-extrabold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 rounded-full">
+                                <Users className="w-3.5 h-3.5 text-blue-600" />
                                 {t.jumlah_penumpang} Pax
                               </span>
                             )}
@@ -1074,49 +1074,49 @@ const Dashboard = () => {
                           <div>
                             <h3
                               onClick={() => openTrip(t.id)}
-                              className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors cursor-pointer line-clamp-1 leading-snug"
+                              className="text-base font-black text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors cursor-pointer line-clamp-1 leading-snug tracking-tight"
                               title={t.nama_trip}
                             >
                               {t.nama_trip}
                             </h3>
-                            <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                              <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-                              <span className="font-semibold text-slate-700 dark:text-slate-300 capitalize truncate">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mt-1">
+                              <MapPin className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                              <span className="capitalize truncate">
                                 {t.tujuan}
                               </span>
                             </p>
                           </div>
 
                           {/* Meta: Tanggal, Armada, Driver */}
-                          <div className="space-y-1 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500">
-                            <div className="flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                              <span className="font-medium">{formatRange(t)}</span>
+                          <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-700 dark:text-slate-300 font-semibold">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">{formatRange(t)}</span>
                             </div>
                             {t.nama_kendaraan && (
-                              <div className="flex items-center gap-1.5">
-                                <Bus className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                                <span className="truncate">
+                              <div className="flex items-center gap-2">
+                                <Bus className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                <span className="truncate text-slate-800 dark:text-slate-200">
                                   {t.nama_kendaraan} {t.nomor_polisi ? `(${t.nomor_polisi})` : ""}
                                 </span>
                               </div>
                             )}
                             {t.nama_driver && (
-                              <div className="flex items-center gap-1.5">
-                                <Users className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                <span className="truncate">Kru: {t.nama_driver}</span>
+                              <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                <span className="truncate text-slate-800 dark:text-slate-200">Kru: {t.nama_driver}</span>
                               </div>
                             )}
                           </div>
                         </div>
 
                         {/* Tombol Aksi Cepat pada Kartu */}
-                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                        <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => openTrip(t.id, "acuan")}
-                            className="flex-1 h-8 text-[11px] font-semibold rounded-xl"
+                            className="flex-1 h-9 text-xs font-bold rounded-xl border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-800 dark:text-slate-200 shadow-2xs"
                           >
                             Rundown
                           </Button>
@@ -1124,17 +1124,17 @@ const Dashboard = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => openTrip(t.id, "operasional")}
-                            className="flex-1 h-8 text-[11px] font-semibold rounded-xl text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="flex-1 h-9 text-xs font-bold rounded-xl text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100 shadow-2xs"
                           >
                             Kas & TL
                           </Button>
                           <Button
                             size="sm"
                             onClick={() => openTrip(t.id)}
-                            className="h-8 px-2.5 text-[11px] font-semibold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900"
+                            className="h-9 w-9 p-0 rounded-xl bg-slate-900 hover:bg-blue-600 text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-blue-600 dark:hover:text-white flex items-center justify-center transition-colors shadow-2xs"
                             title="Detail Trip"
                           >
-                            <ChevronRight className="w-3.5 h-3.5" />
+                            <ChevronRight className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
