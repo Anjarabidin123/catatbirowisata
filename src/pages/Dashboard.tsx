@@ -24,6 +24,7 @@ import {
   FileText,
   Building2,
   CheckCircle2,
+  Terminal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser, clearAuthCache } from "@/utils/authHelper";
@@ -39,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SystemBroadcastBanner } from "@/components/SystemBroadcastBanner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Trip {
   id: string;
@@ -447,6 +449,16 @@ const Dashboard = () => {
               </p>
             </button>
             <div className="flex items-center gap-1 flex-shrink-0">
+              <ThemeToggle variant="button" className="h-8 w-8" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-ai-copilot"))}
+                className="h-8 w-8 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                title="Buka AI Copilot CLI"
+              >
+                <Terminal className="w-4 h-4" />
+              </Button>
               {isPemilik && (
                 <Button
                   variant="ghost"
@@ -719,6 +731,19 @@ const Dashboard = () => {
                     {reminderCount}
                   </Badge>
                 )}
+              </Button>
+
+              <ThemeToggle variant="dropdown" />
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-ai-copilot"))}
+                className="h-9 rounded-xl text-xs font-bold gap-1.5 border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-2xs"
+                title="Buka AI Automation Copilot CLI (Ctrl+K)"
+              >
+                <Terminal className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>AI Copilot</span>
               </Button>
 
               <Button

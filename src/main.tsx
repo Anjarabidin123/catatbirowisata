@@ -1,20 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { App as CapacitorApp } from "@capacitor/app";
-
-// Handle Android hardware back button
-try {
-  CapacitorApp.addListener("backButton", ({ canGoBack }) => {
-    if (!canGoBack) {
-      CapacitorApp.exitApp();
-    } else {
-      window.history.back();
-    }
-  });
-} catch (e) {
-  // Ignore on non-native platform
-}
 
 // Register PWA Service Worker (hanya di Production agar tidak mengganggu CORS & HMR di local dev)
 if ("serviceWorker" in navigator) {

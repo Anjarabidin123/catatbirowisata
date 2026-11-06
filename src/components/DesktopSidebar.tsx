@@ -20,6 +20,7 @@ import {
   BookOpen,
   Zap,
   User,
+  Terminal,
 } from "lucide-react";
 import { isSuperAdminUser } from "@/utils/licenseEntitlement";
 import { getLocalBiroProfile, fetchBiroProfile, BiroProfile, clearBiroProfileCache } from "@/utils/biroProfile";
@@ -29,6 +30,7 @@ import { getActiveUser, clearAuthCache } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const DesktopSidebar: React.FC = () => {
   const location = useLocation();
@@ -312,7 +314,7 @@ export const DesktopSidebar: React.FC = () => {
 
       {/* RBAC Role Card & Identity Switcher */}
       <div
-        className={`p-3 mx-3 my-2.5 rounded-2xl border shadow-xs ${
+        className={`p-3 mx-3 my-2 rounded-2xl border shadow-xs ${
           isPemilik
             ? "bg-amber-50/60 dark:bg-slate-800/90 border-amber-200/90 dark:border-amber-800/50"
             : "bg-emerald-50/70 dark:bg-slate-800/90 border-emerald-200/90 dark:border-emerald-800/50"
@@ -374,6 +376,22 @@ export const DesktopSidebar: React.FC = () => {
           <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
           <span>Ganti ke Mode {isPemilik ? "Kru Lapangan" : "Pemilik Biro"}</span>
         </Button>
+      </div>
+
+      {/* AI Automation Copilot Button */}
+      <div className="px-3 mb-2">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("open-ai-copilot"))}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/20 hover:opacity-95 transition-all group"
+          title="Buka AI Copilot CLI (Ctrl+K)"
+        >
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-cyan-200 group-hover:rotate-12 transition-transform" />
+            <span>AI Copilot CLI</span>
+          </div>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/20 font-mono">Ctrl+K</span>
+        </button>
       </div>
 
       {/* Navigation Links */}
@@ -472,8 +490,14 @@ export const DesktopSidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer User, Device Status & Logout */}
-      <div className="p-3.5 border-t border-slate-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm space-y-2">
+      {/* Footer User, Theme Toggle, Device Status & Logout */}
+      <div className="p-3 border-t border-slate-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm space-y-2">
+        {/* Kontrol Mode Terang / Gelap / Sistem (Bisa memaksa Mode Terang walau Chrome Gelap) */}
+        <div className="flex items-center justify-between gap-1.5">
+          <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Tema</span>
+          <ThemeToggle variant="segmented" />
+        </div>
+
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg">
           <Smartphone className="w-3 text-emerald-600 flex-shrink-0" />
           <span className="truncate">

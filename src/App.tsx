@@ -5,7 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
+import { ThemeProvider } from "next-themes";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { AiAutomationCopilot } from "@/components/AiAutomationCopilot";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import { RoleProvider } from "@/contexts/RoleContext";
@@ -49,13 +51,15 @@ const App = () => {
   useEffect(() => {
     initAuthListener();
 
-    // Handle hardware back button
+    // Handle hardware back button secara aman dan presisi
     let backButtonListener: any;
     
     const setupListener = async () => {
       try {
         backButtonListener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-          if (!canGoBack) {
+          const currentPath = window.location.pathname;
+          // Jika berada di dashboard, root, atau auth, atau tidak ada riwayat mundur, keluar dari aplikasi
+          if (!canGoBack || currentPath === "/dashboard" || currentPath === "/" || currentPath === "/auth") {
             CapacitorApp.exitApp();
           } else {
             window.history.back();
@@ -77,52 +81,55 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <PWAInstallPrompt />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <RoleProvider>
-            <ImpersonationBanner />
-            <DesktopSidebar />
-            <DesktopModeLockOverlay />
-            <SuperAdminSimulatorBar />
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/trips" element={<Trips />} />
-                <Route path="/trips/new" element={<NewTrip />} />
-                <Route path="/trips/:id" element={<TripDetail />} />
-                <Route path="/destinations" element={<Destinations />} />
-                <Route path="/destinations/select" element={<SelectDestinations />} />
-                <Route path="/notes" element={<Notes />} />
-                <Route path="/notesnew" element={<NotesNew />} />
-                <Route path="/keuangan" element={<Keuangan />} />
-                <Route path="/keuangan/new" element={<NewKeuangan />} />
-                <Route path="/laporan" element={<Laporan />} />
-                <Route path="/import-rundown" element={<ImportWordRundown />} />
-                <Route path="/asisten-ai" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/profil" element={<ProfilBiro />} />
-                <Route path="/pengaturan" element={<ProfilBiro />} />
-                <Route path="/pengaturan-biro" element={<ProfilBiro />} />
-                <Route path="/pengaturan-biro-legacy" element={<PengaturanBiro />} />
-                <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
-                <Route path="/goal" element={<GoalTargetBiro />} />
-                <Route path="/boost" element={<BoostUpgrade />} />
-                <Route path="/learn" element={<LearnKnowledgeBase />} />
-                <Route path="/super-admin" element={<SuperAdminDashboard />} />
-                <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
-                <Route path="/teamwork-preview" element={<Navigate to="/super-admin?view=devices" replace />} />
-                <Route path="/agy-customizations" element={<Navigate to="/super-admin?view=feature_gating" replace />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </RoleProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <PWAInstallPrompt />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <AiAutomationCopilot />
+            <RoleProvider>
+              <ImpersonationBanner />
+              <DesktopSidebar />
+              <DesktopModeLockOverlay />
+              <SuperAdminSimulatorBar />
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/trips" element={<Trips />} />
+                  <Route path="/trips/new" element={<NewTrip />} />
+                  <Route path="/trips/:id" element={<TripDetail />} />
+                  <Route path="/destinations" element={<Destinations />} />
+                  <Route path="/destinations/select" element={<SelectDestinations />} />
+                  <Route path="/notes" element={<Notes />} />
+                  <Route path="/notesnew" element={<NotesNew />} />
+                  <Route path="/keuangan" element={<Keuangan />} />
+                  <Route path="/keuangan/new" element={<NewKeuangan />} />
+                  <Route path="/laporan" element={<Laporan />} />
+                  <Route path="/import-rundown" element={<ImportWordRundown />} />
+                  <Route path="/asisten-ai" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/profil" element={<ProfilBiro />} />
+                  <Route path="/pengaturan" element={<ProfilBiro />} />
+                  <Route path="/pengaturan-biro" element={<ProfilBiro />} />
+                  <Route path="/pengaturan-biro-legacy" element={<PengaturanBiro />} />
+                  <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
+                  <Route path="/goal" element={<GoalTargetBiro />} />
+                  <Route path="/boost" element={<BoostUpgrade />} />
+                  <Route path="/learn" element={<LearnKnowledgeBase />} />
+                  <Route path="/super-admin" element={<SuperAdminDashboard />} />
+                  <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
+                  <Route path="/teamwork-preview" element={<Navigate to="/super-admin?view=devices" replace />} />
+                  <Route path="/agy-customizations" element={<Navigate to="/super-admin?view=feature_gating" replace />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </RoleProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

@@ -29,6 +29,13 @@ const Auth = () => {
   const [signupMessage, setSignupMessage] = useState("");
 
   useEffect(() => {
+    // Cegah terpental ke /auth saat klik tombol back jika sesi masih aktif
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session?.user) {
+        navigate("/dashboard", { replace: true });
+      }
+    });
+
     const savedEmail = localStorage.getItem("app_remembered_email") || localStorage.getItem("malika_remembered_email");
     if (savedEmail) {
       setEmail(savedEmail);
@@ -38,7 +45,7 @@ const Auth = () => {
     if (Capacitor.isNativePlatform()) {
       biometricAuth.isAvailable().then(setBiometricAvailable);
     }
-  }, []);
+  }, [navigate]);
 
   const applyRBACSession = () => {
     setRole(selectedRole);
@@ -119,7 +126,8 @@ const Auth = () => {
             ? "Selamat datang, Pemilik Biro! Berhasil masuk dengan hak akses penuh."
             : "Selamat bertugas! Berhasil masuk ke Posko Operasional Kru."
         );
-        navigate("/dashboard");
+        // Replace history agar /auth tidak tersimpan di riwayat back button
+        navigate("/dashboard", { replace: true });
       } else {
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -166,7 +174,7 @@ const Auth = () => {
 
       applyRBACSession();
       toast.success("Login biometrik berhasil!");
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Login biometrik gagal");
     } finally {
