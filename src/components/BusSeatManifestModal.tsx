@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { savePdf } from "@/utils/pdfSaver";
 import {
   Dialog,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,16 @@ import {
   Plus,
   Shield,
   Phone,
+  Camera,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  Download,
+  ClipboardPaste,
+  Sparkles,
+  ArrowRight,
+  Info,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,16 +48,15 @@ import { getActiveUser } from "@/utils/authHelper";
 import { getLocalBiroProfile } from "@/utils/biroProfile";
 import { logCrewActivity } from "@/utils/rbacAuditLogger";
 import { useRole } from "@/contexts/RoleContext";
-
-export type BusLayoutType = "big_bus_50" | "big_bus_59" | "medium_bus_31" | "hiace_14";
-
-export interface SeatAssignment {
-  seatNumber: string;
-  name: string;
-  category?: "Umum" | "Lansia" | "Anak" | "Ibu Hamil" | "Kru / TL";
-  notes?: string;
-  phone?: string;
-}
+import {
+  BusLayoutType,
+  SeatAssignment,
+  generateBusStructure,
+  getAllSeatNumbers,
+  parseWordManifest,
+  scanPhotoManifestWithAI,
+  exportManifestToWordDoc,
+} from "@/utils/busManifestHelper";
 
 interface BusSeatManifestModalProps {
   open: boolean;
@@ -60,45 +70,6 @@ interface BusSeatManifestModalProps {
     nama_driver?: string | null;
   };
 }
-
-// Generator daftar nomor kursi berdasarkan tipe bus
-const generateSeatNumbers = (layout: BusLayoutType): string[] => {
-  const seats: string[] = [];
-
-  if (layout === "big_bus_50") {
-    // 10 baris 2-2 = 40 kursi, baris belakang 5 kursi + 5 kursi tambahan = 50 kursi
-    for (let r = 1; r <= 11; r++) {
-      seats.push(`${r}A`, `${r}B`, `${r}C`, `${r}D`);
-    }
-    seats.push("12A", "12B", "12C", "12D", "12E", "12F");
-    return seats.slice(0, 50);
-  }
-
-  if (layout === "big_bus_59") {
-    // 2-3 configuration (A,B - koridor - C,D,E)
-    for (let r = 1; r <= 11; r++) {
-      seats.push(`${r}A`, `${r}B`, `${r}C`, `${r}D`, `${r}E`);
-    }
-    seats.push("12A", "12B", "12C", "12D");
-    return seats.slice(0, 59);
-  }
-
-  if (layout === "medium_bus_31") {
-    // Medium bus 2-2 konfigurasi (7 baris x 4 = 28 + baris belakang 5 = 33)
-    for (let r = 1; r <= 7; r++) {
-      seats.push(`${r}A`, `${r}B`, `${r}C`, `${r}D`);
-    }
-    seats.push("8A", "8B", "8C");
-    return seats.slice(0, 31);
-  }
-
-  if (layout === "hiace_14") {
-    // Toyota HiAce 14 Seat (Depan 1 + Baris 1: 3 + Baris 2: 3 + Baris 3: 3 + Belakang: 4)
-    return ["1A", "2A", "2B", "2C", "3A", "3B", "3C", "4A", "4B", "4C", "5A", "5B", "5C", "5D"];
-  }
-
-  return [];
-};
 
 export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
   open,
@@ -121,6 +92,22 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
   const [passengerCategory, setPassengerCategory] = useState<any>("Umum");
   const [passengerNotes, setPassengerNotes] = useState("");
   const [passengerPhone, setPassengerPhone] = useState("");
+
+  // State Import & Export
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importedPassengers, setImportedPassengers] = useState<
+    { seat?: string; name: string; notes?: string }[]
+  >([]);
+  const [importSourceType, setImportSourceType] = useState<"word" | "foto" | "paste">("word");
+
+  // State Quick Paste
+  const [quickPasteOpen, setQuickPasteOpen] = useState(false);
+  const [quickPasteText, setQuickPasteText] = useState("");
+
+  const wordFileInputRef = useRef<HTMLInputElement>(null);
+  const photoFileInputRef = useRef<HTMLInputElement>(null);
+  const busCabinRef = useRef<HTMLDivElement>(null);
 
   // Load manifest dari Supabase notes / localStorage
   useEffect(() => {
@@ -236,7 +223,6 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
     }
     if (!selectedSeat) return;
     if (!passengerName.trim()) {
-      // Jika dikosongkan, hapus alokasi
       handleClearSeat(selectedSeat);
       return;
     }
@@ -296,12 +282,207 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
     saveManifestData(manifest, newLayout);
   };
 
-  const seatList = generateSeatNumbers(layoutType);
-  const totalSeats = seatList.length;
+  // Struktur & Data Kursi
+  const busStructure = generateBusStructure(layoutType);
+  const seatList = getAllSeatNumbers(layoutType);
+  const totalSeats = busStructure.totalSeats;
   const occupiedCount = Object.keys(manifest).filter((k) => seatList.includes(k)).length;
   const emptyCount = totalSeats - occupiedCount;
 
-  // Export PDF Manifest Resmi
+  // =========================================================
+  // FITUR: IMPORT WORD (.docx / .txt)
+  // =========================================================
+  const handleWordFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingFile(true);
+    try {
+      const parsed = await parseWordManifest(file);
+      if (parsed.length === 0) {
+        toast.error("Tidak dapat menemukan nama peserta dalam file dokumen tersebut");
+        return;
+      }
+      setImportedPassengers(parsed);
+      setImportSourceType("word");
+      setImportPreviewOpen(true);
+      toast.success(`Berhasil membaca ${parsed.length} data peserta dari file Word!`);
+    } catch (err: any) {
+      console.error("Gagal membaca file Word:", err);
+      toast.error(`Gagal membaca file: ${err.message || "Pastikan format dokumen valid"}`);
+    } finally {
+      setIsProcessingFile(false);
+      if (wordFileInputRef.current) wordFileInputRef.current.value = "";
+    }
+  };
+
+  // =========================================================
+  // FITUR: SCAN FOTO (AI OCR VISION)
+  // =========================================================
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingFile(true);
+    try {
+      toast.loading("Menganalisis foto denah / manifest dengan AI...", { id: "ai-scan" });
+      const parsed = await scanPhotoManifestWithAI(file);
+      toast.dismiss("ai-scan");
+
+      if (parsed.length === 0) {
+        toast.info("AI tidak dapat membaca teks jelas. Silakan gunakan opsi Salin / Tempel Teks manual.");
+        setQuickPasteOpen(true);
+        return;
+      }
+      setImportedPassengers(parsed);
+      setImportSourceType("foto");
+      setImportPreviewOpen(true);
+      toast.success(`AI berhasil mengekstrak ${parsed.length} nama peserta dari foto!`);
+    } catch (err: any) {
+      toast.dismiss("ai-scan");
+      console.warn("Gagal scan foto AI:", err);
+      toast.error("Gagal memproses gambar. Membuka formulir Salin & Tempel cepat.");
+      setQuickPasteOpen(true);
+    } finally {
+      setIsProcessingFile(false);
+      if (photoFileInputRef.current) photoFileInputRef.current.value = "";
+    }
+  };
+
+  // =========================================================
+  // FITUR: QUICK PASTE TEXT (DARI WHATSAPP / CATATAN)
+  // =========================================================
+  const handleProcessQuickPaste = () => {
+    const lines = quickPasteText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    if (lines.length === 0) {
+      toast.error("Silakan masukkan teks daftar nama terlebih dahulu");
+      return;
+    }
+
+    const parsed: { seat?: string; name: string }[] = [];
+    const seatPrefixRegex = /^([0-9]{1,2}[A-F])\s*[:\-\.\|]\s*(.+)$/i;
+    const numberedListRegex = /^[0-9]{1,3}[\.\)\-]\s*(.+)$/;
+
+    lines.forEach((line) => {
+      const matchSeat = line.match(seatPrefixRegex);
+      if (matchSeat) {
+        parsed.push({ seat: matchSeat[1].toUpperCase(), name: matchSeat[2].trim() });
+        return;
+      }
+      const matchNum = line.match(numberedListRegex);
+      if (matchNum) {
+        parsed.push({ name: matchNum[1].trim() });
+        return;
+      }
+      parsed.push({ name: line });
+    });
+
+    setImportedPassengers(parsed);
+    setImportSourceType("paste");
+    setQuickPasteOpen(false);
+    setImportPreviewOpen(true);
+    toast.success(`Memuat ${parsed.length} nama dari teks!`);
+  };
+
+  // Terapkan hasil import ke kursi-kursi bus
+  const applyImportedToManifest = () => {
+    if (importedPassengers.length === 0) return;
+
+    const newManifest: Record<string, SeatAssignment> = { ...manifest };
+    let unassignedSeats = [...seatList].filter((s) => !newManifest[s]);
+
+    let filledCount = 0;
+
+    importedPassengers.forEach((item) => {
+      // Jika memiliki nomor kursi spesifik dan kursi tersebut valid
+      if (item.seat && seatList.includes(item.seat)) {
+        newManifest[item.seat] = {
+          seatNumber: item.seat,
+          name: item.name,
+          category: "Umum",
+          notes: item.notes,
+        };
+        unassignedSeats = unassignedSeats.filter((s) => s !== item.seat);
+        filledCount++;
+      } else if (unassignedSeats.length > 0) {
+        // Alokasikan ke kursi kosong berikutnya dari depan ke belakang
+        const nextSeat = unassignedSeats.shift()!;
+        newManifest[nextSeat] = {
+          seatNumber: nextSeat,
+          name: item.name,
+          category: "Umum",
+          notes: item.notes,
+        };
+        filledCount++;
+      }
+    });
+
+    saveManifestData(newManifest, layoutType);
+    logCrewActivity({
+      kategori: "manifest_kursi",
+      aksi: `Import Massal Manifest Kursi (${importSourceType.toUpperCase()})`,
+      detail: `Mengalokasikan ${filledCount} penumpang ke denah bus ${busStructure.title}`,
+      tripName: tripInfo?.nama_trip,
+    });
+
+    setImportPreviewOpen(false);
+    setImportedPassengers([]);
+    toast.success(`Sukses! ${filledCount} kursi berhasil dialokasikan.`);
+  };
+
+  // =========================================================
+  // FITUR: EXPORT KE WORD (.doc)
+  // =========================================================
+  const handleExportWord = () => {
+    try {
+      const profile = getLocalBiroProfile();
+      exportManifestToWordDoc(tripInfo || {}, manifest, layoutType, profile);
+      toast.success("Dokumen Microsoft Word (.doc) berhasil diunduh!");
+    } catch (e: any) {
+      toast.error(`Gagal export Word: ${e.message}`);
+    }
+  };
+
+  // =========================================================
+  // FITUR: EXPORT KE GAMBAR / FOTO (PNG)
+  // =========================================================
+  const handleExportImage = async () => {
+    if (!busCabinRef.current) return;
+    try {
+      toast.loading("Membuat gambar denah bus resolusi tinggi...", { id: "img-gen" });
+      const { default: html2canvas } = await import("html2canvas");
+
+      const canvas = await html2canvas(busCabinRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#0f172a",
+        logging: false,
+      });
+
+      const dataUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      const cleanTrip = (tripInfo?.nama_trip || "TRIP").replace(/[^a-zA-Z0-9_-]/g, "_");
+      a.href = dataUrl;
+      a.download = `DENAH_KURSI_BUS_${cleanTrip}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      toast.dismiss("img-gen");
+      toast.success("Foto / Gambar denah kursi bus berhasil diunduh!");
+    } catch (err: any) {
+      toast.dismiss("img-gen");
+      toast.error(`Gagal mengunduh gambar: ${err.message}`);
+    }
+  };
+
+  // =========================================================
+  // FITUR: EXPORT PDF RESMI
+  // =========================================================
   const handleExportPDF = async () => {
     const [{ default: jsPDFClass }, { default: autoTable }] = await Promise.all([
       import("jspdf"),
@@ -332,11 +513,24 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(51, 65, 85);
-    doc.text(`Rombongan: ${tripInfo?.nama_trip || "Trip"}  |  Destinasi: ${tripInfo?.tujuan || "-"}`, 14, 37);
-    doc.text(`Armada: ${tripInfo?.nama_kendaraan || "Bus Pariwisata"} (${tripInfo?.nomor_polisi || "-"})  |  Driver: ${tripInfo?.nama_driver || "-"}`, 14, 42);
-    doc.text(`Kapasitas: ${totalSeats} Kursi  |  Terisi: ${occupiedCount} Peserta  |  Kosong: ${emptyCount} Kursi`, 14, 47);
+    doc.text(
+      `Rombongan: ${tripInfo?.nama_trip || "Trip"}  |  Destinasi: ${tripInfo?.tujuan || "-"}`,
+      14,
+      37
+    );
+    doc.text(
+      `Armada: ${tripInfo?.nama_kendaraan || "Bus Pariwisata"} (${tripInfo?.nomor_polisi || "-"})  |  Driver: ${
+        tripInfo?.nama_driver || "-"
+      }`,
+      14,
+      42
+    );
+    doc.text(
+      `Tipe: ${busStructure.title}  |  Kapasitas: ${totalSeats} Kursi  |  Terisi: ${occupiedCount} Peserta  |  Kosong: ${emptyCount} Kursi`,
+      14,
+      47
+    );
 
-    // Table
     const sortedSeats = [...seatList].sort((a, b) => {
       const numA = parseInt(a);
       const numB = parseInt(b);
@@ -371,16 +565,24 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
       margin: { left: 14, right: 14 },
     });
 
-    void savePdf(doc, `MANIFEST_KURSI_BUS_${tripInfo?.nama_trip?.replace(/\s+/g, "_") || "TRIP"}.pdf`);
+    void savePdf(
+      doc,
+      `MANIFEST_KURSI_BUS_${tripInfo?.nama_trip?.replace(/\s+/g, "_") || "TRIP"}.pdf`
+    );
     toast.success("PDF Manifest kursi bus berhasil diunduh!");
   };
 
-  // Export WhatsApp
+  // =========================================================
+  // FITUR: EXPORT WHATSAPP
+  // =========================================================
   const handleExportWhatsApp = () => {
-    let text = `🚌 *MANIFEST ALOKASI KURSI BUS PARIWISATA*\n` +
+    let text =
+      `🚌 *MANIFEST ALOKASI KURSI BUS PARIWISATA*\n` +
       `Trip: *${tripInfo?.nama_trip || "Wisata"}*\n` +
-      `Armada: ${tripInfo?.nama_kendaraan || "Bus"} (${tripInfo?.nomor_polisi || "-"}) | Driver: ${tripInfo?.nama_driver || "-"}\n` +
-      `Total Terisi: ${occupiedCount}/${totalSeats} Kursi\n` +
+      `Armada: ${tripInfo?.nama_kendaraan || "Bus"} (${tripInfo?.nomor_polisi || "-"}) | Driver: ${
+        tripInfo?.nama_driver || "-"
+      }\n` +
+      `Total Terisi: ${occupiedCount}/${totalSeats} Kursi (${emptyCount} Kosong)\n` +
       `-----------------------------------------\n`;
 
     const sortedSeats = [...seatList].sort((a, b) => {
@@ -396,52 +598,124 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
       }
     });
 
-    text += `\n_Mohon peserta menempati kursi sesuai manifest. Salam Pariwisata!_`;
+    text += `\n_Mohon peserta menempati kursi sesuai nomor tiket/manifest. Salam Wisata!_`;
 
     const encoded = encodeURIComponent(text);
     window.open(`https://wa.me/?text=${encoded}`, "_blank");
     toast.success("Membuka WhatsApp untuk mengirimkan manifest...");
   };
 
+  // Render komponen kartu tempat duduk realistis
+  const renderSeatItem = (seatNo: string) => {
+    const assigned = manifest[seatNo];
+    const isOccupied = Boolean(assigned);
+    const isMatchingSearch =
+      searchQuery.trim() !== "" &&
+      (seatNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (assigned && assigned.name.toLowerCase().includes(searchQuery.toLowerCase())));
+
+    return (
+      <button
+        key={seatNo}
+        type="button"
+        onClick={() => handleSeatClick(seatNo)}
+        className={`w-14 sm:w-16 min-h-[64px] sm:min-h-[70px] rounded-xl border transition-all relative flex flex-col justify-between p-1.5 shadow-2xs group text-left ${
+          isMatchingSearch
+            ? "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/80 border-amber-500 shadow-md"
+            : isOccupied
+            ? "bg-white dark:bg-slate-900 border-blue-400 dark:border-blue-700 hover:border-blue-600 hover:shadow-md"
+            : "bg-slate-100/80 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 border-dashed hover:bg-white hover:border-blue-400"
+        }`}
+        title={`Kursi ${seatNo}: ${assigned ? assigned.name : "Kosong (Klik untuk isi)"}`}
+      >
+        {/* Headrest Cushion Bus */}
+        <div
+          className={`w-9 h-1.5 rounded-full mx-auto -mt-0.5 transition-colors ${
+            isOccupied ? "bg-blue-600 dark:bg-blue-500" : "bg-slate-300 dark:bg-slate-600"
+          }`}
+        />
+
+        {/* Header Kursi: Nomor & Status */}
+        <div className="flex items-center justify-between w-full mt-0.5">
+          <span
+            className={`text-[11px] font-black font-mono px-1 py-0.2 rounded ${
+              isOccupied
+                ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200"
+                : "text-slate-600 dark:text-slate-400"
+            }`}
+          >
+            {seatNo}
+          </span>
+          {isOccupied && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+        </div>
+
+        {/* Konten Penumpang */}
+        {isOccupied ? (
+          <div className="w-full mt-1">
+            <p className="text-[10px] font-extrabold text-slate-900 dark:text-white truncate leading-tight">
+              {assigned.name}
+            </p>
+            {assigned.category && assigned.category !== "Umum" ? (
+              <span className="text-[8px] font-bold px-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 inline-block truncate max-w-full">
+                {assigned.category}
+              </span>
+            ) : assigned.notes ? (
+              <p className="text-[8px] text-slate-400 truncate">{assigned.notes}</p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="text-center w-full py-1">
+            <span className="text-[9px] font-bold text-slate-400 group-hover:text-blue-600 transition-colors">
+              Kosong
+            </span>
+          </div>
+        )}
+      </button>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6">
-        <DialogHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-2xl bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-blue-600">
+      <DialogContent className="sm:max-w-5xl max-h-[94vh] overflow-y-auto rounded-3xl p-4 sm:p-6 bg-white dark:bg-slate-950">
+        <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
                 <Bus className="w-5 h-5" />
               </div>
               <div>
-                <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Denah Kursi & Manifest Penumpang Bus
+                <DialogTitle className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                  <span>Denah Kabin & Manifest Penumpang Bus</span>
+                  <Badge variant="outline" className="text-[10px] font-bold bg-blue-50 text-blue-700 border-blue-200">
+                    {busStructure.configLabel}
+                  </Badge>
                 </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500">
-                  Visual denah interaktif, alokasi posisi tempat duduk wisatawan & ekspor resmi
+                <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Visual kabin bus realistis dengan lorong, import Word & scan foto AI, serta export lengkap
                 </DialogDescription>
               </div>
             </div>
 
             {/* Selector Tipe Armada */}
-            <div className="flex items-center gap-2">
-              <Select
-                value={layoutType}
-                onValueChange={(val: any) => handleLayoutChange(val)}
-              >
-                <SelectTrigger className="h-8 text-xs font-semibold rounded-xl w-[190px]">
+            <div className="flex items-center gap-2 self-start lg:self-auto">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-400 hidden sm:inline">
+                Tipe Bus:
+              </span>
+              <Select value={layoutType} onValueChange={(val: any) => handleLayoutChange(val)}>
+                <SelectTrigger className="h-9 text-xs font-bold rounded-xl w-[210px] border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="big_bus_50" className="text-xs">
-                    Big Bus 50 Seat (2-2)
+                  <SelectItem value="big_bus_50" className="text-xs font-semibold">
+                    Big Bus 50 Seat (2-2 + Belakang)
                   </SelectItem>
-                  <SelectItem value="big_bus_59" className="text-xs">
-                    Big Bus 59 Seat (2-3)
+                  <SelectItem value="big_bus_59" className="text-xs font-semibold">
+                    Big Bus 59 Seat (2-3 + Belakang)
                   </SelectItem>
-                  <SelectItem value="medium_bus_31" className="text-xs">
-                    Medium Bus 31 Seat
+                  <SelectItem value="medium_bus_31" className="text-xs font-semibold">
+                    Medium Bus 31 Seat (2-2)
                   </SelectItem>
-                  <SelectItem value="hiace_14" className="text-xs">
+                  <SelectItem value="hiace_14" className="text-xs font-semibold">
                     Toyota HiAce 14 Seat
                   </SelectItem>
                 </SelectContent>
@@ -450,129 +724,273 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           </div>
         </DialogHeader>
 
-        {/* Stats Strip & Search Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mt-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Badge className="bg-blue-600 text-white font-bold text-xs h-6">
+        {/* Toolbar Input & Export */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800">
+          {/* Stats Bar & Pencarian */}
+          <div className="flex items-center gap-2.5 flex-wrap flex-1">
+            <Badge className="bg-blue-600 text-white font-black text-xs h-7 px-3 rounded-xl shadow-xs">
               {occupiedCount} / {totalSeats} Kursi Terisi
             </Badge>
-            <span className="text-xs text-slate-500 font-medium">
-              ({emptyCount} Kursi Kosong)
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+              ({emptyCount} Kosong)
             </span>
+
+            <div className="relative flex-1 min-w-[180px] max-w-xs">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari peserta / no kursi..."
+                className="h-8 pl-8 text-xs font-semibold rounded-xl bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
+              />
+            </div>
           </div>
 
-          <div className="relative flex-1 max-w-xs">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama peserta / nomor kursi..."
-              className="h-8 pl-8 text-xs rounded-xl"
+          {/* Tombol Import & Export Terintegrasi */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {/* Input file Word tersembunyi */}
+            <input
+              type="file"
+              ref={wordFileInputRef}
+              onChange={handleWordFileChange}
+              accept=".docx,.doc,.txt"
+              className="hidden"
             />
-          </div>
+            {/* Input file Foto tersembunyi */}
+            <input
+              type="file"
+              ref={photoFileInputRef}
+              onChange={handlePhotoFileChange}
+              accept="image/*"
+              className="hidden"
+            />
 
-          <div className="flex items-center gap-1.5 justify-end">
+            {/* Tombol Import Word */}
             <Button
               size="sm"
               variant="outline"
-              onClick={handleExportWhatsApp}
-              className="h-8 text-xs rounded-xl font-semibold gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              onClick={() => wordFileInputRef.current?.click()}
+              disabled={isProcessingFile}
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-blue-300 text-blue-700 dark:text-blue-300 hover:bg-blue-50"
+              title="Import daftar nama dari file Word (.docx)"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>WhatsApp</span>
+              <FileText className="w-3.5 h-3.5 text-blue-600" />
+              <span>Import Word</span>
             </Button>
+
+            {/* Tombol Scan Foto AI */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => photoFileInputRef.current?.click()}
+              disabled={isProcessingFile}
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-purple-300 text-purple-700 dark:text-purple-300 hover:bg-purple-50"
+              title="Scan foto coretan kertas denah bus dengan AI"
+            >
+              <Camera className="w-3.5 h-3.5 text-purple-600" />
+              <span>Scan Foto</span>
+            </Button>
+
+            {/* Tombol Quick Paste */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setQuickPasteOpen(true)}
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-slate-300 hover:bg-slate-100"
+              title="Salin dan tempel daftar nama dari chat WA"
+            >
+              <ClipboardPaste className="w-3.5 h-3.5 text-slate-700" />
+              <span>Paste Teks</span>
+            </Button>
+
+            {/* Separator vertikal */}
+            <div className="hidden sm:block h-5 w-[1px] bg-slate-300 dark:bg-slate-700 mx-1" />
+
+            {/* Tombol Export Gambar PNG */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportImage}
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-amber-300 text-amber-800 dark:text-amber-300 hover:bg-amber-50"
+              title="Download gambar denah bus (PNG) untuk share ke WA"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+              <span>Gambar (PNG)</span>
+            </Button>
+
+            {/* Tombol Export Word .doc */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportWord}
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-blue-400 text-blue-800 dark:text-blue-200 hover:bg-blue-50"
+              title="Download tabel denah manifest format Microsoft Word"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-700" />
+              <span>Word (.doc)</span>
+            </Button>
+
+            {/* Tombol PDF */}
             <Button
               size="sm"
               onClick={handleExportPDF}
-              className="h-8 text-xs rounded-xl font-semibold gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-blue-600 dark:hover:bg-blue-700 shadow-sm"
+              title="Unduh PDF Resmi Manifest"
             >
               <FileDown className="w-3.5 h-3.5" />
-              <span>PDF Manifest</span>
+              <span>PDF</span>
+            </Button>
+
+            {/* Tombol WhatsApp */}
+            <Button
+              size="sm"
+              onClick={handleExportWhatsApp}
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+              title="Bagikan Manifest ke WhatsApp"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>WA</span>
             </Button>
           </div>
         </div>
 
-        {/* Visual Denah Kursi Bus */}
-        <div className="mt-4 p-4 rounded-3xl bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
-          {/* Bagian Depan Bus (Kaca Depan & Posisi Supir) */}
-          <div className="mb-4 pb-2 border-b border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-between px-3 text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-              <Shield className="w-4 h-4 text-blue-600" />
-              <span>Pintu Masuk Depan</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-              <User className="w-3.5 h-3.5" />
-              <span>Posisi Supir</span>
-            </div>
-          </div>
+        {/* ========================================================
+            VISUAL KABIN BUS REALISTIS DENGAN BENTUK BADAN BUS ASLI
+            ======================================================== */}
+        <div className="mt-4 overflow-x-auto p-2 sm:p-4">
+          <div
+            ref={busCabinRef}
+            className="max-w-2xl mx-auto rounded-t-[48px] rounded-b-3xl border-4 border-slate-800 dark:border-slate-700 bg-white dark:bg-slate-950 p-4 sm:p-6 shadow-2xl relative space-y-4"
+          >
+            {/* Bagian Atas: Kaca Depan (Windshield) & Spion Bus */}
+            <div className="relative">
+              {/* Spion Samping Kiri & Kanan */}
+              <div className="absolute -left-7 top-6 w-5 h-10 rounded-l-xl bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-[8px] font-black text-white shadow-md">
+                L
+              </div>
+              <div className="absolute -right-7 top-6 w-5 h-10 rounded-r-xl bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-[8px] font-black text-white shadow-md">
+                R
+              </div>
 
-          {/* Grid Kursi */}
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-            {seatList.map((seatNo) => {
-              const assigned = manifest[seatNo];
-              const isOccupied = Boolean(assigned);
-              const isMatchingSearch =
-                searchQuery.trim() !== "" &&
-                (seatNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (assigned &&
-                    assigned.name.toLowerCase().includes(searchQuery.toLowerCase())));
+              {/* Kaca Depan Melengkung */}
+              <div className="h-14 rounded-t-[36px] bg-gradient-to-b from-sky-400/20 via-sky-300/10 to-transparent border-t-2 border-x-2 border-sky-300 dark:border-sky-700 flex items-center justify-center relative overflow-hidden">
+                <span className="text-[10px] font-black uppercase tracking-widest text-sky-800 dark:text-sky-300">
+                  Kaca Depan Armada (Windshield)
+                </span>
+                {/* Garis Wiper */}
+                <div className="absolute bottom-1 left-1/4 w-12 h-1 bg-slate-400/60 -rotate-12 rounded-full" />
+                <div className="absolute bottom-1 right-1/4 w-12 h-1 bg-slate-400/60 -rotate-12 rounded-full" />
+              </div>
+            </div>
 
-              return (
-                <button
-                  key={seatNo}
-                  type="button"
-                  onClick={() => handleSeatClick(seatNo)}
-                  className={`p-2 rounded-2xl border text-center transition-all relative flex flex-col justify-between min-h-[64px] ${
-                    isMatchingSearch
-                      ? "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/60 border-amber-400"
-                      : isOccupied
-                      ? "bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-900/60 shadow-xs hover:border-blue-500"
-                      : "bg-slate-50/60 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800/60 border-dashed hover:bg-white hover:border-blue-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-[11px] font-black font-mono text-slate-900 dark:text-slate-100">
-                      {seatNo}
+            {/* Area Kabin Depan: Pintu Masuk / TL (Kiri) & Kemudi Supir (Kanan) */}
+            <div className="grid grid-cols-2 gap-4 pb-3 border-b-2 border-dashed border-slate-300 dark:border-slate-800 px-2">
+              {/* Sisi Kiri Depan: Pintu Masuk & Kursi Tour Leader */}
+              <div className="flex items-center gap-2">
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 text-emerald-800 dark:text-emerald-300 text-xs font-black flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <span className="block text-[11px] leading-tight">Pintu Masuk Depan</span>
+                    <span className="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      Tangga Boarding Bus
                     </span>
-                    {isOccupied && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    )}
                   </div>
+                </div>
 
-                  {isOccupied ? (
-                    <div className="text-left w-full mt-1">
-                      <p className="text-[10px] font-bold text-slate-800 dark:text-slate-200 truncate leading-tight">
-                        {assigned.name}
-                      </p>
-                      {assigned.category && assigned.category !== "Umum" && (
-                        <span className="text-[8px] px-1 py-0.2 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-semibold inline-block truncate max-w-full">
-                          {assigned.category}
-                        </span>
-                      )}
+                <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 text-slate-700 dark:text-slate-300 text-[10px] font-bold text-center">
+                  <span>Kursi TL / Kru</span>
+                </div>
+              </div>
+
+              {/* Sisi Kanan Depan: Supir & Dasbor Kemudi (Setir Kanan Indonesia) */}
+              <div className="flex items-center justify-end gap-2">
+                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-300 text-blue-900 dark:text-blue-200 text-xs font-black flex items-center gap-2 text-right">
+                  <div>
+                    <span className="block text-[11px] leading-tight">Posisi Supir (Driver)</span>
+                    <span className="text-[9px] font-semibold text-blue-600 dark:text-blue-400">
+                      {tripInfo?.nama_driver || "Kemudi Utama"}
+                    </span>
+                  </div>
+                  <User className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                </div>
+              </div>
+            </div>
+
+            {/* Badan Kabin Kursi Penumpang (Per Baris) */}
+            <div className="space-y-2.5 py-1">
+              {busStructure.rows.map((row) => {
+                if (row.isBackRow && row.backSeats) {
+                  return (
+                    <div key={`back-${row.rowNumber}`} className="pt-2">
+                      <div className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between px-2 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                          <span>Bangku Belakang ({row.backSeats.length} Kursi Berjejer)</span>
+                          <span>Baris Terakhir</span>
+                        </div>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 justify-items-center">
+                          {row.backSeats.map((seatNo) => renderSeatItem(seatNo))}
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <span className="text-[9px] text-slate-400 font-medium">Kosong</span>
-                  )}
-                </button>
-              );
-            })}
+                  );
+                }
+
+                return (
+                  <div
+                    key={`row-${row.rowNumber}`}
+                    className="flex items-center justify-between gap-2 sm:gap-3 py-0.5"
+                  >
+                    {/* Sisi Kiri (2 Kursi) */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 justify-end">
+                      {row.leftSeats.map((seatNo) => renderSeatItem(seatNo))}
+                    </div>
+
+                    {/* LORONG TENGAH (AISLE GANG JALAN) */}
+                    <div className="flex-1 flex flex-col items-center justify-center py-2 px-1 border-x-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 rounded-lg min-w-[44px]">
+                      <span className="text-[10px] font-black font-mono text-slate-400 dark:text-slate-500">
+                        B{row.rowNumber}
+                      </span>
+                      <span className="text-[8px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
+                        Lorong
+                      </span>
+                    </div>
+
+                    {/* Sisi Kanan (2 atau 3 Kursi) */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 justify-start">
+                      {row.rightSeats.map((seatNo) => renderSeatItem(seatNo))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bagian Belakang Bus: Pintu Belakang & Bagasi / Toilet */}
+            <div className="pt-3 border-t-2 border-dashed border-slate-300 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-slate-400 px-2">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
+                Pintu Belakang / Darurat
+              </span>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500">
+                Bagasi & Bumper Belakang Bus
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Dialog / Panel Edit Kursi Terpilih */}
+        {/* Panel Form Edit Alokasi Kursi Terpilih */}
         {selectedSeat && (
-          <div className="mt-4 p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 space-y-3">
+          <div className="mt-4 p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/50 border-2 border-blue-300 dark:border-blue-800 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-600" />
-                <span>Alokasi Kursi #{selectedSeat}</span>
+                <span>Pengaturan Alokasi Kursi #{selectedSeat}</span>
               </h4>
               {manifest[selectedSeat] && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => handleClearSeat(selectedSeat)}
-                  className="h-7 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 gap-1"
+                  className="h-7 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-100 gap-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Kosongkan Kursi</span>
@@ -582,60 +1000,70 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
               <div className="sm:col-span-2 space-y-1">
-                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                   Nama Penumpang *
                 </Label>
                 <Input
                   value={passengerName}
                   onChange={(e) => setPassengerName(e.target.value)}
-                  placeholder="Nama lengkap atau panggilan"
-                  className="h-9 text-xs rounded-xl font-semibold bg-white dark:bg-slate-900"
+                  placeholder="Ketik nama lengkap peserta"
+                  className="h-9 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300"
                   autoFocus
                 />
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                   Kategori
                 </Label>
                 <Select
                   value={passengerCategory}
                   onValueChange={(val: any) => setPassengerCategory(val)}
                 >
-                  <SelectTrigger className="h-9 text-xs rounded-xl bg-white dark:bg-slate-900">
+                  <SelectTrigger className="h-9 text-xs font-bold rounded-xl bg-white dark:bg-slate-900">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Umum" className="text-xs">Umum</SelectItem>
-                    <SelectItem value="Lansia" className="text-xs">Lansia</SelectItem>
-                    <SelectItem value="Anak" className="text-xs">Anak</SelectItem>
-                    <SelectItem value="Ibu Hamil" className="text-xs">Ibu Hamil</SelectItem>
-                    <SelectItem value="Kru / TL" className="text-xs">Kru / TL</SelectItem>
+                    <SelectItem value="Umum" className="text-xs font-semibold">
+                      Umum
+                    </SelectItem>
+                    <SelectItem value="Lansia" className="text-xs font-semibold">
+                      Lansia
+                    </SelectItem>
+                    <SelectItem value="Anak" className="text-xs font-semibold">
+                      Anak
+                    </SelectItem>
+                    <SelectItem value="Ibu Hamil" className="text-xs font-semibold">
+                      Ibu Hamil
+                    </SelectItem>
+                    <SelectItem value="Kru / TL" className="text-xs font-semibold">
+                      Kru / TL
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  No. HP / WA (Opsional)
+                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  No. HP / WA
                 </Label>
                 <Input
                   value={passengerPhone}
                   onChange={(e) => setPassengerPhone(e.target.value)}
                   placeholder="0812..."
-                  className="h-9 text-xs rounded-xl bg-white dark:bg-slate-900 font-mono"
+                  className="h-9 text-xs font-mono rounded-xl bg-white dark:bg-slate-900"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                Catatan Khusus (contoh: Mudah mabuk darat / Dekat pintu)
+              <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Catatan Khusus (contoh: Mabuk darat / Dekat pintu / Permintaan keluarga)
               </Label>
               <Input
                 value={passengerNotes}
                 onChange={(e) => setPassengerNotes(e.target.value)}
-                placeholder="Catatan kebutuhan penumpang..."
+                placeholder="Catatan permintaan khusus..."
                 className="h-9 text-xs rounded-xl bg-white dark:bg-slate-900"
               />
             </div>
@@ -645,21 +1073,140 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                 size="sm"
                 variant="outline"
                 onClick={() => setSelectedSeat(null)}
-                className="h-8 text-xs rounded-xl"
+                className="h-8 text-xs font-bold rounded-xl"
               >
                 Batal
               </Button>
               <Button
                 size="sm"
                 onClick={handleSaveSeat}
-                className="h-8 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                className="h-8 text-xs font-black rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
               >
-                Simpan Alokasi
+                Simpan Alokasi Kursi
               </Button>
             </div>
           </div>
         )}
       </DialogContent>
+
+      {/* ========================================================
+          MODAL PREVIEW IMPORT (WORD / FOTO / PASTE)
+          ======================================================== */}
+      <Dialog open={importPreviewOpen} onOpenChange={setImportPreviewOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-5 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-blue-600" />
+              <span>Preview Alokasi Penumpang ({importedPassengers.length} Terdeteksi)</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium">
+              Periksa daftar nama di bawah sebelum otomatis dimasukkan ke dalam denah kursi bus
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-3 space-y-3">
+            <div className="max-h-72 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800">
+              {importedPassengers.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-2.5 flex items-center justify-between gap-3 text-xs bg-white dark:bg-slate-900 hover:bg-slate-50"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 text-center font-mono font-bold text-slate-400">
+                      {idx + 1}.
+                    </span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {item.name}
+                    </span>
+                  </div>
+                  {item.seat ? (
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200 font-mono font-black text-[11px]">
+                      Kursi {item.seat}
+                    </Badge>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-semibold italic">
+                      Otomatis kursi depan
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 text-xs font-semibold text-blue-800 dark:text-blue-300 flex items-start gap-2">
+              <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+              <span>
+                Nama-nama peserta di atas akan dialokasikan ke kursi yang masih kosong secara berurutan
+                dari baris 1A hingga baris belakang.
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportPreviewOpen(false)}
+                className="h-9 text-xs font-bold rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                onClick={applyImportedToManifest}
+                className="h-9 text-xs font-black rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
+              >
+                <Check className="w-4 h-4" />
+                <span>Terapkan ke Denah Kursi ({importedPassengers.length} Peserta)</span>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================
+          MODAL QUICK PASTE TEKS (DARI WHATSAPP / EXCEL)
+          ======================================================== */}
+      <Dialog open={quickPasteOpen} onOpenChange={setQuickPasteOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl p-5">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <ClipboardPaste className="w-5 h-5 text-blue-600" />
+              <span>Salin & Tempel Daftar Nama Peserta</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium">
+              Tempel daftar nama peserta (1 nama per baris). Format bisa "1A: Nama" atau nomor biasa "1. Nama"
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-3 space-y-3">
+            <Textarea
+              rows={8}
+              value={quickPasteText}
+              onChange={(e) => setQuickPasteText(e.target.value)}
+              placeholder={`Contoh:\n1A: Budi Santoso\n1B: Ibu Siti\n1C: Ahmad Fauzi\nAtau cukup daftar nama:\nBudi Santoso\nIbu Siti\nAhmad Fauzi`}
+              className="text-xs font-mono rounded-2xl border-slate-300 p-3 leading-relaxed"
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickPasteOpen(false)}
+                className="h-9 text-xs font-bold rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleProcessQuickPaste}
+                className="h-9 text-xs font-black rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+              >
+                <span>Proses Daftar Nama</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
