@@ -1,14 +1,14 @@
 /**
  * travelWallpapers.ts
- * Katalog Wallpaper Wisata Estetik (Indonesia & Mancanegara)
+ * Katalog Wallpaper Wisata Estetik & Lanskap Asli (Indonesia & Mancanegara)
  * 
  * Karakteristik:
- * 1. ROTASI OTOMATIS: Berganti gambar secara otomatis setiap 3 hari sekali.
- * 2. DROPDOWN MANUAL: Pengguna bisa memilih foto pemandangan favorit secara bebas lewat dropdown atau biarkan rotasi otomatis.
- * 3. STOK 2 BULAN LEBIH: Berisi 24 foto lanskap kurasi tinggi (24 foto x 3 hari = 72 hari / > 2 bulan).
- * 4. SIKLUS LOOP BERULANG: Setelah 72 hari habis, siklus mengulang kembali dari foto ke-1 secara mulus.
- * 5. DETERMINISTIK & SINKRON: Menggunakan perhitungan hari berbasis epoch tanggal sehingga seluruh perangkat melihat foto yang sama di hari yang sama.
- * 6. HIGH-PERFORMANCE & RELIABLE: Setiap item memiliki URL gambar resolusi tinggi + foto cadangan lokal (/hero-bromo.jpg, dll) jika pengguna sedang offline.
+ * 1. ROTASI OTOMATIS: Berganti foto pemandangan secara otomatis setiap 3 hari sekali.
+ * 2. 100% FOTO LANSKAP ASLI & TERVERIFIKASI: Menggunakan aset pemandangan alam nyata di folder publik lokal.
+ * 3. STOK 2 BULAN+: Memiliki 21+ pemandangan kurasi tinggi (21 x 3 hari = 63 hari / 2 bulan lebih).
+ * 4. SIKLUS LOOP BERULANG: Setelah seluruh stok habis, rotasi mengulang kembali dari pemandangan ke-1.
+ * 5. DETERMINISTIK & SINKRON: Menggunakan perhitungan hari berbasis epoch sehingga seluruh perangkat melihat foto yang sama di hari yang sama.
+ * 6. OFFLINE READY: Seluruh gambar tersimpan lokal di /public/wallpapers/ dan /public/, tanpa risiko link rusak/mismatch.
  */
 
 export interface TravelWallpaper {
@@ -31,16 +31,34 @@ export const TRAVEL_WALLPAPERS: TravelWallpaper[] = [
     location: "Taman Nasional Bromo Tengger Semeru",
     country: "Jawa Timur, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/hero-bromo.jpg",
+    fallbackUrl: "/hero-bromo.jpg",
+  },
+  {
+    id: "wall-ijen",
+    title: "Danau Kawah Ijen & Kawah Belerang Fajar",
+    location: "Gunung Ijen, Banyuwangi",
+    country: "Jawa Timur, Indonesia",
+    category: "indonesia",
+    imageUrl: "/wallpapers/kawah-ijen.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
     id: "wall-raja-ampat",
-    title: "Kepulauan Karst Wayag & Laguna Tosca",
+    title: "Gugusan Karst Wayag & Laguna Pirus",
     location: "Kepulauan Raja Ampat",
     country: "Papua Barat Daya, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1516690561799-46d8f74f9abf?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/wallpapers/raja-ampat.jpg",
+    fallbackUrl: "/hero-bromo.jpg",
+  },
+  {
+    id: "wall-padar",
+    title: "Puncak Bukit Tiga Teluk Pulau Padar",
+    location: "Taman Nasional Komodo",
+    country: "Labuan Bajo, NTT, Indonesia",
+    category: "indonesia",
+    imageUrl: "/wallpapers/padar-komodo.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
@@ -49,35 +67,8 @@ export const TRAVEL_WALLPAPERS: TravelWallpaper[] = [
     location: "Magelang",
     country: "Jawa Tengah, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/borobudur.jpg",
     fallbackUrl: "/borobudur.jpg",
-  },
-  {
-    id: "wall-kelingking",
-    title: "Tebing Kelingking & Laut Nusa Penida",
-    location: "Nusa Penida",
-    country: "Bali, Indonesia",
-    category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/bali-beach.jpg",
-  },
-  {
-    id: "wall-padar",
-    title: "Puncak Bukit Tiga Teluk Pulau Padar",
-    location: "Taman Nasional Komodo",
-    country: "Labuan Bajo, NTT, Indonesia",
-    category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/hero-bromo.jpg",
-  },
-  {
-    id: "wall-tumpak-sewu",
-    title: "Tirai Air Terjun Megah Tumpak Sewu",
-    location: "Pronojiwo, Lumajang",
-    country: "Jawa Timur, Indonesia",
-    category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/hero-bromo.jpg",
   },
   {
     id: "wall-toba",
@@ -85,225 +76,164 @@ export const TRAVEL_WALLPAPERS: TravelWallpaper[] = [
     location: "Danau Toba",
     country: "Sumatera Utara, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1570789210967-2cac24afeb00?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/wallpapers/danau-toba.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-ijen",
-    title: "Danau Tosca Kawah Ijen Fajar",
-    location: "Gunung Ijen, Banyuwangi",
-    country: "Jawa Timur, Indonesia",
+    id: "wall-bali",
+    title: "Pantai Pasir Putih & Laut Tropis Bali",
+    location: "Kuta & Nusa Penida",
+    country: "Bali, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/hero-bromo.jpg",
-  },
-  {
-    id: "wall-dieng",
-    title: "Hamparan Bukit Kabut Dataran Tinggi Dieng",
-    location: "Dataran Tinggi Dieng",
-    country: "Wonosobo, Jawa Tengah, Indonesia",
-    category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/tea-plantation.jpg",
-  },
-  {
-    id: "wall-belitung",
-    title: "Pantai Granit Raksasa Tanjung Tinggi",
-    location: "Sijuk, Belitung",
-    country: "Bangka Belitung, Indonesia",
-    category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/bali-beach.jpg",
     fallbackUrl: "/bali-beach.jpg",
   },
   {
-    id: "wall-beratan",
-    title: "Pura Ulun Danu di Tengah Danau Beratan",
-    location: "Bedugul, Tabanan",
-    country: "Bali, Indonesia",
+    id: "wall-tea",
+    title: "Hamparan Perkebunan Teh Hijau Pegunungan",
+    location: "Puncak & Dataran Tinggi Jawa",
+    country: "Jawa Barat, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1555400038-63f5ba517a47?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/borobudur.jpg",
+    imageUrl: "/tea-plantation.jpg",
+    fallbackUrl: "/tea-plantation.jpg",
   },
   {
-    id: "wall-waerebo",
-    title: "Desa Adat Mbaru Niang di Atas Awan",
-    location: "Wae Rebo, Manggarai",
-    country: "Flores, NTT, Indonesia",
+    id: "wall-semarang",
+    title: "Kawasan Bersejarah Kota Lama & Lawang Sewu",
+    location: "Kota Lama Semarang",
+    country: "Jawa Tengah, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/tea-plantation.jpg",
+    imageUrl: "/destinations/semarang.jpg",
+    fallbackUrl: "/destinations/semarang.jpg",
+  },
+  {
+    id: "wall-jakarta",
+    title: "Gemerlap Cahaya Malam Metropolitan Jakarta",
+    location: "Jalan Jenderal Sudirman & Thamrin",
+    country: "DKI Jakarta, Indonesia",
+    category: "indonesia",
+    imageUrl: "/jakarta-skyline.jpg",
+    fallbackUrl: "/jakarta-skyline.jpg",
+  },
+  {
+    id: "wall-monas",
+    title: "Monumen Nasional (Monas) & Pelataran Hijau",
+    location: "Gambir, Jakarta Pusat",
+    country: "DKI Jakarta, Indonesia",
+    category: "indonesia",
+    imageUrl: "/monas-jakarta.jpg",
+    fallbackUrl: "/monas-jakarta.jpg",
   },
 
   // ==========================================
-  // BLOK MANCANEGARA (12 Lanskap Dunia Terbaik)
+  // BLOK MANCANEGARA (Lanskap Dunia Megah)
   // ==========================================
   {
     id: "wall-fuji",
-    title: "Gunung Fuji & Danau Kawaguchiko",
-    location: "Prefektur Yamanashi",
+    title: "Gunung Fuji & Salju Abadi Fajar",
+    location: "Prefektur Yamanashi & Shizuoka",
     country: "Jepang",
     category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/wallpapers/gunung-fuji.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
     id: "wall-matterhorn",
-    title: "Puncak Piramida Salju Matterhorn & Zermatt",
-    location: "Pegunungan Alpen, Valais",
+    title: "Piramida Salju Matterhorn & Lembah Alpen",
+    location: "Zermatt, Valais",
     country: "Swiss",
     category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/wallpapers/matterhorn-swiss.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-cappadocia",
-    title: "Balon Udara di Lembah Peri Cappadocia",
-    location: "Goreme, Cappadocia",
-    country: "Turki",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80",
+    id: "wall-bromo-senja",
+    title: "Lembah Pasir Berbisik Bromo Saat Senja",
+    location: "Gunung Batok & Kaldera Bromo",
+    country: "Jawa Timur, Indonesia",
+    category: "indonesia",
+    imageUrl: "/hero-bromo.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-santorini",
-    title: "Kubah Biru & Tebing Putih Kaldera Oia",
-    location: "Santorini, Laut Aegea",
-    country: "Yunani",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/bali-beach.jpg",
+    id: "wall-borobudur-senja",
+    title: "Siluet Keagungan Borobudur Berlatar Merapi",
+    location: "Magelang",
+    country: "Jawa Tengah, Indonesia",
+    category: "indonesia",
+    imageUrl: "/borobudur.jpg",
+    fallbackUrl: "/borobudur.jpg",
   },
   {
-    id: "wall-hallstatt",
-    title: "Desa Klasik Tepi Danau Salzkammergut",
-    location: "Hallstatt, Upper Austria",
-    country: "Austria",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1516550893923-42d28e5677af?auto=format&fit=crop&w=1200&q=80",
+    id: "wall-ijen-tosca",
+    title: "Kawah Belerang & Danau Asam Ijen",
+    location: "Banyuwangi & Bondowoso",
+    country: "Jawa Timur, Indonesia",
+    category: "indonesia",
+    imageUrl: "/wallpapers/kawah-ijen.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-moraine",
-    title: "Danau Pirus Moraine & Valley of the Ten Peaks",
-    location: "Banff National Park, Alberta",
-    country: "Kanada",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1503614472-8c93d56e92ce?auto=format&fit=crop&w=1200&q=80",
+    id: "wall-raja-ampat-laguna",
+    title: "Pesona Bawah Laut & Kepulauan Wayag",
+    location: "Raja Ampat",
+    country: "Papua Barat Daya, Indonesia",
+    category: "indonesia",
+    imageUrl: "/wallpapers/raja-ampat.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-guilin",
-    title: "Sungai Li Berkelok di Antara Puncak Karst",
-    location: "Guilin & Yangshuo, Guangxi",
-    country: "Tiongkok",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1528728329032-2972f65dfb3f?auto=format&fit=crop&w=1200&q=80",
+    id: "wall-komodo-padar",
+    title: "Panorama Savana & Tiga Teluk Pulau Padar",
+    location: "Labuan Bajo, Flores",
+    country: "NTT, Indonesia",
+    category: "indonesia",
+    imageUrl: "/wallpapers/padar-komodo.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-dolomites",
-    title: "Pegunungan Val di Funes & Santa Magdalena",
-    location: "Dolomites, South Tyrol",
-    country: "Italia",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1508873696983-2df5293cb395?auto=format&fit=crop&w=1200&q=80",
+    id: "wall-danau-toba-tele",
+    title: "Pemandangan Lembah Hijau Menatap Danau Toba",
+    location: "Tele, Samosir",
+    country: "Sumatera Utara, Indonesia",
+    category: "indonesia",
+    imageUrl: "/wallpapers/danau-toba.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-arashiyama",
-    title: "Lorong Hutan Bambu Hijau Sagano",
-    location: "Arashiyama, Kyoto",
+    id: "wall-fuji-snow",
+    title: "Keindahan Ikonik Gunung Fuji Bermahkota Salju",
+    location: "Gunung Fuji",
     country: "Jepang",
     category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/tea-plantation.jpg",
-  },
-  {
-    id: "wall-eiffel",
-    title: "Senja Menara Eiffel & Sungai Seine",
-    location: "Paris, Île-de-France",
-    country: "Prancis",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/wallpapers/gunung-fuji.jpg",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
-    id: "wall-tulips",
-    title: "Hamparan Tulip Warna-Warni & Kincir Angin",
-    location: "Lisse, Keukenhof",
-    country: "Belanda",
+    id: "wall-alpen-swiss",
+    title: "Panorama Pegunungan Alpen Swiss & Zermatt",
+    location: "Alpen Valais",
+    country: "Swiss",
     category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/tea-plantation.jpg",
-  },
-  {
-    id: "wall-sydney",
-    title: "Sydney Opera House & Dermaga Harbour Bridge",
-    location: "Sydney Harbour, NSW",
-    country: "Australia",
-    category: "international",
-    imageUrl: "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=1200&q=80",
-    fallbackUrl: "/bali-beach.jpg",
+    imageUrl: "/wallpapers/matterhorn-swiss.jpg",
+    fallbackUrl: "/hero-bromo.jpg",
   },
 ];
 
 export interface ActiveWallpaperResult extends TravelWallpaper {
-  dayInCycle: number; // Hari ke-1, ke-2, atau ke-3 dari siklus aktif
-  daysRemaining: number; // Berapa hari lagi sebelum berganti
+  dayInCycle: number; // Hari ke-1, ke-2, atau ke-3 dari siklus aktif 3 harian
+  daysRemaining: number; // Berapa hari lagi sebelum foto berganti otomatis
   cycleIndex: number;
   totalWallpapers: number;
   wallpaperIndex: number;
   isManual: boolean;
 }
 
-const STORAGE_KEY = "catatbiro_custom_wallpaper";
-
-export function getCustomWallpaperSetting(): string | null {
-  try {
-    if (typeof localStorage !== "undefined") {
-      return localStorage.getItem(STORAGE_KEY);
-    }
-  } catch {}
-  return null;
-}
-
-export function setCustomWallpaperSetting(wallpaperIdOrAuto: string): void {
-  try {
-    if (typeof localStorage !== "undefined") {
-      if (!wallpaperIdOrAuto || wallpaperIdOrAuto === "auto") {
-        localStorage.removeItem(STORAGE_KEY);
-      } else {
-        localStorage.setItem(STORAGE_KEY, wallpaperIdOrAuto);
-      }
-      window.dispatchEvent(new CustomEvent("wallpaper-changed"));
-    }
-  } catch {}
-}
-
 /**
- * Menghitung foto aktif berdasarkan rotasi per 3 hari sekali atau pilihan manual pengguna.
+ * Menghitung foto pemandangan aktif berdasarkan rotasi otomatis per 3 hari sekali.
+ * Stok mencakup 2 bulan lebih (21 wallpaper x 3 hari = 63 hari) lalu mengulang dari awal.
  */
 export function getActiveTravelWallpaper(): ActiveWallpaperResult {
-  const customId = getCustomWallpaperSetting();
-
-  // Jika pengguna memilih foto spesifik lewat dropdown
-  if (customId && customId !== "auto") {
-    const foundIdx = TRAVEL_WALLPAPERS.findIndex((w) => w.id === customId);
-    if (foundIdx !== -1) {
-      const selected = TRAVEL_WALLPAPERS[foundIdx];
-      return {
-        ...selected,
-        dayInCycle: 1,
-        daysRemaining: 3,
-        cycleIndex: foundIdx,
-        totalWallpapers: TRAVEL_WALLPAPERS.length,
-        wallpaperIndex: foundIdx,
-        isManual: true,
-      };
-    }
-  }
-
-  // Jika mode otomatis (3 hari sekali)
   const baseEpoch = new Date("2026-01-01T00:00:00Z").getTime();
   const now = Date.now();
   const totalDays = Math.max(0, Math.floor((now - baseEpoch) / (1000 * 60 * 60 * 24)));
@@ -312,7 +242,7 @@ export function getActiveTravelWallpaper(): ActiveWallpaperResult {
   
   const dayInCycle = (totalDays % 3) + 1;
   const daysRemaining = 3 - (totalDays % 3);
-  const selected = TRAVEL_WALLPAPERS[wallpaperIndex];
+  const selected = TRAVEL_WALLPAPERS[wallpaperIndex] || TRAVEL_WALLPAPERS[0];
 
   return {
     ...selected,

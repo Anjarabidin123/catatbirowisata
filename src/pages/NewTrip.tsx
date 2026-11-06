@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import AuthGuard from "@/components/AuthGuard";
@@ -26,10 +26,12 @@ const NewTrip = () => {
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [budgetFormatted, setBudgetFormatted] = useState("");
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
+  const location = useLocation();
+  const defaultDateFromState = (location.state as any)?.defaultDate || "";
   const [formData, setFormData] = useState({
     nama_trip: "",
-    tanggal: "",
-    tanggal_selesai: "",
+    tanggal: defaultDateFromState,
+    tanggal_selesai: defaultDateFromState,
     tujuan: "",
     jumlah_bus: "1",
     catatan: "",

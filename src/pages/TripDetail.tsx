@@ -16,13 +16,6 @@ const TripDocumentationTab = lazy(() => import("@/components/TripDocumentationTa
 const VehicleTab = lazy(() => import("@/components/VehicleTab").then(m => ({ default: m.VehicleTab })));
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -360,28 +353,6 @@ const TripDetail = () => {
             </div>
           </div>
 
-          {/* Mobile Module Selector Dropdown */}
-          <div className="sm:hidden mb-4">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
-              Pilih Modul Tab Trip
-            </label>
-            <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 font-bold text-xs shadow-2xs">
-                <SelectValue placeholder="Pilih Modul" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl z-50">
-                <SelectItem value="acuan" className="text-xs font-semibold py-2">📋 Perencanaan & Destinasi</SelectItem>
-                <SelectItem value="operasional" className="text-xs font-semibold py-2">⚡ Operasional & Kas Lapangan</SelectItem>
-                <SelectItem value="kendaraan" className="text-xs font-semibold py-2">🚌 Kendaraan</SelectItem>
-                {canSeeFinancials && (
-                  <SelectItem value="keuangan" className="text-xs font-semibold py-2">💰 Buku Kas Biro (Owner)</SelectItem>
-                )}
-                <SelectItem value="rundown" className="text-xs font-semibold py-2">⏱️ Rundown Acara</SelectItem>
-                <SelectItem value="catatan" className="text-xs font-semibold py-2">📝 Catatan</SelectItem>
-                <SelectItem value="dokumentasi" className="text-xs font-semibold py-2">📸 Dokumentasi Foto</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Role-Adaptive Navbar Tabs */}
           <Tabs key={role} value={activeTab} onValueChange={setActiveTab} className="w-full">
