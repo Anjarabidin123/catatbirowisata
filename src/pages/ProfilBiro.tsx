@@ -59,6 +59,13 @@ import {
   EyeOff,
   LogOut,
   AlertTriangle,
+  FileCheck2,
+  Landmark,
+  ShieldAlert,
+  Smartphone,
+  BookOpen,
+  User,
+  Info,
 } from "lucide-react";
 import { CreateSupportTicketModal } from "@/components/CreateSupportTicketModal";
 import {
@@ -70,12 +77,10 @@ import {
 import {
   getBiroCmsData,
   saveBiroCmsData,
-  resetDefaultKategoriKeuangan,
   BiroCmsData,
   CmsKategoriItem,
   RekananBus,
   RekananResto,
-  RekananGuide,
 } from "@/utils/biroCmsStore";
 import {
   getCurrentEntitlements,
@@ -83,7 +88,7 @@ import {
   isSuperAdminUser,
 } from "@/utils/licenseEntitlement";
 import { supabase } from "@/integrations/supabase/client";
-import { clearAuthCache } from "@/utils/authHelper";
+import { clearAuthCache, getActiveUserSync } from "@/utils/authHelper";
 
 const GEMINI_API_KEY_STORAGE = "catatbiro_gemini_api_key";
 const getStoredApiKey = (): string => {
@@ -107,29 +112,17 @@ export const ProfilBiro: React.FC = () => {
   const [cmsData, setCmsData] = useState<BiroCmsData>(getBiroCmsData);
   const [entitlements, setEntitlements] = useState<EntitlementState>(getCurrentEntitlements);
   const isSuper = isSuperAdminUser();
+  const activeUser = getActiveUserSync();
 
-  // State Sub-Menu Tab Instagram (Kop Surat, Rekanan, Lisensi Meta, Sistem AI)
-  const [activeTab, setActiveTab] = useState<"kop" | "rekanan" | "lisensi" | "sistem">("kop");
+  // Modal-modal detail setting (seperti submenu di iOS / Instagram)
+  const [activeModal, setActiveModal] = useState<
+    "kop" | "identitas" | "bank" | "bus" | "resto" | "kategori" | "lisensi" | "ai" | "qr" | "ticket" | null
+  >(null);
 
-  // State Loading & Upload
+  // Loading States
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Stats Real-Time (Trip, Pax, Kru)
-  const [stats, setStats] = useState({
-    totalTrips: 0,
-    totalPax: 0,
-    totalKru: 2,
-  });
-
-  // Modal State
-  const [showEditBioModal, setShowEditBioModal] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [showSupportModal, setShowSupportModal] = useState(false);
-  const [showAddBusModal, setShowAddBusModal] = useState(false);
-  const [showAddRestoModal, setShowAddRestoModal] = useState(false);
-  const [showAddKatModal, setShowAddKatModal] = useState(false);
 
   // Form State Cepat
   const [newBus, setNewBus] = useState({ namaPO: "", kontakPerson: "", telepon: "", alamatGarasi: "", catatanArmada: "" });
@@ -145,24 +138,7 @@ export const ProfilBiro: React.FC = () => {
   const [tempApiKey, setTempApiKey] = useState("");
 
   useEffect(() => {
-    // Sinkronkan Entitlement
     setEntitlements(getCurrentEntitlements());
-
-    // Ambil statistik trip real-time
-    const loadStats = async () => {
-      try {
-        const { data: trips } = await supabase.from("trips").select("id, status, target_peserta");
-        if (trips) {
-          const total = trips.length;
-          const pax = trips.reduce((acc, t) => acc + (Number(t.target_peserta) || 45), 0);
-          setStats({ totalTrips: total, totalPax: pax, totalKru: entitlements.maxCrewMembers >= 9000 ? 12 : entitlements.maxCrewMembers });
-        }
-      } catch (e) {
-        setStats({ totalTrips: 12, totalPax: 540, totalKru: 4 });
-      }
-    };
-    loadStats();
-
     const handleUpdate = () => {
       setEntitlements(getCurrentEntitlements());
       setProfile(getLocalBiroProfile());
@@ -176,18 +152,13 @@ export const ProfilBiro: React.FC = () => {
     };
   }, []);
 
-  // Upload Logo Biro
+  // Upload Logo
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Harap pilih berkas gambar (PNG, JPG, SVG)");
-      return;
-    }
-
-    if (file.size > 3 * 1024 * 1024) {
-      toast.error("Ukuran logo maksimal 3 MB");
       return;
     }
 
@@ -201,21 +172,21 @@ export const ProfilBiro: React.FC = () => {
         toast.success("Foto logo biro berhasil diperbarui!");
       }
     } catch (err: any) {
-      toast.error("Gagal mengunggah logo: " + (err.message || "Kesalahan jaringan"));
+      toast.error("Gagal mengunggah logo: " + (err.message || "Gagal"));
     } finally {
       setUploadingLogo(false);
     }
   };
 
-  // Simpan Seluruh Profil & Kop Surat
+  // Simpan Profil
   const handleSaveProfile = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
       setSaving(true);
       await saveBiroProfile(profile);
       saveBiroCmsData(cmsData);
-      toast.success("Pengaturan profil & kop surat biro berhasil disimpan!");
-      setShowEditBioModal(false);
+      toast.success("Pengaturan profil berhasil disimpan!");
+      setActiveModal(null);
     } catch (err: any) {
       toast.error("Gagal menyimpan profil: " + err.message);
     } finally {
@@ -223,7 +194,7 @@ export const ProfilBiro: React.FC = () => {
     }
   };
 
-  // Tambah Rekanan Bus
+  // Tambah Bus
   const handleAddBus = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBus.namaPO.trim()) return;
@@ -239,11 +210,10 @@ export const ProfilBiro: React.FC = () => {
     setCmsData(updated);
     saveBiroCmsData(updated);
     setNewBus({ namaPO: "", kontakPerson: "", telepon: "", alamatGarasi: "", catatanArmada: "" });
-    setShowAddBusModal(false);
-    toast.success(`PO Bus "${item.namaPO}" berhasil ditambahkan!`);
+    toast.success(`PO Bus "${item.namaPO}" berhasil disimpan!`);
   };
 
-  // Tambah Rekanan Resto
+  // Tambah Resto
   const handleAddResto = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newResto.namaResto.trim()) return;
@@ -260,8 +230,7 @@ export const ProfilBiro: React.FC = () => {
     setCmsData(updated);
     saveBiroCmsData(updated);
     setNewResto({ namaResto: "", lokasiRute: "", kontakPerson: "", telepon: "", hargaPerPax: 30000, menuFavorit: "" });
-    setShowAddRestoModal(false);
-    toast.success(`Rumah makan "${item.namaResto}" berhasil ditambahkan!`);
+    toast.success(`Rumah makan "${item.namaResto}" berhasil disimpan!`);
   };
 
   // Tambah Kategori Kas
@@ -279,28 +248,34 @@ export const ProfilBiro: React.FC = () => {
     setCmsData(updated);
     saveBiroCmsData(updated);
     setNewKatNama("");
-    setShowAddKatModal(false);
     toast.success(`Kategori "${item.nama}" berhasil disimpan!`);
   };
 
-  // Konfirmasi Ganti API Key AI
-  const handleTriggerEditApiKey = () => {
-    setTempApiKey(apiKey);
-    setShowApiKeyConfirmModal(true);
+  // Hapus Bus
+  const handleDeleteBus = (id: string) => {
+    const updated = { ...cmsData, rekananBus: cmsData.rekananBus.filter((b) => b.id !== id) };
+    setCmsData(updated);
+    saveBiroCmsData(updated);
+    toast.success("PO Bus dihapus dari katalog");
   };
 
-  const handleConfirmEditApiKey = () => {
-    setShowApiKeyConfirmModal(false);
-    setIsEditingApiKey(true);
+  // Hapus Resto
+  const handleDeleteResto = (id: string) => {
+    const updated = { ...cmsData, rekananResto: cmsData.rekananResto.filter((r) => r.id !== id) };
+    setCmsData(updated);
+    saveBiroCmsData(updated);
+    toast.success("Rumah makan dihapus dari katalog");
   };
 
+  // Simpan API Key AI
   const handleSaveApiKey = () => {
     setStoredApiKey(tempApiKey.trim());
     setApiKey(tempApiKey.trim());
     setIsEditingApiKey(false);
-    toast.success("Kunci Gemini API berhasil diperbarui & diamankan!");
+    toast.success("Kunci Gemini API berhasil diperbarui!");
   };
 
+  // Logout
   const handleLogout = async () => {
     if (confirm("Yakin ingin keluar dari akun biro ini?")) {
       try {
@@ -316,85 +291,60 @@ export const ProfilBiro: React.FC = () => {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-24 lg:pl-64">
-        {/* TOP BAR / INSTAGRAM STYLE HEADER BAR */}
-        <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
-          <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        {/* HEADER TOP BAR */}
+        <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => navigate("/dashboard")}
-                className="p-1 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
-                  @{profile.nama_biro.toLowerCase().replace(/[^a-z0-9]/g, "") || "birowisata"}
-                </span>
-                <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px]">
-                  ✓
-                </span>
+              <div>
+                <h1 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+                  Pengaturan & Profil Biro
+                </h1>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  {profile.nama_biro}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowQrModal(true)}
-                className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Bagikan Profil & QR"
-              >
-                <QrCode className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSupportModal(true)}
-                className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Bantuan & Dukungan"
-              >
-                <LifeBuoy className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                title="Keluar Akun"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveModal("qr")}
+              className="p-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="QR Profil"
+            >
+              <QrCode className="w-5 h-5" />
+            </button>
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-          {/* 1. INSTAGRAM PROFILE HERO SECTION */}
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
-            <div className="flex items-center justify-between gap-4">
-              {/* Story Ring Avatar Logo */}
-              <div className="relative group flex-shrink-0">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full p-[3.5px] bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 shadow-md">
-                  <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 p-1 flex items-center justify-center overflow-hidden">
+        <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+          {/* 1. KOTAK PROFIL UTAMA (Gaya Akun Apple ID / Instagram Header Card) */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="relative flex-shrink-0">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-amber-500 p-0.5 shadow-sm">
+                  <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 p-1 flex items-center justify-center overflow-hidden">
                     {profile.logo_url ? (
-                      <img
-                        src={profile.logo_url}
-                        alt="Logo Biro"
-                        className="w-full h-full object-contain rounded-full"
-                      />
+                      <img src={profile.logo_url} alt="Logo" className="w-full h-full object-contain rounded-xl" />
                     ) : (
-                      <Building2 className="w-12 h-12 text-slate-400" />
+                      <Building2 className="w-8 h-8 text-slate-400" />
                     )}
                   </div>
                 </div>
-
-                {/* Tombol Kamera Unggah */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingLogo}
-                  className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-lg transition-transform active:scale-90"
-                  title="Ganti Foto Logo Biro"
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md hover:bg-indigo-700"
+                  title="Ganti Logo"
                 >
-                  {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  {uploadingLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -405,724 +355,486 @@ export const ProfilBiro: React.FC = () => {
                 />
               </div>
 
-              {/* 3 Metric Counters (Instagram Style) */}
-              <div className="flex-1 flex justify-around items-center text-center">
-                <div className="space-y-0.5">
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                    {stats.totalTrips}
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-medium">Trip Selesai</div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white truncate">
+                    {profile.nama_biro}
+                  </h2>
+                  <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-bold">
+                    ✓
+                  </span>
                 </div>
-                <div className="space-y-0.5">
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                    {stats.totalPax.toLocaleString("id-ID")}
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-medium">Tamu / Pax</div>
-                </div>
-                <div className="space-y-0.5">
-                  <div className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">
-                    {stats.totalKru}
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-medium">Slot Kru</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Biro Bio Information */}
-            <div className="space-y-2 pt-1 text-xs">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  {profile.nama_biro}
-                </h1>
-                <Badge
-                  className={`text-[10px] font-mono uppercase px-2 py-0.5 ${
-                    entitlements.tier === "enterprise"
-                      ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                      : entitlements.tier === "pro"
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                      : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                  }`}
-                >
-                  {entitlements.tier} Member
-                </Badge>
-              </div>
-
-              <div className="text-slate-600 dark:text-slate-400 font-medium">
-                {profile.slogan || "Biro Perjalanan Wisata & Tour Organizer Resmi"}
-              </div>
-
-              <div className="space-y-1 text-slate-600 dark:text-slate-400 pt-1">
-                {profile.alamat && (
-                  <div className="flex items-start gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
-                    <span>{profile.alamat}</span>
-                  </div>
-                )}
-                {profile.telepon && (
-                  <div className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                    <a
-                      href={`https://wa.me/${profile.telepon.replace(/[^0-9]/g, "")}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-emerald-700 dark:text-emerald-400 font-mono font-semibold hover:underline"
-                    >
-                      {profile.telepon}
-                    </a>
-                  </div>
-                )}
-                {profile.website && (
-                  <div className="flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                    <a
-                      href={profile.website.startsWith("http") ? profile.website : `https://${profile.website}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 dark:text-blue-400 font-mono hover:underline flex items-center gap-1"
-                    >
-                      {profile.website} <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Instagram Style Action Buttons */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2">
-              <Button
-                size="sm"
-                onClick={() => setShowEditBioModal(true)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-semibold h-9 rounded-xl shadow-xs"
-              >
-                Edit Profil & Bio
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowQrModal(true)}
-                className="border-slate-300 dark:border-slate-700 text-xs font-semibold h-9 rounded-xl shadow-xs flex items-center gap-1.5"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                Bagikan Profil
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => navigate("/boost")}
-                className="col-span-2 sm:col-span-1 bg-gradient-to-r from-amber-500 to-indigo-600 text-white font-semibold text-xs h-9 rounded-xl shadow-xs flex items-center justify-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Upgrade Paket
-              </Button>
-            </div>
-          </section>
-
-          {/* 2. META ACCOUNT CENTER STYLE CARD (Pusat Lisensi & Hak Akses) */}
-          <section className="bg-gradient-to-r from-indigo-900 via-slate-900 to-slate-950 text-white rounded-3xl p-5 shadow-lg border border-indigo-800/40 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
-                  <Crown className="w-4 h-4 text-amber-400" />
-                </div>
-                <div>
-                  <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">
-                    Pusat Akun Meta & Lisensi SaaS
-                  </div>
-                  <div className="text-sm font-extrabold text-white">
-                    Status Layanan Terpusat
-                  </div>
-                </div>
-              </div>
-
-              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/40 text-[10px] font-mono font-bold">
-                ● TERHUBUNG KE SUPER ADMIN
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                <div className="text-[10px] text-slate-400">Mode Desktop PC</div>
-                <div className="text-xs font-bold flex items-center gap-1.5">
-                  {entitlements.canUseDesktopMode ? (
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      <Unlock className="w-3 h-3" /> Aktif (Buka)
-                    </span>
-                  ) : (
-                    <span className="text-amber-400 flex items-center gap-1">
-                      <Lock className="w-3 h-3" /> Mobile Only
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                <div className="text-[10px] text-slate-400">Bebas Watermark</div>
-                <div className="text-xs font-bold">
-                  {entitlements.canExportCleanPdf ? (
-                    <span className="text-emerald-400">✓ Kop Surat Resmi</span>
-                  ) : (
-                    <span className="text-slate-400">Watermark Aktif</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                <div className="text-[10px] text-slate-400">Batas Trip Aktif</div>
-                <div className="text-xs font-bold text-cyan-300 font-mono">
-                  {entitlements.maxActiveTrips >= 9000 ? "∞ Unlimited" : `${entitlements.maxActiveTrips} Kuota`}
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                <div className="text-[10px] text-slate-400">Kapasitas Kru</div>
-                <div className="text-xs font-bold text-indigo-300 font-mono">
-                  {entitlements.maxCrewMembers >= 9000 ? "∞ Unlimited" : `${entitlements.maxCrewMembers} Kru`}
+                <p className="text-xs text-slate-500 truncate mt-0.5">
+                  {profile.slogan || "Biro Perjalanan Wisata & Tour Organizer"}
+                </p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Badge
+                    className={`text-[10px] font-mono uppercase px-2 py-0.5 ${
+                      entitlements.tier === "enterprise"
+                        ? "bg-purple-50 text-purple-700 border-purple-200"
+                        : entitlements.tier === "pro"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {entitlements.tier} Tier
+                  </Badge>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {activeUser?.email || profile.email}
+                  </span>
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* 3. SUB-MENU TABS (Instagram Style Icons) */}
-          <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1 shadow-xs">
-            <button
-              type="button"
-              onClick={() => setActiveTab("kop")}
-              className={`flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 rounded-xl transition-all ${
-                activeTab === "kop"
-                  ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActiveModal("identitas")}
+              className="text-xs h-8 px-3 rounded-xl border-slate-300 dark:border-slate-700 font-semibold flex-shrink-0"
             >
-              <FileText className="w-4 h-4" />
-              <span>Kop Surat & Identitas</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("rekanan")}
-              className={`flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 rounded-xl transition-all ${
-                activeTab === "rekanan"
-                  ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <Bus className="w-4 h-4" />
-              <span>Mitra & Rekanan</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("lisensi")}
-              className={`flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 rounded-xl transition-all ${
-                activeTab === "lisensi"
-                  ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <Crown className="w-4 h-4 text-amber-500" />
-              <span>Lisensi & Fitur</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("sistem")}
-              className={`flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 rounded-xl transition-all ${
-                activeTab === "sistem"
-                  ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>AI & Sistem</span>
-            </button>
+              Ubah
+            </Button>
           </div>
 
-          {/* TAB 1: KOP SURAT & PRATINJAU A4 RESMI */}
-          {activeTab === "kop" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Live Preview Kop Surat A4 Resmi */}
-              <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-indigo-600" />
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Pratinjau Kop Surat Resmi (A4 Live Preview)
-                    </h3>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] text-slate-500">
-                    Otomatis tercetak di PDF Invoice & Laporan
+          {/* 2. KOTAK META ACCOUNTS CENTER (Pusat Akun & Lisensi SaaS) */}
+          <div
+            onClick={() => setActiveModal("lisensi")}
+            className="p-4 rounded-3xl bg-gradient-to-r from-indigo-900 via-slate-900 to-slate-950 text-white border border-indigo-800/40 shadow-sm cursor-pointer hover:border-indigo-700 transition-all flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                <Crown className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+                    Pusat Akun & Lisensi
+                  </span>
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/40 text-[9px] font-mono py-0">
+                    SINKRON LIVE
                   </Badge>
                 </div>
+                <div className="text-xs text-slate-300 font-medium truncate mt-0.5">
+                  Paket {entitlements.tier.toUpperCase()} • {entitlements.canUseDesktopMode ? "Desktop Mode Aktif" : "Mobile Only"} • {entitlements.maxActiveTrips >= 9000 ? "Trip Unlimited" : `${entitlements.maxActiveTrips} Kuota Trip`}
+                </div>
+              </div>
+            </div>
 
-                {/* Box Lembar Dokumen Kop Surat */}
-                <div className="p-6 bg-slate-50 dark:bg-slate-950 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl">
-                  <div className="flex items-center gap-4 border-b-2 border-slate-900 dark:border-white pb-3">
-                    <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 flex-shrink-0 flex items-center justify-center">
-                      {profile.logo_url ? (
-                        <img src={profile.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                      ) : (
-                        <Building2 className="w-8 h-8 text-slate-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 text-center sm:text-left space-y-0.5">
-                      <div className="text-base sm:text-lg font-black uppercase text-slate-900 dark:text-white tracking-wide">
-                        {profile.nama_biro}
-                      </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
-                        {profile.slogan}
-                      </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {profile.alamat} • Telp/WA: {profile.telepon}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        Email: {profile.email} • Web: {profile.website}
-                      </div>
-                    </div>
+            <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" />
+          </div>
+
+          {/* 3. GROUP 1: IDENTITAS & DOKUMEN RESMI (Kotak Pengaturan Memanjang ke Bawah) */}
+          <div className="space-y-2">
+            <div className="px-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Identitas & Dokumen Resmi
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
+              {/* Row Kop Surat */}
+              <div
+                onClick={() => setActiveModal("kop")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-4 h-4" />
                   </div>
-                  <div className="pt-2 text-[10px] text-slate-400 text-right font-mono">
-                    Rekening Pembayaran: {profile.nama_bank} No. {profile.nomor_rekening} a/n {profile.atas_nama_rekening}
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Kop Surat Resmi & Cetak PDF
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Pratinjau lembar A4, kop surat invoice, kwitansi & laporan
+                    </div>
                   </div>
                 </div>
-              </Card>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-200">
+                    A4 Preview
+                  </Badge>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </div>
+              </div>
 
-              {/* Form Input Kop Surat */}
-              <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Form Pengaturan Dokumen & Rekening Bank
-                </h3>
-
-                <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Nama Resmi Biro di Kop *</Label>
-                      <Input
-                        value={profile.nama_biro}
-                        onChange={(e) => setProfile({ ...profile, nama_biro: e.target.value })}
-                        className="text-xs"
-                        required
-                      />
+              {/* Row Identitas & Kontak */}
+              <div
+                onClick={() => setActiveModal("identitas")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Profil & Kontak Kantor
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Slogan / Keterangan Usaha</Label>
-                      <Input
-                        value={profile.slogan}
-                        onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
-                        className="text-xs"
-                      />
+                    <div className="text-[11px] text-slate-500">
+                      Alamat fisik, nomor WhatsApp CS, email & website
                     </div>
                   </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
 
+              {/* Row Rekening Bank */}
+              <div
+                onClick={() => setActiveModal("bank")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                    <Landmark className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Rekening Pembayaran Tamu
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {profile.nama_bank || "BCA / Mandiri"} • No. {profile.nomor_rekening || "Belum diatur"}
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* 4. GROUP 2: REKANAN & KATALOG OPERASIONAL (Kotak Menu Kedua) */}
+          <div className="space-y-2">
+            <div className="px-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Katalog Rekanan & Keuangan
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
+              {/* Row PO Bus */}
+              <div
+                onClick={() => setActiveModal("bus")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center flex-shrink-0">
+                    <Bus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Katalog Rekanan PO Bus
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {cmsData.rekananBus.length} PO Bus Pariwisata terdaftar
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+
+              {/* Row Resto */}
+              <div
+                onClick={() => setActiveModal("resto")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <UtensilsCrossed className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Katalog Rumah Makan & Resto
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {cmsData.rekananResto.length} Rumah Makan rute favorit
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+
+              {/* Row Pos Kas Keuangan */}
+              <div
+                onClick={() => setActiveModal("kategori")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Kategori Kas Laba & Pengeluaran
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Pos anggaran solar, tol, makan, tiket, dan uang muka
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+
+              {/* Row Manajemen Kru */}
+              <div
+                onClick={() => navigate("/manajemen-kru")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Manajemen Personel Kru & Sesi (RBAC)
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Batasan akses kas untuk Tour Leader & driver
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] text-purple-600 border-purple-200">
+                    Hak Akses
+                  </Badge>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. GROUP 3: KECERDASAN BUATAN & SISTEM */}
+          <div className="space-y-2">
+            <div className="px-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Kecerdasan Buatan & Bantuan
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
+              {/* Row AI Gemini */}
+              <div
+                onClick={() => setActiveModal("ai")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Kunci Asisten Wisata AI (Google Gemini)
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Konfigurasi API Key dengan konfirmasi ganda
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                    Aktif
+                  </Badge>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </div>
+              </div>
+
+              {/* Row Pusat SOP & Panduan */}
+              <div
+                onClick={() => navigate("/learn")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Pusat Panduan & SOP Biro Wisata
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      SOP Word parser, denah bus, kas saku, & domain
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+
+              {/* Row Bantuan & Tiket */}
+              <div
+                onClick={() => setActiveModal("ticket")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                    <LifeBuoy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Pusat Tiket Bantuan & Laporan Kendala
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Kirim pesan langsung ke Super Admin platform
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* 6. GROUP 4: AKSI AKUN & KELUAR */}
+          <div className="space-y-2">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
+              <div
+                onClick={() => navigate("/boost")}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Upgrade Lisensi & Cloud VPS
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Buka Mode Desktop, domain biro.com & VPS
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+
+              <div
+                onClick={handleLogout}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center flex-shrink-0">
+                    <LogOut className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-bold text-rose-600">
+                    Keluar dari Akun Biro
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-rose-300" />
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* ========================================================================= */}
+        {/* MODAL 1: KOP SURAT RESMI & LIVE A4 PREVIEW                                */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "kop"} onOpenChange={(o) => !o && setActiveModal(null)}>
+          <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                Pengaturan Kop Surat & Dokumen Cetak
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Kop surat ini otomatis dicetak di lembar PDF kwitansi, invoice, dan laporan resmi biro Anda.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3">
+              {/* Pratinjau Dokumen A4 */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-950 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl">
+                <div className="flex items-center gap-3 border-b-2 border-slate-900 dark:border-white pb-3">
+                  <div className="w-14 h-14 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 p-1 flex items-center justify-center flex-shrink-0">
+                    {profile.logo_url ? (
+                      <img src={profile.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                    ) : (
+                      <Building2 className="w-6 h-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left space-y-0.5">
+                    <div className="text-sm font-black uppercase text-slate-900 dark:text-white">
+                      {profile.nama_biro}
+                    </div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
+                      {profile.slogan}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {profile.alamat} • Telp/WA: {profile.telepon}
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 text-[10px] text-slate-400 text-right font-mono">
+                  Rekening Resmi: {profile.nama_bank} No. {profile.nomor_rekening} a/n {profile.atas_nama_rekening}
+                </div>
+              </div>
+
+              {/* Form Input Kop Surat */}
+              <form onSubmit={handleSaveProfile} className="space-y-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Alamat Kantor Lengkap</Label>
+                    <Label className="text-xs">Nama Resmi di Kop *</Label>
                     <Input
-                      value={profile.alamat || ""}
-                      onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
+                      value={profile.nama_biro}
+                      onChange={(e) => setProfile({ ...profile, nama_biro: e.target.value })}
+                      className="text-xs"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Slogan / Keterangan Usaha</Label>
+                    <Input
+                      value={profile.slogan}
+                      onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
                       className="text-xs"
                     />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">No. Telepon / WhatsApp</Label>
-                      <Input
-                        value={profile.telepon || ""}
-                        onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
-                        className="text-xs font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Email Resmi</Label>
-                      <Input
-                        value={profile.email || ""}
-                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                        className="text-xs font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Website Biro</Label>
-                      <Input
-                        value={profile.website || ""}
-                        onChange={(e) => setProfile({ ...profile, website: e.target.value })}
-                        className="text-xs font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <div className="font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
-                      <CreditCard className="w-4 h-4 text-indigo-600" />
-                      Rekening Bank Resmi untuk Kwitansi / Invoice
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Nama Bank</Label>
-                        <Input
-                          value={profile.nama_bank || ""}
-                          onChange={(e) => setProfile({ ...profile, nama_bank: e.target.value })}
-                          placeholder="Misal: Bank Mandiri / BCA"
-                          className="text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Nomor Rekening</Label>
-                        <Input
-                          value={profile.nomor_rekening || ""}
-                          onChange={(e) => setProfile({ ...profile, nomor_rekening: e.target.value })}
-                          placeholder="136-00-1234567-8"
-                          className="text-xs font-mono"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Atas Nama Rekening</Label>
-                        <Input
-                          value={profile.atas_nama_rekening || ""}
-                          onChange={(e) => setProfile({ ...profile, atas_nama_rekening: e.target.value })}
-                          placeholder="PT Catat Biro Wisata"
-                          className="text-xs"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-3">
-                    <Button
-                      type="submit"
-                      disabled={saving}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-9 px-5 rounded-xl shadow-xs"
-                    >
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
-                      Simpan Perubahan Kop Surat
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-            </div>
-          )}
-
-          {/* TAB 2: REKANAN MITRA & KATALOG MASTER */}
-          {activeTab === "rekanan" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Rekanan Armada Bus */}
-              <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Bus className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Daftar Rekanan PO Bus Pariwisata
-                    </h3>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowAddBusModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3 rounded-xl"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Tambah PO Bus
-                  </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {cmsData.rekananBus.length === 0 ? (
-                    <div className="col-span-2 text-center py-6 text-slate-400 text-xs">
-                      Belum ada rekanan bus. Klik tombol di atas untuk menambahkan.
-                    </div>
-                  ) : (
-                    cmsData.rekananBus.map((bus) => (
-                      <div
-                        key={bus.id}
-                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1 text-xs"
-                      >
-                        <div className="font-extrabold text-slate-900 dark:text-white flex items-center justify-between">
-                          <span>{bus.namaPO}</span>
-                          <span className="text-[10px] font-normal text-slate-400 font-mono">{bus.telepon}</span>
-                        </div>
-                        <div className="text-slate-500">{bus.kontakPerson} • {bus.alamatGarasi}</div>
-                        {bus.catatanArmada && (
-                          <div className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
-                            {bus.catatanArmada}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-
-              {/* Rekanan Resto */}
-              <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <UtensilsCrossed className="w-4 h-4 text-amber-600" />
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Daftar Rumah Makan & Resto Rekanan
-                    </h3>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowAddRestoModal(true)}
-                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 px-3 rounded-xl"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Resto
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {cmsData.rekananResto.length === 0 ? (
-                    <div className="col-span-2 text-center py-6 text-slate-400 text-xs">
-                      Belum ada rekanan resto. Klik tombol di atas untuk menambahkan.
-                    </div>
-                  ) : (
-                    cmsData.rekananResto.map((resto) => (
-                      <div
-                        key={resto.id}
-                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1 text-xs"
-                      >
-                        <div className="font-extrabold text-slate-900 dark:text-white flex items-center justify-between">
-                          <span>{resto.namaResto}</span>
-                          <span className="text-[10px] font-mono text-emerald-600 font-bold">
-                            Rp {resto.hargaPerPax.toLocaleString("id-ID")}/pax
-                          </span>
-                        </div>
-                        <div className="text-slate-500">{resto.lokasiRute} • Telp: {resto.telepon}</div>
-                        {resto.menuFavorit && (
-                          <div className="text-[11px] text-amber-600 font-medium">Menu: {resto.menuFavorit}</div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {/* TAB 3: STATUS LISENSI & HAK AKSES SUPER ADMIN */}
-          {activeTab === "lisensi" && (
-            <div className="space-y-6 animate-fade-in">
-              <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Crown className="w-5 h-5 text-amber-500" />
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                        Matriks Lisensi & Kuota Biro Anda
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        Dikonfigurasi langsung oleh Super Admin melalui Cloud Central Console
-                      </p>
-                    </div>
-                  </div>
-                  <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-mono text-xs uppercase">
-                    Paket: {entitlements.tier}
-                  </Badge>
-                </div>
-
-                <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">Akses Mode Desktop di Laptop / PC</div>
-                      <div className="text-slate-500">Buka antarmuka tabel lebar bento di laptop untuk admin kantor</div>
-                    </div>
-                    <div>
-                      {entitlements.canUseDesktopMode ? (
-                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">AKTIF (Bypass Terbuka)</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-slate-400">Terkunci (Mobile Only)</Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">Kop Surat Bebas Watermark CatatBiro</div>
-                      <div className="text-slate-500">Kwitansi dan invoice resmi tercetak bersih hanya dengan logo biro Anda</div>
-                    </div>
-                    <div>
-                      {entitlements.canExportCleanPdf ? (
-                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">AKTIF (Bebas Watermark)</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-slate-400">Watermark Aktif</Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">Asisten Konsultasi Wisata AI Gemini</div>
-                      <div className="text-slate-500">Rekomendasi rute destinasi dan rundown otomatis bertenaga AI</div>
-                    </div>
-                    <div>
-                      {entitlements.canUseAI ? (
-                        <Badge className="bg-amber-50 text-amber-700 border-amber-200">AKTIF</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-slate-400">Nonaktif</Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">Batas Kuota Trip Berjalan</div>
-                      <div className="text-slate-500">Maksimal trip aktif yang dapat dikelola dalam satu waktu</div>
-                    </div>
-                    <div className="font-mono font-bold text-cyan-600 text-sm">
-                      {entitlements.maxActiveTrips >= 9000 ? "∞ Unlimited" : `${entitlements.maxActiveTrips} Trip`}
-                    </div>
-                  </div>
-
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">Batas Kuota Personel Kru Lapangan</div>
-                      <div className="text-slate-500">Jumlah akun staf/TL yang dapat login bersamaan di perangkat kru</div>
-                    </div>
-                    <div className="font-mono font-bold text-indigo-600 text-sm">
-                      {entitlements.maxCrewMembers >= 9000 ? "∞ Unlimited" : `${entitlements.maxCrewMembers} Kru`}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between gap-3">
-                  <div className="text-xs text-indigo-900 dark:text-indigo-200">
-                    Ingin membuka Mode Desktop di PC atau menambah kuota trip/kru?
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => navigate("/boost")}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-8 px-3 rounded-xl whitespace-nowrap"
-                  >
-                    Upgrade Paket
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {/* TAB 4: SISTEM, AI & KEAMANAN */}
-          {activeTab === "sistem" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* API Key Gemini AI dengan Proteksi Keamanan Berlapis */}
-              <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                        Konfigurasi Kunci AI Asisten Wisata (Google Gemini)
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        Dilindungi oleh sistem keamanan konfirmasi bertingkat agar tidak terhapus tidak sengaja
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300">
-                    Aktif & Terproteksi
-                  </Badge>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Gemini API Key Aktif
-                    </div>
-                    {!isEditingApiKey ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleTriggerEditApiKey}
-                        className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 dark:text-slate-200"
-                      >
-                        <Key className="w-3 h-3 mr-1 text-amber-500" /> Ubah Key
-                      </Button>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setIsEditingApiKey(false)}
-                          className="text-xs h-7 px-2"
-                        >
-                          Batal
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleSaveApiKey}
-                          className="bg-indigo-600 text-white text-xs h-7 px-2.5 rounded-lg"
-                        >
-                          Simpan
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {!isEditingApiKey ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type={showApiKey ? "text" : "password"}
-                        readOnly
-                        value={apiKey ? "••••••••••••••••••••••••••••••••••••••••" : "Belum diatur"}
-                        className="text-xs font-mono bg-white dark:bg-slate-900 border-slate-200 cursor-not-allowed"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="h-9 px-3 border-slate-200"
-                      >
-                        {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Input
-                        type="text"
-                        value={tempApiKey}
-                        onChange={(e) => setTempApiKey(e.target.value)}
-                        placeholder="Tempel kunci AI Gemini (AIzaSy...)"
-                        className="text-xs font-mono"
-                      />
-                      <p className="text-[11px] text-amber-600">
-                        * Pastikan Anda sudah memiliki API Key Google AI Studio aktif sebelum mengubahnya.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              {/* Pusat Tiket Bantuan */}
-              <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <LifeBuoy className="w-4 h-4 text-indigo-600" />
-                    Pusat Bantuan & Tiket Kendala Teknis
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    Laporkan kendala operasional atau ajukan permintaan fitur langsung ke Super Admin
-                  </p>
+                  <Label className="text-xs">Alamat Kantor Lengkap</Label>
+                  <Input
+                    value={profile.alamat || ""}
+                    onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
+                    className="text-xs"
+                  />
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => setShowSupportModal(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-9 px-4 rounded-xl shadow-xs whitespace-nowrap"
-                >
-                  Buat Tiket Kendala
-                </Button>
-              </Card>
-            </div>
-          )}
-        </main>
 
-        {/* MODAL: EDIT BIO CEPAT */}
-        <Dialog open={showEditBioModal} onOpenChange={setShowEditBioModal}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nomor Telepon / WhatsApp</Label>
+                    <Input
+                      value={profile.telepon || ""}
+                      onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
+                      className="text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email Kantor</Label>
+                    <Input
+                      value={profile.email || ""}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      className="text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                  <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-xs h-9">
+                    Tutup
+                  </Button>
+                  <Button type="submit" disabled={saving} className="bg-indigo-600 text-white text-xs h-9 px-4">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+                    Simpan Kop Surat
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* MODAL 2: IDENTITAS & KONTAK                                               */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "identitas"} onOpenChange={(o) => !o && setActiveModal(null)}>
           <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold">Edit Bio Profil Biro</DialogTitle>
-              <DialogDescription className="text-xs">
-                Informasi ini ditampilkan pada halaman profil dan pratinjau publik biro Anda.
-              </DialogDescription>
+              <DialogTitle className="text-base font-bold">Edit Profil & Kontak Biro</DialogTitle>
             </DialogHeader>
 
             <form onSubmit={handleSaveProfile} className="space-y-3 py-2 text-xs">
               <div className="space-y-1">
-                <Label className="text-xs">Nama Biro</Label>
+                <Label className="text-xs">Nama Biro Wisata</Label>
                 <Input
                   value={profile.nama_biro}
                   onChange={(e) => setProfile({ ...profile, nama_biro: e.target.value })}
@@ -1132,7 +844,7 @@ export const ProfilBiro: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Slogan / Bio Singkat</Label>
+                <Label className="text-xs">Slogan / Tagline</Label>
                 <Textarea
                   value={profile.slogan}
                   onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
@@ -1151,7 +863,7 @@ export const ProfilBiro: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Nomor WhatsApp Resmi</Label>
+                <Label className="text-xs">No. WhatsApp</Label>
                 <Input
                   value={profile.telepon || ""}
                   onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
@@ -1159,36 +871,435 @@ export const ProfilBiro: React.FC = () => {
                 />
               </div>
 
+              <div className="space-y-1">
+                <Label className="text-xs">Website Biro</Label>
+                <Input
+                  value={profile.website || ""}
+                  onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+                  className="text-xs font-mono"
+                />
+              </div>
+
               <div className="flex justify-end gap-2 pt-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowEditBioModal(false)}
-                  className="text-xs h-9 px-4 rounded-xl"
-                >
+                <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-xs h-9">
                   Batal
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="bg-indigo-600 text-white font-semibold text-xs h-9 px-4 rounded-xl"
-                >
-                  Simpan Bio
+                <Button type="submit" disabled={saving} className="bg-indigo-600 text-white text-xs h-9">
+                  Simpan Perubahan
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
-        {/* MODAL: QR CODE BIRO */}
-        <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+        {/* ========================================================================= */}
+        {/* MODAL 3: REKENING BANK                                                    */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "bank"} onOpenChange={(o) => !o && setActiveModal(null)}>
+          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-emerald-600" />
+                Rekening Pembayaran Tamu
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Nomor rekening ini otomatis dicantumkan di lembar kwitansi & invoice pembayaran tamu.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSaveProfile} className="space-y-3 py-2 text-xs">
+              <div className="space-y-1">
+                <Label className="text-xs">Nama Bank</Label>
+                <Input
+                  value={profile.nama_bank || ""}
+                  onChange={(e) => setProfile({ ...profile, nama_bank: e.target.value })}
+                  placeholder="Misal: Bank Mandiri / BCA / BNI"
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Nomor Rekening</Label>
+                <Input
+                  value={profile.nomor_rekening || ""}
+                  onChange={(e) => setProfile({ ...profile, nomor_rekening: e.target.value })}
+                  placeholder="136-00-1234567-8"
+                  className="text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Atas Nama Rekening</Label>
+                <Input
+                  value={profile.atas_nama_rekening || ""}
+                  onChange={(e) => setProfile({ ...profile, atas_nama_rekening: e.target.value })}
+                  placeholder="PT Catat Biro Wisata"
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3">
+                <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-xs h-9">
+                  Batal
+                </Button>
+                <Button type="submit" disabled={saving} className="bg-emerald-600 text-white text-xs h-9">
+                  Simpan Rekening
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* MODAL 4: PO BUS                                                           */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "bus"} onOpenChange={(o) => !o && setActiveModal(null)}>
+          <DialogContent className="max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Bus className="w-5 h-5 text-cyan-600" />
+                Katalog Rekanan PO Bus
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2 text-xs">
+              {/* Form Tambah PO */}
+              <form onSubmit={handleAddBus} className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-800">
+                <div className="font-bold text-slate-800 dark:text-slate-200">Tambah PO Bus Baru</div>
+                <Input
+                  required
+                  placeholder="Nama PO Bus (Misal: PO Haryanto / Subur Jaya)"
+                  value={newBus.namaPO}
+                  onChange={(e) => setNewBus({ ...newBus, namaPO: e.target.value })}
+                  className="text-xs"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Kontak Person (CP)"
+                    value={newBus.kontakPerson}
+                    onChange={(e) => setNewBus({ ...newBus, kontakPerson: e.target.value })}
+                    className="text-xs"
+                  />
+                  <Input
+                    placeholder="No. Telepon / WA"
+                    value={newBus.telepon}
+                    onChange={(e) => setNewBus({ ...newBus, telepon: e.target.value })}
+                    className="text-xs font-mono"
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-cyan-600 text-white text-xs h-8">
+                  + Simpan ke Katalog PO Bus
+                </Button>
+              </form>
+
+              {/* List PO */}
+              <div className="space-y-2">
+                {cmsData.rekananBus.map((bus) => (
+                  <div key={bus.id} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-white">{bus.namaPO}</div>
+                      <div className="text-slate-500">{bus.kontakPerson} • {bus.telepon}</div>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteBus(bus.id)} className="text-rose-600 h-7 w-7 p-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* MODAL 5: RESTO                                                            */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "resto"} onOpenChange={(o) => !o && setActiveModal(null)}>
+          <DialogContent className="max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <UtensilsCrossed className="w-5 h-5 text-amber-600" />
+                Katalog Rumah Makan / Resto
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2 text-xs">
+              <form onSubmit={handleAddResto} className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-800">
+                <div className="font-bold text-slate-800 dark:text-slate-200">Tambah Resto Baru</div>
+                <Input
+                  required
+                  placeholder="Nama Resto (Misal: RM Grafika Cikole)"
+                  value={newResto.namaResto}
+                  onChange={(e) => setNewResto({ ...newResto, namaResto: e.target.value })}
+                  className="text-xs"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Lokasi / Rute Perjalanan"
+                    value={newResto.lokasiRute}
+                    onChange={(e) => setNewResto({ ...newResto, lokasiRute: e.target.value })}
+                    className="text-xs"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Harga Rata-Rata/Pax"
+                    value={newResto.hargaPerPax}
+                    onChange={(e) => setNewResto({ ...newResto, hargaPerPax: Number(e.target.value) })}
+                    className="text-xs font-mono"
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-amber-600 text-white text-xs h-8">
+                  + Simpan ke Katalog Resto
+                </Button>
+              </form>
+
+              <div className="space-y-2">
+                {cmsData.rekananResto.map((resto) => (
+                  <div key={resto.id} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-white">{resto.namaResto}</div>
+                      <div className="text-slate-500">{resto.lokasiRute} • Rp {resto.hargaPerPax.toLocaleString("id-ID")}/pax</div>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteResto(resto.id)} className="text-rose-600 h-7 w-7 p-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* MODAL 6: KATEGORI KAS                                                     */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "kategori"} onOpenChange={(o) => !o && setActiveModal(null)}>
+          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-emerald-600" />
+                Pos Kategori Kas Keuangan
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2 text-xs">
+              <form onSubmit={handleAddKategori} className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-800">
+                <div className="font-bold text-slate-800 dark:text-slate-200">Tambah Pos Baru</div>
+                <Input
+                  required
+                  placeholder="Nama Pos (Misal: Kas Tol Cipali, Parkir Wisata)"
+                  value={newKatNama}
+                  onChange={(e) => setNewKatNama(e.target.value)}
+                  className="text-xs"
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={newKatJenis}
+                    onChange={(e: any) => setNewKatJenis(e.target.value)}
+                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 text-xs"
+                  >
+                    <option value="pengeluaran">Pengeluaran Kas</option>
+                    <option value="pemasukan">Pemasukan Kas</option>
+                  </select>
+                  <Button type="submit" className="bg-emerald-600 text-white text-xs h-8">
+                    + Tambah
+                  </Button>
+                </div>
+              </form>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {cmsData.kategoriKeuangan.map((k) => (
+                  <div key={k.id} className="py-2.5 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-white">{k.nama}</div>
+                      <Badge className={`text-[9px] ${k.jenis === "pemasukan" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                        {k.jenis.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* MODAL 7: LISENSI & MATRIKS HAK AKSES                                      */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "lisensi"} onOpenChange={(o) => !o && setActiveModal(null)}>
+          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 space-y-4">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500" />
+                Pusat Lisensi & Hak Akses Biro
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Status paket dan sakelar fitur yang aktif di akun biro Anda.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">Paket Lisensi:</span>
+                <Badge className="font-mono uppercase bg-indigo-600 text-white">{entitlements.tier}</Badge>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">Mode Desktop PC:</span>
+                {entitlements.canUseDesktopMode ? (
+                  <span className="text-emerald-600 font-bold">✓ Aktif (Buka)</span>
+                ) : (
+                  <span className="text-amber-600 font-bold">Terkunci (Mobile Only)</span>
+                )}
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">Bebas Watermark PDF:</span>
+                {entitlements.canExportCleanPdf ? (
+                  <span className="text-emerald-600 font-bold">✓ Bersih (Kop Resmi)</span>
+                ) : (
+                  <span className="text-slate-500">Watermark CatatBiro</span>
+                )}
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">Batas Kuota Trip:</span>
+                <span className="font-mono font-bold text-cyan-600">
+                  {entitlements.maxActiveTrips >= 9000 ? "∞ Unlimited" : `${entitlements.maxActiveTrips} Trip`}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">Kapasitas Kru:</span>
+                <span className="font-mono font-bold text-indigo-600">
+                  {entitlements.maxCrewMembers >= 9000 ? "∞ Unlimited" : `${entitlements.maxCrewMembers} Kru`}
+                </span>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                setActiveModal(null);
+                navigate("/boost");
+              }}
+              className="w-full bg-gradient-to-r from-amber-500 to-indigo-600 text-white font-semibold text-xs h-9 rounded-xl"
+            >
+              Lihat Pilihan Upgrade Paket di /boost
+            </Button>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* MODAL 8: AI GEMINI API KEY                                                */}
+        {/* ========================================================================= */}
+        <Dialog open={activeModal === "ai"} onOpenChange={(o) => !o && setActiveModal(null)}>
+          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 space-y-4">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                Konfigurasi Kunci AI Gemini
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Asisten AI menggunakan API Key Google AI Studio. Dilindungi konfirmasi keamanan bertingkat.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2 text-xs">
+              {!isEditingApiKey ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Key Saat Ini:</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setTempApiKey(apiKey);
+                        setShowApiKeyConfirmModal(true);
+                      }}
+                      className="text-xs h-7 px-2.5"
+                    >
+                      <Key className="w-3 h-3 mr-1 text-amber-500" /> Ganti Key
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type={showApiKey ? "text" : "password"}
+                      readOnly
+                      value={apiKey ? "••••••••••••••••••••••••••••••••••••••••" : "Belum diatur"}
+                      className="text-xs font-mono cursor-not-allowed bg-slate-50 dark:bg-slate-950"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="h-9 px-3"
+                    >
+                      {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-xs">Masukkan Kunci API Gemini Baru</Label>
+                  <Input
+                    type="text"
+                    value={tempApiKey}
+                    onChange={(e) => setTempApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="text-xs font-mono"
+                  />
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button size="sm" variant="outline" onClick={() => setIsEditingApiKey(false)} className="text-xs h-8">
+                      Batal
+                    </Button>
+                    <Button size="sm" onClick={handleSaveApiKey} className="bg-indigo-600 text-white text-xs h-8">
+                      Simpan Key Baru
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* MODAL KONFIRMASI GANTI KEY AI */}
+        <Dialog open={showApiKeyConfirmModal} onOpenChange={setShowApiKeyConfirmModal}>
+          <DialogContent className="max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Ubah Kunci Gemini AI?</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Pastikan Anda sudah memiliki API Key Google AI Studio aktif agar fitur konsultasi AI tidak berhenti berfungsi.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowApiKeyConfirmModal(false)} className="flex-1 text-xs h-9">
+                Batal
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowApiKeyConfirmModal(false);
+                  setIsEditingApiKey(true);
+                }}
+                className="flex-1 bg-amber-600 text-white text-xs h-9"
+              >
+                Ya, Ubah
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* MODAL QR CODE */}
+        <Dialog open={activeModal === "qr"} onOpenChange={(o) => !o && setActiveModal(null)}>
           <DialogContent className="max-w-xs text-center bg-white dark:bg-slate-900 rounded-3xl p-6 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center mx-auto text-indigo-600">
+            <div className="w-16 h-16 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
               <QrCode className="w-8 h-8" />
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">{profile.nama_biro}</h3>
-              <p className="text-[11px] text-slate-500">Scan QR untuk membuka kontak WhatsApp dan profil resmi</p>
+              <p className="text-[11px] text-slate-500">Scan QR Code untuk kontak WhatsApp & profil biro</p>
             </div>
             <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center">
               <img
@@ -1212,149 +1323,15 @@ export const ProfilBiro: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* MODAL: TAMBAH PO BUS */}
-        <Dialog open={showAddBusModal} onOpenChange={setShowAddBusModal}>
-          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold">Tambah Rekanan PO Bus</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddBus} className="space-y-3 py-2 text-xs">
-              <div className="space-y-1">
-                <Label className="text-xs">Nama PO Bus *</Label>
-                <Input
-                  required
-                  value={newBus.namaPO}
-                  onChange={(e) => setNewBus({ ...newBus, namaPO: e.target.value })}
-                  placeholder="Misal: PO Haryanto / Subur Jaya"
-                  className="text-xs"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Kontak Person (CP)</Label>
-                  <Input
-                    value={newBus.kontakPerson}
-                    onChange={(e) => setNewBus({ ...newBus, kontakPerson: e.target.value })}
-                    placeholder="Pak Budi"
-                    className="text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Nomor Telepon / WA</Label>
-                  <Input
-                    value={newBus.telepon}
-                    onChange={(e) => setNewBus({ ...newBus, telepon: e.target.value })}
-                    placeholder="0812-xxxx"
-                    className="text-xs font-mono"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Alamat Garasi / Pool</Label>
-                <Input
-                  value={newBus.alamatGarasi}
-                  onChange={(e) => setNewBus({ ...newBus, alamatGarasi: e.target.value })}
-                  placeholder="Kudus / Semarang"
-                  className="text-xs"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setShowAddBusModal(false)} className="text-xs h-8">
-                  Batal
-                </Button>
-                <Button type="submit" className="bg-blue-600 text-white text-xs h-8">
-                  Simpan PO Bus
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* MODAL: TAMBAH RESTO */}
-        <Dialog open={showAddRestoModal} onOpenChange={setShowAddRestoModal}>
-          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold">Tambah Rekanan Rumah Makan</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddResto} className="space-y-3 py-2 text-xs">
-              <div className="space-y-1">
-                <Label className="text-xs">Nama Rumah Makan *</Label>
-                <Input
-                  required
-                  value={newResto.namaResto}
-                  onChange={(e) => setNewResto({ ...newResto, namaResto: e.target.value })}
-                  placeholder="Misal: RM Grafika Cikole / Taman Sari"
-                  className="text-xs"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Lokasi Rute</Label>
-                  <Input
-                    value={newResto.lokasiRute}
-                    onChange={(e) => setNewResto({ ...newResto, lokasiRute: e.target.value })}
-                    placeholder="Tol Cipali KM 102"
-                    className="text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Harga Rata-Rata/Pax</Label>
-                  <Input
-                    type="number"
-                    value={newResto.hargaPerPax}
-                    onChange={(e) => setNewResto({ ...newResto, hargaPerPax: Number(e.target.value) })}
-                    className="text-xs font-mono"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setShowAddRestoModal(false)} className="text-xs h-8">
-                  Batal
-                </Button>
-                <Button type="submit" className="bg-amber-600 text-white text-xs h-8">
-                  Simpan Resto
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* MODAL: KONFIRMASI GANTI API KEY AI */}
-        <Dialog open={showApiKeyConfirmModal} onOpenChange={setShowApiKeyConfirmModal}>
-          <DialogContent className="max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Ubah Kunci Gemini AI?</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Fitur Asisten Wisata AI mengandalkan kunci API ini. Pastikan Anda sudah memiliki API Key pengganti yang valid dari Google AI Studio.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowApiKeyConfirmModal(false)}
-                className="flex-1 text-xs h-9 rounded-xl"
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={handleConfirmEditApiKey}
-                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-xs h-9 rounded-xl font-semibold"
-              >
-                Ya, Lanjutkan
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* MODAL BUAT TIKET KENDALA KE SUPER ADMIN */}
         <CreateSupportTicketModal
-          open={showSupportModal}
-          onOpenChange={setShowSupportModal}
+          open={activeModal === "ticket"}
+          onOpenChange={(o) => !o && setActiveModal(null)}
           profile={profile}
-          onTicketCreated={() => toast.success("Laporan Anda berhasil dikirimkan ke Super Admin!")}
+          onTicketCreated={() => {
+            toast.success("Laporan Anda berhasil dikirim ke Super Admin!");
+            setActiveModal(null);
+          }}
         />
 
         {/* BOTTOM NAVIGATION PWA */}
