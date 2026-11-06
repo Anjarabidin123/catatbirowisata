@@ -16,6 +16,9 @@ import {
   Users,
   Smartphone,
   Crown,
+  Target,
+  BookOpen,
+  Zap,
 } from "lucide-react";
 import { isSuperAdminUser } from "@/utils/licenseEntitlement";
 import { getLocalBiroProfile, fetchBiroProfile, BiroProfile, clearBiroProfileCache } from "@/utils/biroProfile";
@@ -115,6 +118,12 @@ export const DesktopSidebar: React.FC = () => {
           badge: "Owner",
         },
         {
+          label: "Target Omset & KPI",
+          path: "/goal",
+          icon: Target,
+          badge: "Goal",
+        },
+        {
           label: "Kalender & Jadwal Bus",
           path: "/trips",
           icon: Calendar,
@@ -164,6 +173,12 @@ export const DesktopSidebar: React.FC = () => {
         ...(canSeeFinancials
           ? [
               {
+                label: "Target Omset & KPI",
+                path: "/goal",
+                icon: Target,
+                badge: "Goal",
+              },
+              {
                 label: "Laporan & Invoice",
                 path: "/laporan",
                 icon: FileText,
@@ -206,6 +221,24 @@ export const DesktopSidebar: React.FC = () => {
       badge: "Word .docx",
       badgeClass:
         "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+    },
+    {
+      label: "Pusat SOP & Panduan",
+      path: "/learn",
+      icon: BookOpen,
+      iconColor: "text-indigo-600 dark:text-indigo-400",
+      badge: "SOP Biro",
+      badgeClass:
+        "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
+    },
+    {
+      label: "Upgrade Paket & VPS",
+      path: "/boost",
+      icon: Zap,
+      iconColor: "text-amber-500",
+      badge: "Cloud VPS",
+      badgeClass:
+        "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800",
     },
     ...(canEditBiro
       ? [

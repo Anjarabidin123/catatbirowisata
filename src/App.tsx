@@ -12,6 +12,7 @@ import { RoleProvider } from "@/contexts/RoleContext";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { DesktopModeLockOverlay } from "@/components/DesktopModeLockOverlay";
 import { SuperAdminSimulatorBar } from "@/components/SuperAdminSimulatorBar";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { initAuthListener } from "@/utils/authHelper";
 
 // Lazy load heavy pages
@@ -29,6 +30,9 @@ const NotesNew = lazy(() => import("./pages/NotesNew"));
 const ImportWordRundown = lazy(() => import("./pages/ImportWordRundown"));
 const PengaturanBiro = lazy(() => import("./pages/PengaturanBiro"));
 const ManajemenKruRBAC = lazy(() => import("./pages/ManajemenKruRBAC"));
+const GoalTargetBiro = lazy(() => import("./pages/GoalTargetBiro"));
+const BoostUpgrade = lazy(() => import("./pages/BoostUpgrade"));
+const LearnKnowledgeBase = lazy(() => import("./pages/LearnKnowledgeBase"));
 const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard").then((m) => ({ default: m.SuperAdminDashboard })));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -78,6 +82,7 @@ const App = () => {
         <PWAInstallPrompt />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <RoleProvider>
+            <ImpersonationBanner />
             <DesktopSidebar />
             <DesktopModeLockOverlay />
             <SuperAdminSimulatorBar />
@@ -101,12 +106,13 @@ const App = () => {
                 <Route path="/pengaturan" element={<PengaturanBiro />} />
                 <Route path="/pengaturan-biro" element={<PengaturanBiro />} />
                 <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
+                <Route path="/goal" element={<GoalTargetBiro />} />
+                <Route path="/boost" element={<BoostUpgrade />} />
+                <Route path="/learn" element={<LearnKnowledgeBase />} />
                 <Route path="/super-admin" element={<SuperAdminDashboard />} />
                 <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
                 <Route path="/teamwork-preview" element={<Navigate to="/super-admin?view=devices" replace />} />
                 <Route path="/agy-customizations" element={<Navigate to="/super-admin?view=feature_gating" replace />} />
-                <Route path="/learn" element={<Navigate to="/super-admin?view=database" replace />} />
-                <Route path="/boost" element={<Navigate to="/super-admin?view=billing" replace />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -119,4 +125,3 @@ const App = () => {
 };
 
 export default App;
-

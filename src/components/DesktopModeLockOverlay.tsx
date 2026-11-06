@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -13,11 +13,13 @@ import {
   Users,
   ShieldCheck,
   MessageCircle,
+  Zap,
 } from "lucide-react";
 import { getCurrentEntitlements, SUPER_ADMIN_EMAIL } from "@/utils/licenseEntitlement";
 
 export const DesktopModeLockOverlay: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [entitlements, setEntitlements] = useState(getCurrentEntitlements);
   const [isDesktopScreen, setIsDesktopScreen] = useState(false);
 
@@ -39,11 +41,13 @@ export const DesktopModeLockOverlay: React.FC = () => {
     };
   }, []);
 
-  // Jangan pernah blokir halaman Super Admin, Login, atau Landing Page
+  // Jangan pernah blokir halaman Super Admin, Login, Landing Page, Upgrade Lisensi, atau Pusat Panduan
   if (
     location.pathname.startsWith("/super-admin") ||
     location.pathname === "/auth" ||
-    location.pathname === "/"
+    location.pathname === "/" ||
+    location.pathname === "/boost" ||
+    location.pathname === "/learn"
   ) {
     return null;
   }
@@ -52,7 +56,6 @@ export const DesktopModeLockOverlay: React.FC = () => {
   if (!isDesktopScreen || entitlements.canUseDesktopMode) {
     return null;
   }
-
 
   const handleContactFounder = () => {
     const message = `Halo Mas Anjar (Founder CatatBiro), saya ingin upgrade lisensi biro wisata saya ke Paket Pro agar bisa membuka Mode Desktop Eksekutif & Bento KPI di laptop. Mohon informasi aktivasi dan rekening pembayarannya. Terima kasih! 🙏`;
@@ -108,7 +111,7 @@ export const DesktopModeLockOverlay: React.FC = () => {
                   Executive Command Center
                 </h4>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Bento KPI Omset, Beban Operasional, Laba Bersih, & visual cashflow.
+                  Bento grid statistik omset, laba rugi, dan kalender bus interaktif.
                 </p>
               </div>
             </div>
@@ -119,10 +122,10 @@ export const DesktopModeLockOverlay: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                  Cetak PDF Bersih (White Label)
+                  Cetak PDF Resmi Tanpa Watermark
                 </h4>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Invoice, kwitansi, dan laporan resmi tanpa watermark aplikasi.
+                  Invoice, kwitansi, dan lembar manifes penumpang ber-kop biro siap kirim.
                 </p>
               </div>
             </div>
@@ -136,7 +139,7 @@ export const DesktopModeLockOverlay: React.FC = () => {
                   Multi-Kru & Trip Tanpa Batas
                 </h4>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Hingga 10 kru bertugas, kuota trip leluasa, dan pantau sesi perangkat.
+                  Hingga 15 kru bertugas, kuota trip leluasa, dan pantau sesi perangkat.
                 </p>
               </div>
             </div>
@@ -160,12 +163,21 @@ export const DesktopModeLockOverlay: React.FC = () => {
           <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
             <Button
               type="button"
+              onClick={() => navigate("/boost")}
+              className="w-full sm:flex-1 h-11 text-xs sm:text-sm font-black rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 gap-2 shadow-md transition-transform active:scale-95"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Bandingkan Paket & Add-On (/boost)</span>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button"
               onClick={handleContactFounder}
-              className="w-full sm:flex-1 h-11 text-xs sm:text-sm font-bold rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-md transition-transform active:scale-95"
+              variant="outline"
+              className="w-full sm:w-auto h-11 text-xs sm:text-sm font-bold rounded-2xl border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-2"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>Upgrade ke Lisensi Pro Sekarang</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>WhatsApp Founder</span>
             </Button>
           </div>
 
@@ -177,3 +189,5 @@ export const DesktopModeLockOverlay: React.FC = () => {
     </div>
   );
 };
+
+export default DesktopModeLockOverlay;
