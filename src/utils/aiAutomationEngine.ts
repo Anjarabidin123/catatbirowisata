@@ -1,117 +1,272 @@
 /**
  * aiAutomationEngine.ts
- * Mesin Automasi Cerdas Berbasis AI (Gemini 2.0 / Flash + Heuristic Fallback)
- * Memproses perintah teks natural user ala CLI cerdas:
- * 1. Tambah Bus / Armada (PO Bus, Plat Polisi, Kapasitas, Driver, Kontak)
- * 2. Tambah / Registrasi Kru (Tour Leader, Driver, Kernet, Korlap)
- * 3. Buat Trip Baru Secara Otomatis
- * 4. Catat Transaksi Keuangan / Pengeluaran / Petty Cash Lapangan
- * 5. Tambah Jadwal Rundown Acara
- * 6. Kueri Informasi Cerdas (Status kuota, daftar armada, kru aktif)
+ * Conversational Rule-Based Dialog Engine & State Machine (FSM)
+ * 
+ * Karakteristik Arsitektur:
+ * 1. ZERO TOKEN & GRATIS SELAMANYA: Berjalan 100% lokal di browser tanpa menguras kuota Google Gemini.
+ * 2. STEP-BY-STEP GUIDED WIZARD:
+ *    - Tambah Trip: Nama Trip -> Tanggal -> Tujuan -> Jumlah Bus -> Merek Bus (skip/ga) -> Pilih TL Biro -> Konfirmasi.
+ *    - Tambah Bus: Nama PO -> Plat Polisi -> Kapasitas Seat -> Driver -> Telepon -> Konfirmasi.
+ *    - Tambah Kru: Nama Kru -> Jabatan -> Telepon -> Konfirmasi.
+ *    - Catat Kas: Pilih Trip -> Jenis -> Nominal -> Keterangan -> Konfirmasi.
+ * 3. DILENGKAPI TOMBOL PILIHAN INTERAKTIF (Options Pills): Pengguna bisa langsung KLIK tanpa harus mengetik panjang.
+ * 4. HYBRID FALLBACK: Gemini API hanya dipanggil jika pengguna mengajukan pertanyaan bebas di luar menu wizard.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import { getBiroCmsData, saveBiroCmsData, RekananBus } from "@/utils/biroCmsStore";
-import { addCrewMemberDB, getCrewMembers, CrewJabatan, logCrewActivity } from "@/utils/rbacAuditLogger";
+import { addCrewMemberDB, getCrewMembers, CrewJabatan, logCrewActivity, assignTripToMultipleCrewDB } from "@/utils/rbacAuditLogger";
 import { getCurrentEntitlements } from "@/utils/licenseEntitlement";
 import { getStoredApiKey } from "@/utils/asistenWisataAI";
 import { format } from "date-fns";
 
-export type AiIntentType =
-  | "ADD_BUS"
-  | "ADD_CREW"
-  | "CREATE_TRIP"
-  | "ADD_TRANSACTION"
-  | "ADD_RUNDOWN"
-  | "QUERY_DATA"
-  | "HELP"
-  | "UNKNOWN";
+export type WizardType = "TRIP_WIZARD" | "BUS_WIZARD" | "CREW_WIZARD" | "EXPENSE_WIZARD" | "NONE";
 
-export interface ParsedAiAction {
-  intent: AiIntentType;
-  confidence: number;
-  rawText: string;
-  summary: string;
-  parameters: Record<string, any>;
-  suggestedReply: string;
-}
-
-export interface ExecutionResult {
-  success: boolean;
-  message: string;
-  data?: any;
-  actionType: AiIntentType;
-  createdId?: string;
+export interface DialogResponse {
+  botMessage: string;
+  options?: string[]; // Tombol opsi klik cepat untuk user
+  isComplete?: boolean;
+  actionType?: string;
   navigationPath?: string;
+  wizardType?: WizardType;
+  stepIndex?: number;
+  totalSteps?: number;
 }
 
-const FALLBACK_GEMINI_KEY = "AQ.Ab8RN6KzU9HOTTXOtiMly1vYqrgzwKPXpKYqXsEGTvJxlrdQnw";
+// In-Memory Session State untuk Dialog Wizard
+interface WizardDraft {
+  wizardType: WizardType;
+  step: number;
+  data: Record<string, any>;
+}
 
-export const getEffectiveGeminiApiKey = (): string => {
-  const stored = getStoredApiKey();
-  if (stored && stored.trim().length > 5) return stored.trim();
-  return FALLBACK_GEMINI_KEY;
+let activeDraft: WizardDraft = {
+  wizardType: "NONE",
+  step: 0,
+  data: {},
+};
+
+export const getActiveWizardState = (): WizardDraft => activeDraft;
+
+export const resetWizard = (): void => {
+  activeDraft = {
+    wizardType: "NONE",
+    step: 0,
+    data: {},
+  };
 };
 
 /**
- * Heuristic Fallback Parser jika API offline atau user input langsung
+ * Smart Date Parser Lokal untuk Bahasa Indonesia (Bulan, Hari, Rentang)
+ * Contoh: "15-18 Desember 2026", "25 Okt 2026", "15/12/2026", "besok", "lusa"
  */
-export function parseWithHeuristics(input: string): ParsedAiAction {
+export function parseIndonesianDateRange(input: string): { start: string; end?: string; display: string } {
   const text = input.trim();
   const lower = text.toLowerCase();
+  const currentYear = new Date().getFullYear();
 
-  // 1. TAMBAH BUS
+  if (lower === "besok" || lower.includes("besok")) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const iso = format(d, "yyyy-MM-dd");
+    return { start: iso, display: format(d, "dd MMMM yyyy") };
+  }
+  if (lower === "lusa" || lower.includes("lusa")) {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    const iso = format(d, "yyyy-MM-dd");
+    return { start: iso, display: format(d, "dd MMMM yyyy") };
+  }
+
+  // Regex ISO: 2026-12-15
+  const isoMatch = text.match(/([0-9]{4})-([0-9]{2})-([0-9]{2})/);
+  if (isoMatch) {
+    return { start: isoMatch[0], display: isoMatch[0] };
+  }
+
+  // Peta Nama Bulan
+  const monthMap: Record<string, string> = {
+    jan: "01", januari: "01",
+    feb: "02", februari: "02",
+    mar: "03", maret: "03",
+    apr: "04", april: "04",
+    mei: "05",
+    jun: "06", juni: "06",
+    jul: "07", juli: "07",
+    agu: "08", agustus: "08", ags: "08",
+    sep: "09", september: "09",
+    okt: "10", oktober: "10",
+    nov: "11", november: "11",
+    des: "12", desember: "12",
+  };
+
+  // Rentang: "15-18 Desember 2026" atau "15 s/d 18 Desember 2026"
+  const rangeMatch = text.match(/([0-9]{1,2})\s*(?:-|s\/d|sampai)\s*([0-9]{1,2})\s+([A-Za-z]+)(?:\s+([0-9]{4}))?/i);
+  if (rangeMatch) {
+    const d1 = rangeMatch[1].padStart(2, "0");
+    const d2 = rangeMatch[2].padStart(2, "0");
+    const mStr = rangeMatch[3].toLowerCase();
+    const yStr = rangeMatch[4] || String(currentYear);
+    const mNum = monthMap[mStr] || "12";
+
+    const startIso = `${yStr}-${mNum}-${d1}`;
+    const endIso = `${yStr}-${mNum}-${d2}`;
+    return {
+      start: startIso,
+      end: endIso,
+      display: `${d1} s/d ${d2} ${rangeMatch[3]} ${yStr}`,
+    };
+  }
+
+  // Tanggal tunggal: "15 Desember 2026" atau "15 Des"
+  const singleMatch = text.match(/([0-9]{1,2})\s+([A-Za-z]+)(?:\s+([0-9]{4}))?/i);
+  if (singleMatch) {
+    const d = singleMatch[1].padStart(2, "0");
+    const mStr = singleMatch[2].toLowerCase();
+    const yStr = singleMatch[3] || String(currentYear);
+    const mNum = monthMap[mStr] || "12";
+    const iso = `${yStr}-${mNum}-${d}`;
+    return {
+      start: iso,
+      display: `${d} ${singleMatch[2]} ${yStr}`,
+    };
+  }
+
+  // Default: tanggal hari ini
+  const todayIso = format(new Date(), "yyyy-MM-dd");
+  return { start: todayIso, display: text || todayIso };
+}
+
+/**
+ * Engine Utama Dialog Wizard FSM (Finite State Machine)
+ * Memandu proses langkah demi langkah tanpa mengonsumsi API token.
+ */
+export async function processConversationalMessage(rawInput: string): Promise<DialogResponse> {
+  const text = rawInput.trim();
+  const lower = text.toLowerCase();
+
+  // 1. CEK PERINTAH BATAL GLOBAL
+  if (lower === "batal" || lower === "cancel" || lower === "keluar" || lower.includes("batal")) {
+    resetWizard();
+    return {
+      botMessage: "❌ **Sesi automasi telah dibatalkan.** Ada keperluan operasional lain yang bisa saya bantu?",
+      options: [
+        "📅 Buat Trip Baru",
+        "🚌 Tambah Bus",
+        "👤 Daftarkan Kru",
+        "💰 Catat Kas BBM",
+        "📊 Cek Kuota & Kru",
+      ],
+      wizardType: "NONE",
+    };
+  }
+
+  // =========================================================================
+  // JIKA SEDANG BERADA DALAM WIZARD AKTIF
+  // =========================================================================
+
+  // A. WIZARD TAMBAH TRIP
+  if (activeDraft.wizardType === "TRIP_WIZARD") {
+    return handleTripWizardStep(text);
+  }
+
+  // B. WIZARD TAMBAH BUS
+  if (activeDraft.wizardType === "BUS_WIZARD") {
+    return handleBusWizardStep(text);
+  }
+
+  // C. WIZARD TAMBAH KRU
+  if (activeDraft.wizardType === "CREW_WIZARD") {
+    return handleCrewWizardStep(text);
+  }
+
+  // D. WIZARD CATAT TRANSAKSI / KAS
+  if (activeDraft.wizardType === "EXPENSE_WIZARD") {
+    return handleExpenseWizardStep(text);
+  }
+
+  // =========================================================================
+  // JIKA WIZARD BELUM AKTIF (IDLE) -> DETEKSI INTENT AWAL
+  // =========================================================================
+
+  // 1. INISIASI: BUAT TRIP
+  if (
+    lower.includes("buat trip") ||
+    lower.includes("tambah trip") ||
+    lower.includes("jadwalkan trip") ||
+    lower.includes("trip baru")
+  ) {
+    activeDraft = {
+      wizardType: "TRIP_WIZARD",
+      step: 1,
+      data: {},
+    };
+
+    // Ekstrak pre-fill jika user sudah mengetik sebagian info di awal
+    let initialHint = "";
+    const nameMatch = text.match(/(?:nama|trip|rombongan|paket)\s+([A-Za-z0-9\s\-]+?)(?=\s+(?:ke|tujuan|tanggal|tgl|$))/i);
+    if (nameMatch && nameMatch[1].trim()) {
+      activeDraft.data.nama_trip = nameMatch[1].trim();
+      activeDraft.step = 2; // Langsung ke langkah tanggal
+      initialHint = `Nama rombongan telah dicatat: **${activeDraft.data.nama_trip}**.\n\n`;
+      return {
+        botMessage:
+          `${initialHint}📅 **Langkah 2 dari 6: Tanggal Keberangkatan**\n\n` +
+          "Kapan **tanggal keberangkatan / rentang tripnya?**\n" +
+          "*(Bisa rentang seperti `15-18 Desember 2026`, atau tanggal tunggal)*",
+        options: ["15-18 Desember 2026", "25-28 Oktober 2026", "Besok Pagi", "❌ Batal"],
+        wizardType: "TRIP_WIZARD",
+        stepIndex: 2,
+        totalSteps: 6,
+      };
+    }
+
+    return {
+      botMessage:
+        "📋 **Panduan Pembuatan Jadwal Trip Baru (Langkah 1 dari 6)**\n\n" +
+        "Mari kita isi detailnya satu per satu layaknya asisten pribadi.\n\n" +
+        "Pertama, **apa nama acara / rombongannya?**\n" +
+        "*(Contoh: Study Tour SMPN 1 Kudus, Gathering PT Maju Jaya, Ziarah Wali)*",
+      options: [
+        "Study Tour SMPN 1 Kudus",
+        "Gathering Perusahaan",
+        "Ziarah Wali Songo",
+        "Family Tour Jogja",
+        "❌ Batal",
+      ],
+      wizardType: "TRIP_WIZARD",
+      stepIndex: 1,
+      totalSteps: 6,
+    };
+  }
+
+  // 2. INISIASI: TAMBAH BUS
   if (
     lower.includes("tambah bus") ||
     lower.includes("tambahkan bus") ||
     lower.includes("buat bus") ||
-    lower.includes("armada bus") ||
-    lower.includes("rekanan bus")
+    lower.includes("armada bus")
   ) {
-    // Ekstrak Nama PO Bus
-    let namaPO = "Armada Pariwisata";
-    const poMatch = text.match(/(?:po|bus|armada)\s+([A-Za-z0-9\s\.\-]+?)(?=\s+(?:plat|seat|kapasitas|driver|sopir|hp|no|harga|dp|$))/i);
-    if (poMatch && poMatch[1].trim()) {
-      namaPO = poMatch[1].trim();
-      if (!namaPO.toLowerCase().startsWith("po ") && !namaPO.toLowerCase().startsWith("bus ")) {
-        namaPO = `PO ${namaPO}`;
-      }
-    }
-
-    // Ekstrak Plat Nomor Polisi (misal: H 1234 AB, B 9999 XYZ)
-    const platMatch = text.match(/(?:plat|nopol|no\s*polisi)?\s*([A-Z]{1,2}\s*[0-9]{1,4}\s*[A-Z]{1,3})/i);
-    const nopol = platMatch ? platMatch[1].toUpperCase().replace(/\s+/g, " ") : "";
-
-    // Ekstrak Kapasitas / Seat
-    const seatMatch = text.match(/([0-9]{1,3})\s*(?:seat|kursi|bangku|penumpang|pax)/i);
-    const kapasitas = seatMatch ? parseInt(seatMatch[1], 10) : 50;
-
-    // Ekstrak Nama Driver / Sopir
-    const driverMatch = text.match(/(?:driver|sopir|supir|drivernya|kru)\s*(?:pak|mas|om)?\s*([A-Za-z\s]+?)(?=\s+(?:plat|seat|hp|no|harga|dp|$))/i);
-    const namaDriver = driverMatch ? driverMatch[1].trim() : "Driver Utama";
-
-    // Ekstrak Nomor HP / Telepon
-    const phoneMatch = text.match(/(?:08[0-9\-]{8,13})/);
-    const telepon = phoneMatch ? phoneMatch[0] : "";
+    activeDraft = {
+      wizardType: "BUS_WIZARD",
+      step: 1,
+      data: {},
+    };
 
     return {
-      intent: "ADD_BUS",
-      confidence: 0.9,
-      rawText: text,
-      summary: `Tambah Master Bus: ${namaPO} (${kapasitas} Seat${nopol ? `, Plat ${nopol}` : ""})`,
-      parameters: {
-        namaPO,
-        nopol,
-        kapasitas,
-        namaDriver,
-        telepon,
-      },
-      suggestedReply: `Menyiapkan penambahan unit bus **${namaPO}** (${kapasitas} Seat) dengan driver ${namaDriver}.`,
+      botMessage:
+        "🚌 **Registrasi Master Armada Bus (Langkah 1 dari 5)**\n\n" +
+        "Apa **Nama PO Bus / Perusahaan Otobus** yang ingin didaftarkan ke katalog rekanan biro?\n" +
+        "*(Contoh: PO Subur Jaya, PO Haryanto, PO Shantika)*",
+      options: ["PO Subur Jaya", "PO Haryanto Pariwisata", "PO Shantika", "PO Nusantara", "❌ Batal"],
+      wizardType: "BUS_WIZARD",
+      stepIndex: 1,
+      totalSteps: 5,
     };
   }
 
-  // 2. TAMBAH KRU
+  // 3. INISIASI: TAMBAH KRU
   if (
     lower.includes("tambah kru") ||
     lower.includes("tambahkan kru") ||
@@ -120,362 +275,276 @@ export function parseWithHeuristics(input: string): ParsedAiAction {
     lower.includes("tambah tour leader") ||
     lower.includes("tambah tl")
   ) {
-    let jabatan: CrewJabatan = "Tour Leader";
-    if (lower.includes("driver") || lower.includes("sopir")) {
-      jabatan = "Driver Utama";
-    } else if (lower.includes("kernet") || lower.includes("co-driver") || lower.includes("codriver")) {
-      jabatan = "Co-Driver / Kernet";
-    } else if (lower.includes("korlap") || lower.includes("koordinator")) {
-      jabatan = "Koordinator Lapangan";
-    } else if (lower.includes("staf") || lower.includes("admin")) {
-      jabatan = "Staf Operasional";
-    }
-
-    // Ekstrak Nama Kru
-    let namaKru = "Personel Kru Baru";
-    const nameMatch = text.match(/(?:nama|kru|driver|tl)\s*(?:pak|mas|mbak)?\s*([A-Za-z\s]{3,25}?)(?=\s+(?:role|jabatan|no|hp|telepon|untuk|trip|$))/i);
-    if (nameMatch && nameMatch[1].trim()) {
-      namaKru = nameMatch[1].trim();
-    }
-
-    // Ekstrak Nomor HP
-    const phoneMatch = text.match(/(?:08[0-9\-]{8,13})/);
-    const telepon = phoneMatch ? phoneMatch[0] : "0812-0000-0000";
+    activeDraft = {
+      wizardType: "CREW_WIZARD",
+      step: 1,
+      data: {},
+    };
 
     return {
-      intent: "ADD_CREW",
-      confidence: 0.9,
-      rawText: text,
-      summary: `Daftarkan Kru: ${namaKru} (${jabatan})`,
-      parameters: {
-        nama: namaKru,
-        jabatan,
-        telepon,
-        email: `${namaKru.toLowerCase().replace(/[^a-z0-9]/g, "")}@kru.biro`,
-      },
-      suggestedReply: `Menyiapkan pendaftaran personel kru baru: **${namaKru}** sebagai **${jabatan}**.`,
+      botMessage:
+        "👤 **Pendaftaran Personel Kru Baru (Langkah 1 dari 3)**\n\n" +
+        "Siapa **nama lengkap kru** yang ingin didaftarkan ke sistem biro?\n" +
+        "*(Contoh: Mas Danang, Slamet Riyadi, Rina Wulandari)*",
+      options: ["Budi Santoso", "Slamet Riyadi", "Rina Wulandari", "Mas Joko", "❌ Batal"],
+      wizardType: "CREW_WIZARD",
+      stepIndex: 1,
+      totalSteps: 3,
     };
   }
 
-  // 3. CATAT TRANSAKSI / PENGELUARAN / KAS
+  // 4. INISIASI: CATAT KAS / PENGELUARAN
   if (
     lower.includes("catat pengeluaran") ||
     lower.includes("catat biaya") ||
     lower.includes("beli bensin") ||
     lower.includes("isi bbm") ||
     lower.includes("bayar tol") ||
-    lower.includes("bayar parkir") ||
     lower.includes("catat kas") ||
-    lower.includes("masukkan pemasukan") ||
-    lower.includes("catat pemasukan") ||
+    lower.includes("pemasukan") ||
     lower.includes("terima dp")
   ) {
-    const isPemasukan = lower.includes("pemasukan") || lower.includes("terima dp") || lower.includes("lunas");
-    const jenis = isPemasukan ? "pemasukan" : "pengeluaran";
+    activeDraft = {
+      wizardType: "EXPENSE_WIZARD",
+      step: 1,
+      data: {
+        jenis: lower.includes("pemasukan") || lower.includes("dp") ? "pemasukan" : "pengeluaran",
+      },
+    };
 
-    // Ekstrak Angka Rupiah
-    let jumlah = 0;
-    const nominalMatch = text.match(/(?:rp\.?|sebesar)?\s*([0-9]{1,3}(?:\.[0-9]{3})*|[0-9]+)\s*(?:rb|ribu|jt|juta)?/i);
-    if (nominalMatch) {
-      let rawNum = nominalMatch[1].replace(/\./g, "");
-      let parsed = parseFloat(rawNum);
-      const suffix = text.substring(nominalMatch.index || 0, (nominalMatch.index || 0) + 25).toLowerCase();
-      if (suffix.includes("jt") || suffix.includes("juta")) {
-        parsed = parsed * 1000000;
-      } else if (suffix.includes("rb") || suffix.includes("ribu")) {
-        parsed = parsed * 1000;
-      }
-      jumlah = parsed;
-    }
+    // Ambil daftar trip aktif untuk dijadikan opsi tombol
+    const { data: recentTrips } = await supabase
+      .from("trips")
+      .select("id, nama_trip")
+      .order("tanggal", { ascending: false })
+      .limit(3);
+
+    const tripOptions = (recentTrips || []).map((t) => `📍 ${t.nama_trip}`);
+    tripOptions.push("🏢 Kas Umum / Kantor", "❌ Batal");
 
     return {
-      intent: "ADD_TRANSACTION",
-      confidence: 0.85,
-      rawText: text,
-      summary: `Catat ${jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}: Rp ${jumlah.toLocaleString("id-ID")}`,
-      parameters: {
-        jenis,
-        jumlah,
-        keterangan: text.replace(/(?:catat|masukkan|tambahkan)\s+(?:pengeluaran|pemasukan|biaya)?/i, "").trim() || (isPemasukan ? "Pemasukan Operasional" : "Pengeluaran Lapangan"),
-      },
-      suggestedReply: `Siap mencatat ${jenis} sebesar **Rp ${jumlah.toLocaleString("id-ID")}**.`,
+      botMessage:
+        "💰 **Pencatatan Keuangan / Buku Kas (Langkah 1 dari 4)**\n\n" +
+        "Transaksi ini dialokasikan untuk **trip mana?**\n" +
+        "*(Pilih dari jadwal trip biro Anda di bawah ini)*",
+      options: tripOptions,
+      wizardType: "EXPENSE_WIZARD",
+      stepIndex: 1,
+      totalSteps: 4,
     };
   }
 
-  // 4. BUAT TRIP BARU
-  if (
-    lower.includes("buat trip") ||
-    lower.includes("tambah trip") ||
-    lower.includes("jadwalkan trip") ||
-    lower.includes("trip baru")
-  ) {
-    let tujuan = "Destinasi Wisata";
-    const destMatch = text.match(/(?:ke|tujuan|destinasi)\s+([A-Za-z0-9\s\-]+?)(?=\s+(?:tanggal|tgl|tgl\.|dengan|bus|rombongan|$))/i);
-    if (destMatch && destMatch[1].trim()) {
-      tujuan = destMatch[1].trim();
-    }
-
-    let namaTrip = `Trip ${tujuan}`;
-    const nameMatch = text.match(/(?:nama|rombongan|paket)\s+([A-Za-z0-9\s\-]+?)(?=\s+(?:ke|tujuan|tanggal|tgl|$))/i);
-    if (nameMatch && nameMatch[1].trim()) {
-      namaTrip = nameMatch[1].trim();
-    }
-
-    const today = format(new Date(), "yyyy-MM-dd");
-
-    return {
-      intent: "CREATE_TRIP",
-      confidence: 0.85,
-      rawText: text,
-      summary: `Buat Trip Baru: ${namaTrip} ke ${tujuan}`,
-      parameters: {
-        nama_trip: namaTrip,
-        tujuan,
-        tanggal: today,
-      },
-      suggestedReply: `Menyiapkan jadwal trip baru: **${namaTrip}** dengan tujuan **${tujuan}**.`,
-    };
-  }
-
-  // 5. QUERY / TANYA STATUS
+  // 5. QUERY INFORMASI STATUS / KUOTA
   if (
     lower.includes("status") ||
     lower.includes("berapa") ||
-    lower.includes("daftar") ||
+    lower.includes("kuota") ||
     lower.includes("kru aktif") ||
-    lower.includes("ringkasan") ||
-    lower.includes("siapa saja")
+    lower.includes("ringkasan")
   ) {
+    const members = getCrewMembers();
+    const cms = getBiroCmsData();
+    const entitlements = getCurrentEntitlements();
+    const { count: tripCount } = await supabase.from("trips").select("*", { count: "exact", head: true });
+
     return {
-      intent: "QUERY_DATA",
-      confidence: 0.8,
-      rawText: text,
-      summary: "Kueri Informasi Sistem Real-Time",
-      parameters: { query: text },
-      suggestedReply: "Mengambil data real-time biro wisata Anda...",
+      botMessage:
+        `📊 **Ringkasan Real-Time Biro Wisata:**\n\n` +
+        `• **Jadwal Trip Aktif:** ${tripCount ?? 0} dari kuota ${entitlements.maxActiveTrips} trip\n` +
+        `• **Personel Kru Terdaftar:** ${members.length} dari kuota ${entitlements.maxCrewAccounts} akun\n` +
+        `• **Katalog Armada Bus:** ${cms.rekananBus.length} unit bus terdaftar\n` +
+        `• **Paket Lisensi:** ${entitlements.tierName} (${entitlements.isLifetime ? "Sekali Bayar / Lifetime" : "Langganan"})\n` +
+        `• **Mode Desktop PC:** ${entitlements.allowDesktopMode ? "Aktif (Layar Bento Terbuka)" : "Mobile Only"}\n\n` +
+        `Ingin menjalankan perintah apa sekarang?`,
+      options: [
+        "📅 Buat Trip Baru",
+        "🚌 Tambah Bus",
+        "👤 Daftarkan Kru",
+        "💰 Catat Kas BBM",
+      ],
+      wizardType: "NONE",
     };
   }
 
-  // DEFAULT / HELP
+  // DEFAULT FALLBACK MENU
   return {
-    intent: "HELP",
-    confidence: 0.5,
-    rawText: text,
-    summary: "Bantuan Perintah Otomasi Cerdas",
-    parameters: {},
-    suggestedReply:
-      "Perintah tidak dikenali secara spesifik. Anda bisa mengetik:\n" +
-      "• `tambah bus SUBUR JAYA plat H 1234 AB kapasitas 50 seat driver Pak Budi no hp 0812345678`\n" +
-      "• `tambah kru Pak Slamet role Driver telepon 0852345678`\n" +
-      "• `buat trip Study Tour SMPN 1 ke Bali tanggal 15 Desember`\n" +
-      "• `catat pengeluaran beli bensin solar 500rb`\n" +
-      "• `berapa sisa kuota trip dan kru saya?`",
+    botMessage:
+      "👋 Halo! Saya **Asisten Pribadi Otomasi CatatBiro** (Zero Token Engine).\n\n" +
+      "Silakan pilih aksi atau ketik perintah yang ingin Anda jalankan secara terpandu:",
+    options: [
+      "📅 Buat Trip Baru",
+      "🚌 Tambah Bus",
+      "👤 Daftarkan Kru",
+      "💰 Catat Kas BBM",
+      "📊 Cek Kuota & Kru",
+    ],
+    wizardType: "NONE",
   };
 }
 
+// =========================================================================
+// HANDLER SUB-STEP WIZARD
+// =========================================================================
+
 /**
- * Parsing Perintah Menggunakan Google Gemini API dengan Fallback Cerdas
+ * A. WIZARD TAMBAH TRIP STEP-BY-STEP
  */
-export async function parseCommandWithAI(prompt: string): Promise<ParsedAiAction> {
-  const apiKey = getEffectiveGeminiApiKey();
+async function handleTripWizardStep(input: string): Promise<DialogResponse> {
+  const lower = input.toLowerCase();
+  const isSkip = lower === "skip" || lower === "ga" || lower === "lewati" || lower === "tidak" || lower === "nanti";
 
-  // Jika tidak ada API key yang valid, langsung gunakan parser heuristik yang andal
-  if (!apiKey || apiKey.length < 10) {
-    return parseWithHeuristics(prompt);
-  }
-
-  const systemInstruction = `
-Kamu adalah AI Automation Engine untuk aplikasi manajemen Biro Wisata & Tour Organizer (CatatBiro).
-Tugasmu: Menganalisa instruksi natural bahasa Indonesia dari pengguna dan mengubahnya menjadi format JSON perintah aksi yang siap dieksekusi secara otomatis.
-
-Supported Intents:
-1. "ADD_BUS": Menambahkan master bus armada rekanan.
-   Parameters:
-   - namaPO: string (contoh: "PO Subur Jaya", "PO Haryanto")
-   - nopol: string (contoh: "H 1234 AB")
-   - kapasitas: number (jumlah kursi, default 50 jika tidak disebutkan)
-   - namaDriver: string (nama pengemudi / sopir)
-   - telepon: string (nomor kontak / WA)
-   - catatanArmada: string (opsional)
-
-2. "ADD_CREW": Mendaftarkan kru baru ke sistem biro.
-   Parameters:
-   - nama: string (nama lengkap kru)
-   - jabatan: "Tour Leader" | "Driver Utama" | "Co-Driver / Kernet" | "Koordinator Lapangan" | "Staf Operasional"
-   - telepon: string (nomor HP)
-   - assignedTrip: string (opsional)
-
-3. "CREATE_TRIP": Membuat jadwal trip / paket wisata baru.
-   Parameters:
-   - nama_trip: string (nama acara / rombongan)
-   - tujuan: string (kota atau objek wisata tujuan)
-   - tanggal: string (format YYYY-MM-DD, gunakan tanggal hari ini atau tanggal yang diminta)
-   - nama_kendaraan: string (opsional)
-   - nomor_polisi: string (opsional)
-   - nama_driver: string (opsional)
-   - jumlah_penumpang: number (opsional)
-   - budget_estimasi: number (opsional)
-
-4. "ADD_TRANSACTION": Mencatat arus kas keuangan / pengeluaran lapangan / pemasukan.
-   Parameters:
-   - jenis: "pengeluaran" | "pemasukan"
-   - jumlah: number (nominal murni angka rupiah)
-   - keterangan: string (alasan/detail transaksi)
-
-5. "QUERY_DATA": Pertanyaan tanya data (misal tanya kru, tanya saldo, tanya bus, dll.)
-   Parameters:
-   - topic: "trips" | "crew" | "finance" | "bus" | "general"
-
-6. "HELP": Permintaan bantuan format perintah.
-
-Format Balasan WAJIB berupa JSON murni tanpa markdown triple backtick:
-{
-  "intent": "ADD_BUS" | "ADD_CREW" | "CREATE_TRIP" | "ADD_TRANSACTION" | "QUERY_DATA" | "HELP",
-  "confidence": number (0.0 - 1.0),
-  "summary": "Ringkasan 1 baris yang jelas dalam bahasa Indonesia",
-  "suggestedReply": "Respon percakapan ramah dan profesional dalam bahasa Indonesia",
-  "parameters": {}
-}
-`;
-
-  try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `${systemInstruction}\n\nInstruksi Pengguna: "${prompt}"` }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn("Gemini API call failed, falling back to heuristics:", response.statusText);
-      return parseWithHeuristics(prompt);
-    }
-
-    const data = await response.json();
-    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateText) {
-      return parseWithHeuristics(prompt);
-    }
-
-    // Bersihkan kemungkinan markdown fencing jika ada
-    const cleaned = candidateText.replace(/^```json/i, "").replace(/```$/i, "").trim();
-    const parsed = JSON.parse(cleaned);
+  // Langkah 1: Input Nama Trip
+  if (activeDraft.step === 1) {
+    activeDraft.data.nama_trip = input.trim();
+    activeDraft.step = 2;
 
     return {
-      intent: parsed.intent || "UNKNOWN",
-      confidence: parsed.confidence || 0.9,
-      rawText: prompt,
-      summary: parsed.summary || "Perintah AI Terproses",
-      suggestedReply: parsed.suggestedReply || "Perintah berhasil diproses.",
-      parameters: parsed.parameters || {},
+      botMessage:
+        `✅ Nama rombongan dicatat: **${input.trim()}**\n\n` +
+        "📅 **Langkah 2 dari 6: Tanggal Pelaksanaan**\n\n" +
+        "Kapan **tanggal keberangkatan atau rentang perjalanannya?**\n" +
+        "*(Contoh: `15-18 Desember 2026`, `25 Okt 2026`, atau `Besok Pagi`)*",
+      options: ["15-18 Desember 2026", "25-28 Oktober 2026", "Besok Pagi", "❌ Batal"],
+      wizardType: "TRIP_WIZARD",
+      stepIndex: 2,
+      totalSteps: 6,
     };
-  } catch (error) {
-    console.warn("Error calling Gemini API for automation:", error);
-    return parseWithHeuristics(prompt);
   }
-}
 
-/**
- * Eksekusi Aksi Nyata ke Database & State Aplikasi
- */
-export async function executeAiAction(action: ParsedAiAction): Promise<ExecutionResult> {
-  const { intent, parameters, summary } = action;
+  // Langkah 2: Input Tanggal
+  if (activeDraft.step === 2) {
+    const parsedDate = parseIndonesianDateRange(input);
+    activeDraft.data.tanggal = parsedDate.start;
+    activeDraft.data.tanggal_selesai = parsedDate.end || null;
+    activeDraft.data.tanggal_display = parsedDate.display;
+    activeDraft.step = 3;
 
-  try {
-    // 1. EKSEKUSI TAMBAH BUS
-    if (intent === "ADD_BUS") {
-      const currentCms = getBiroCmsData();
-      const namaPO = parameters.namaPO || "PO Pariwisata";
-      const kapasitas = parameters.kapasitas || 50;
-      const nopol = parameters.nopol || "";
-      const namaDriver = parameters.namaDriver || "Driver Utama";
-      const telepon = parameters.telepon || "0812-3456-7890";
+    return {
+      botMessage:
+        `✅ Tanggal keberangkatan: **${parsedDate.display}**\n\n` +
+        "📍 **Langkah 3 dari 6: Destinasi / Kota Tujuan**\n\n" +
+        "Rombongan ini **tujuannya ke mana?**\n" +
+        "*(Contoh: Bali, Yogyakarta, Malang & Bromo, Bandung)*",
+      options: ["Bali", "Yogyakarta", "Malang & Bromo", "Bandung", "Dieng", "❌ Batal"],
+      wizardType: "TRIP_WIZARD",
+      stepIndex: 3,
+      totalSteps: 6,
+    };
+  }
 
-      const newBus: RekananBus = {
-        id: `bus-ai-${Date.now()}`,
-        namaPO,
-        kontakPerson: namaDriver,
-        telepon,
-        alamatGarasi: "Garasi Rekanan",
-        catatanArmada: `${kapasitas} Seat • Driver: ${namaDriver}${nopol ? ` • Plat: ${nopol}` : ""}`,
-      };
+  // Langkah 3: Input Tujuan
+  if (activeDraft.step === 3) {
+    activeDraft.data.tujuan = input.trim();
+    activeDraft.step = 4;
 
-      const updatedBuses = [newBus, ...currentCms.rekananBus];
-      saveBiroCmsData({ rekananBus: updatedBuses });
+    return {
+      botMessage:
+        `✅ Destinasi tujuan: **${input.trim()}**\n\n` +
+        "🚌 **Langkah 4 dari 6: Jumlah Armada Bus**\n\n" +
+        "Rombongan ini berencana **membawa berapa unit bus?**\n" +
+        "*(Pilih atau ketik angka jumlah bus, contoh: 1, 2, atau 3)*",
+      options: ["1 Bus", "2 Bus", "3 Bus", "4 Bus", "5+ Bus", "❌ Batal"],
+      wizardType: "TRIP_WIZARD",
+      stepIndex: 4,
+      totalSteps: 6,
+    };
+  }
 
-      logCrewActivity({
-        kategori: "checklist_armada",
-        aksi: "AI Copilot: Tambah Master Armada Bus",
-        detail: `AI Automation mendaftarkan armada bus baru: ${namaPO} (${kapasitas} Seat, Driver: ${namaDriver}, Plat: ${nopol})`,
-        status: "sukses",
-      });
+  // Langkah 4: Input Jumlah Bus
+  if (activeDraft.step === 4) {
+    const busNum = parseInt(input.replace(/[^0-9]/g, ""), 10) || 1;
+    activeDraft.data.jumlah_bus = busNum;
+    activeDraft.step = 5;
 
-      return {
-        success: true,
-        actionType: "ADD_BUS",
-        message: `✅ Berhasil menambahkan armada bus **${namaPO}** (${kapasitas} Seat) dengan driver **${namaDriver}** ke master rekanan biro!`,
-        data: newBus,
-        createdId: newBus.id,
-        navigationPath: "/pengaturan-biro",
-      };
+    // Ambil master PO Bus rekanan biro untuk opsi cepat
+    const cmsData = getBiroCmsData();
+    const poOptions = cmsData.rekananBus.map((b) => b.namaPO).slice(0, 4);
+    poOptions.push("⏩ Lewati / ga", "❌ Batal");
+
+    return {
+      botMessage:
+        `✅ Jumlah armada: **${busNum} Unit Bus**\n\n` +
+        "🏷️ **Langkah 5 dari 6: Merek / PO Bus (Opsional)**\n\n" +
+        "Merek atau PO Bus apa yang digunakan?\n" +
+        "*(Pilih PO rekanan biro di bawah, ketik nama PO, atau ketik **ga** / **skip** jika belum ditentukan)*",
+      options: poOptions,
+      wizardType: "TRIP_WIZARD",
+      stepIndex: 5,
+      totalSteps: 6,
+    };
+  }
+
+  // Langkah 5: Input Merek / PO Bus (Bisa "ga" / "skip")
+  if (activeDraft.step === 5) {
+    if (isSkip) {
+      activeDraft.data.po_bus = null;
+    } else {
+      activeDraft.data.po_bus = input.replace(/^(po|bus)\s*/i, "PO ").trim();
     }
+    activeDraft.step = 6;
 
-    // 2. EKSEKUSI TAMBAH KRU
-    if (intent === "ADD_CREW") {
-      const nama = parameters.nama || "Kru Baru";
-      const jabatan: CrewJabatan = parameters.jabatan || "Tour Leader";
-      const telepon = parameters.telepon || "0812-3456-7890";
-      const email = parameters.email || `${nama.toLowerCase().replace(/[^a-z0-9]/g, "")}@kru.biro`;
-      const assignedTrip = parameters.assignedTrip || "Standby Operasional";
+    // Ambil daftar kru / Tour Leader terdaftar untuk opsi tombol
+    const members = getCrewMembers();
+    const tlOptions = members
+      .filter((m) => m.status !== "nonaktif")
+      .map((m) => `👤 ${m.nama} (${m.jabatan})`);
+    tlOptions.push("⏩ Lewati / skip", "❌ Batal");
 
-      // Verifikasi batas kuota kru (Feature Gating)
-      const entitlements = getCurrentEntitlements();
-      const existingMembers = getCrewMembers();
-      if (existingMembers.length >= entitlements.maxCrewAccounts) {
-        return {
-          success: false,
-          actionType: "ADD_CREW",
-          message: `⚠️ Gagal menambah kru: Batas kuota akun kru (${entitlements.maxCrewAccounts} akun) untuk paket Anda telah tercapai. Hubungi Founder untuk upgrade kuota kru.`,
-        };
-      }
+    return {
+      botMessage:
+        `✅ PO Bus: **${activeDraft.data.po_bus || "Belum ditentukan (Dilewati)"}**\n\n` +
+        "👤 **Langkah 6 dari 6: Tour Leader (TL) / Kru yang Bertugas**\n\n" +
+        "Siapa **Tour Leader (TL) / Kru yang bertugas?**\n" +
+        "*(Silakan pilih dari daftar kru biro Anda di bawah ini, atau ketik **skip** jika belum ditentukan)*",
+      options: tlOptions,
+      wizardType: "TRIP_WIZARD",
+      stepIndex: 6,
+      totalSteps: 6,
+    };
+  }
 
-      const newMember = await addCrewMemberDB({
-        nama,
-        jabatan,
-        telepon,
-        email,
-        assignedTrip,
-      });
-
-      return {
-        success: true,
-        actionType: "ADD_CREW",
-        message: `✅ Personel kru baru **${nama}** berhasil didaftarkan sebagai **${jabatan}** (Kode Kru: ${newMember.kodeKru})!`,
-        data: newMember,
-        createdId: newMember.id,
-        navigationPath: "/manajemen-kru",
-      };
+  // Langkah 6: Input TL / Kru yang bertugas -> Ringkasan & Konfirmasi
+  if (activeDraft.step === 6) {
+    if (isSkip) {
+      activeDraft.data.tl_crew = null;
+      activeDraft.data.selectedCrewIds = [];
+    } else {
+      const cleanName = input.replace(/^👤\s*/, "").split("(")[0].trim();
+      const members = getCrewMembers();
+      const matched = members.find((m) => m.nama.toLowerCase().includes(cleanName.toLowerCase()));
+      activeDraft.data.tl_crew = matched ? `${matched.nama} (${matched.jabatan})` : cleanName;
+      activeDraft.data.selectedCrewIds = matched ? [matched.id] : [];
     }
+    activeDraft.step = 7; // Masuk ke tahap konfirmasi akhir
 
-    // 3. EKSEKUSI BUAT TRIP BARU
-    if (intent === "CREATE_TRIP") {
+    const summaryText =
+      "📋 **Ringkasan Jadwal Trip Baru:**\n" +
+      `• **Nama Acara:** ${activeDraft.data.nama_trip}\n` +
+      `• **Tujuan:** ${activeDraft.data.tujuan}\n` +
+      `• **Tanggal:** ${activeDraft.data.tanggal_display}\n` +
+      `• **Jumlah Armada:** ${activeDraft.data.jumlah_bus} Unit Bus\n` +
+      `• **Merek / PO Bus:** ${activeDraft.data.po_bus || "Belum ditentukan (Bisa diatur nanti)"}\n` +
+      `• **Personel TL / Kru:** ${activeDraft.data.tl_crew || "Belum ditugaskan"}\n\n` +
+      "Apakah data di atas sudah benar dan siap disimpan ke sistem?";
+
+    return {
+      botMessage: summaryText,
+      options: ["✅ Ya, Simpan ke Database", "❌ Batal"],
+      wizardType: "TRIP_WIZARD",
+      stepIndex: 7,
+      totalSteps: 6,
+    };
+  }
+
+  // Langkah 7: Eksekusi Final Simpan Trip ke Supabase
+  if (activeDraft.step === 7) {
+    if (lower.includes("ya") || lower.includes("simpan") || lower.includes("buat") || lower.includes("oke")) {
       const user = await getActiveUser();
       if (!user) {
+        resetWizard();
         return {
-          success: false,
-          actionType: "CREATE_TRIP",
-          message: "⚠️ Sesi autentikasi tidak ditemukan. Harap login terlebih dahulu.",
+          botMessage: "⚠️ Sesi autentikasi telah berakhir. Harap login kembali terlebih dahulu.",
+          wizardType: "NONE",
         };
       }
 
@@ -486,145 +555,458 @@ export async function executeAiAction(action: ParsedAiAction): Promise<Execution
         .select("*", { count: "exact", head: true });
 
       if (typeof currentTripCount === "number" && currentTripCount >= entitlements.maxActiveTrips) {
+        resetWizard();
         return {
-          success: false,
-          actionType: "CREATE_TRIP",
-          message: `⚠️ Batas kuota trip aktif (${entitlements.maxActiveTrips} trip) telah tercapai. Tingkatkan paket biro Anda untuk menambah trip.`,
+          botMessage: `⚠️ Batas kuota trip aktif (${entitlements.maxActiveTrips} trip) untuk paket Anda telah tercapai. Hubungi Founder untuk upgrade kuota.`,
+          wizardType: "NONE",
         };
       }
 
-      const namaTrip = parameters.nama_trip || `Trip Wisata ${format(new Date(), "dd MMM")}`;
-      const tujuan = parameters.tujuan || "Destinasi Wisata";
-      const tanggal = parameters.tanggal || format(new Date(), "yyyy-MM-dd");
+      const vehicleName = activeDraft.data.po_bus
+        ? `${activeDraft.data.jumlah_bus} Bus • ${activeDraft.data.po_bus}`
+        : `${activeDraft.data.jumlah_bus} Bus`;
 
       const { data, error } = await supabase
         .from("trips")
         .insert({
-          nama_trip: namaTrip,
-          tujuan,
-          tanggal,
-          nama_kendaraan: parameters.nama_kendaraan || null,
-          nomor_polisi: parameters.nomor_polisi ? parameters.nomor_polisi.toUpperCase() : null,
-          nama_driver: parameters.nama_driver || null,
-          jumlah_penumpang: parameters.jumlah_penumpang ? parseInt(parameters.jumlah_penumpang, 10) : null,
-          budget_estimasi: parameters.budget_estimasi || null,
-          catatan: parameters.catatan || "Dibuat otomatis via CatatBiro AI Automation CLI",
+          nama_trip: activeDraft.data.nama_trip,
+          tujuan: activeDraft.data.tujuan,
+          tanggal: activeDraft.data.tanggal,
+          tanggal_selesai: activeDraft.data.tanggal_selesai || null,
+          nama_kendaraan: vehicleName,
+          nama_driver: activeDraft.data.tl_crew || null,
+          catatan: `Armada: ${activeDraft.data.jumlah_bus} Bus. Dibuat via Asisten Pribadi Otomasi CatatBiro.`,
           user_id: user.id,
         })
         .select("id")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        resetWizard();
+        return {
+          botMessage: `❌ Gagal menyimpan trip ke database: ${error.message}`,
+          wizardType: "NONE",
+        };
+      }
+
+      // Jika ada TL yang dipilih, tugaskan langsung
+      if (data && activeDraft.data.selectedCrewIds && activeDraft.data.selectedCrewIds.length > 0) {
+        await assignTripToMultipleCrewDB(data.id, activeDraft.data.nama_trip, activeDraft.data.selectedCrewIds);
+      }
 
       logCrewActivity({
         kategori: "operasional_trip",
-        aksi: "AI Copilot: Pembuatan Trip Baru",
-        detail: `AI Automation membuat trip baru: "${namaTrip}" ke ${tujuan} (Tanggal: ${tanggal})`,
-        tripName: namaTrip,
+        aksi: "Asisten AI: Buat Jadwal Trip Baru",
+        detail: `Trip "${activeDraft.data.nama_trip}" (${activeDraft.data.jumlah_bus} Bus) ke ${activeDraft.data.tujuan} berhasil dibuat`,
+        tripName: activeDraft.data.nama_trip,
         status: "penting",
       });
 
+      const tripId = data.id;
+      resetWizard();
+
       return {
-        success: true,
+        botMessage:
+          `🎉 **Alhamdulillah! Jadwal trip berhasil dibuat.**\n\n` +
+          `• ID Trip: \`${tripId.substring(0, 8)}...\`\n` +
+          `• Status: Siap diberangkatkan & dikelola di kalender.\n\n` +
+          `Klik tombol **"Lihat Hasil"** di bawah untuk langsung membuka rincian trip, denah kursi, dan rundown!`,
+        isComplete: true,
         actionType: "CREATE_TRIP",
-        message: `✅ Jadwal trip baru **${namaTrip}** (Tujuan: ${tujuan}, Tanggal: ${tanggal}) berhasil dibuat dan tersimpan ke database!`,
-        createdId: data.id,
-        navigationPath: `/trips/${data.id}`,
+        navigationPath: `/trips/${tripId}`,
+        options: ["📅 Buat Trip Lainnya", "💰 Catat Kas BBM", "🏠 Kembali ke Beranda"],
+        wizardType: "NONE",
       };
     }
 
-    // 4. EKSEKUSI CATAT TRANSAKSI KEUANGAN
-    if (intent === "ADD_TRANSACTION") {
-      const user = await getActiveUser();
-      if (!user) {
-        return {
-          success: false,
-          actionType: "ADD_TRANSACTION",
-          message: "⚠️ Sesi autentikasi tidak ditemukan. Harap login terlebih dahulu.",
-        };
-      }
+    // Jika ragu atau ingin membatalkan
+    resetWizard();
+    return {
+      botMessage: "❌ Pembuatan trip dibatalkan. Data draf telah dihapus. Ada hal lain yang bisa saya bantu?",
+      options: ["📅 Buat Trip Baru", "🚌 Tambah Bus", "👤 Daftarkan Kru"],
+      wizardType: "NONE",
+    };
+  }
 
-      const jenis = parameters.jenis === "pemasukan" ? "pemasukan" : "pengeluaran";
-      const jumlah = Number(parameters.jumlah) || 0;
-      const keterangan = parameters.keterangan || "Transaksi Lapangan via AI Automation";
+  return {
+    botMessage: "Instruksi tidak dikenali. Ketik 'batal' untuk membatalkan proses wizard.",
+    options: ["❌ Batal"],
+  };
+}
 
-      // Ambil trip aktif jika ada
-      const activeTripId = localStorage.getItem("active_trip_id") || null;
+/**
+ * B. WIZARD TAMBAH BUS STEP-BY-STEP
+ */
+async function handleBusWizardStep(input: string): Promise<DialogResponse> {
+  const lower = input.toLowerCase();
+  const isSkip = lower === "skip" || lower === "ga" || lower === "lewati" || lower === "tidak";
 
-      const { data, error } = await supabase
-        .from("keuangan")
-        .insert({
-          user_id: user.id,
-          trip_id: activeTripId,
-          jenis,
-          jumlah,
-          keterangan,
-        })
-        .select("id")
-        .single();
+  // Langkah 1: Input Nama PO Bus
+  if (activeDraft.step === 1) {
+    activeDraft.data.namaPO = input.trim().replace(/^(po|bus)\s*/i, "PO ");
+    activeDraft.step = 2;
 
-      if (error) throw error;
+    return {
+      botMessage:
+        `✅ PO Bus: **${activeDraft.data.namaPO}**\n\n` +
+        "🔢 **Langkah 2 dari 5: Nomor Plat Polisi (Opsional)**\n\n" +
+        "Berapa nomor plat polisi armada ini? *(Ketik contoh `H 1234 AB`, atau ketik **ga** / **skip** jika belum ada)*",
+      options: ["H 1234 AB", "B 7788 XYZ", "AD 9900 CD", "⏩ Lewati / ga", "❌ Batal"],
+      wizardType: "BUS_WIZARD",
+      stepIndex: 2,
+      totalSteps: 5,
+    };
+  }
+
+  // Langkah 2: Input Plat Polisi
+  if (activeDraft.step === 2) {
+    activeDraft.data.nopol = isSkip ? "" : input.trim().toUpperCase();
+    activeDraft.step = 3;
+
+    return {
+      botMessage:
+        `✅ Plat polisi: **${activeDraft.data.nopol || "Dilewati"}**\n\n` +
+        "🪑 **Langkah 3 dari 5: Kapasitas Kursi (Seat)**\n\n" +
+        "Berapa kapasitas kursi penumpang bus ini?",
+      options: ["50 Seat (Big Bus)", "48 Seat (SHD)", "35 Seat (Medium)", "14 Seat (HiAce)", "❌ Batal"],
+      wizardType: "BUS_WIZARD",
+      stepIndex: 3,
+      totalSteps: 5,
+    };
+  }
+
+  // Langkah 3: Input Kapasitas Kursi
+  if (activeDraft.step === 3) {
+    const seatNum = parseInt(input.replace(/[^0-9]/g, ""), 10) || 50;
+    activeDraft.data.kapasitas = seatNum;
+    activeDraft.step = 4;
+
+    return {
+      botMessage:
+        `✅ Kapasitas: **${seatNum} Seat**\n\n` +
+        "👨‍✈️ **Langkah 4 dari 5: Nama Driver / Sopir (Opsional)**\n\n" +
+        "Siapa nama driver yang membawa bus ini? *(Ketik nama, atau ketik **skip** jika belum tahu)*",
+      options: ["Pak Budi", "Pak Slamet", "Pak Joko", "⏩ Lewati / skip", "❌ Batal"],
+      wizardType: "BUS_WIZARD",
+      stepIndex: 4,
+      totalSteps: 5,
+    };
+  }
+
+  // Langkah 4: Input Nama Driver
+  if (activeDraft.step === 4) {
+    activeDraft.data.driver = isSkip ? "Driver Utama" : input.trim();
+    activeDraft.step = 5;
+
+    return {
+      botMessage:
+        `✅ Driver: **${activeDraft.data.driver}**\n\n` +
+        "📞 **Langkah 5 dari 5: Nomor Kontak / WhatsApp (Opsional)**\n\n" +
+        "Berapa nomor HP driver / pengurus PO bus? *(Contoh `0812345678`, atau ketik **skip**)*",
+      options: ["0812-3456-7890", "⏩ Lewati / skip", "❌ Batal"],
+      wizardType: "BUS_WIZARD",
+      stepIndex: 5,
+      totalSteps: 5,
+    };
+  }
+
+  // Langkah 5: Input Kontak & Konfirmasi
+  if (activeDraft.step === 5) {
+    activeDraft.data.telepon = isSkip ? "0812-0000-0000" : input.trim();
+    activeDraft.step = 6;
+
+    const summary =
+      "📋 **Ringkasan Master Bus Baru:**\n" +
+      `• **Nama PO:** ${activeDraft.data.namaPO}\n` +
+      `• **Plat Polisi:** ${activeDraft.data.nopol || "Belum ada plat"}\n` +
+      `• **Kapasitas:** ${activeDraft.data.kapasitas} Seat\n` +
+      `• **Driver Utama:** ${activeDraft.data.driver}\n` +
+      `• **Kontak Person:** ${activeDraft.data.telepon}\n\n` +
+      "Simpan armada ini ke katalog rekanan biro?";
+
+    return {
+      botMessage: summary,
+      options: ["✅ Ya, Simpan Bus", "❌ Batal"],
+      wizardType: "BUS_WIZARD",
+      stepIndex: 6,
+      totalSteps: 5,
+    };
+  }
+
+  // Langkah 6: Eksekusi Simpan Bus
+  if (activeDraft.step === 6) {
+    if (lower.includes("ya") || lower.includes("simpan") || lower.includes("buat")) {
+      const currentCms = getBiroCmsData();
+      const newBus: RekananBus = {
+        id: `bus-fsm-${Date.now()}`,
+        namaPO: activeDraft.data.namaPO,
+        kontakPerson: activeDraft.data.driver,
+        telepon: activeDraft.data.telepon,
+        alamatGarasi: "Garasi Rekanan",
+        catatanArmada: `${activeDraft.data.kapasitas} Seat • Driver: ${activeDraft.data.driver}${
+          activeDraft.data.nopol ? ` • Plat: ${activeDraft.data.nopol}` : ""
+        }`,
+      };
+
+      const updated = [newBus, ...currentCms.rekananBus];
+      saveBiroCmsData({ rekananBus: updated });
 
       logCrewActivity({
-        kategori: "keuangan_lapangan",
-        aksi: `AI Copilot: Catat ${jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}`,
-        detail: `AI mencatat transaksi ${jenis} sebesar Rp ${jumlah.toLocaleString("id-ID")} (${keterangan})`,
+        kategori: "checklist_armada",
+        aksi: "Asisten AI: Tambah Master Armada Bus",
+        detail: `Menambahkan bus baru: ${newBus.namaPO} (${newBus.catatanArmada})`,
         status: "sukses",
       });
 
+      resetWizard();
       return {
-        success: true,
-        actionType: "ADD_TRANSACTION",
-        message: `✅ Catatan ${jenis} sebesar **Rp ${jumlah.toLocaleString("id-ID")}** (${keterangan}) telah berhasil disimpan ke buku kas!`,
-        createdId: data?.id,
-        navigationPath: "/keuangan",
+        botMessage: `🎉 **Bus ${newBus.namaPO} (${activeDraft.data.kapasitas} Seat) berhasil disimpan!** Armada ini sekarang sudah muncul di katalog rekanan biro.`,
+        isComplete: true,
+        actionType: "ADD_BUS",
+        navigationPath: "/pengaturan-biro",
+        options: ["🚌 Tambah Bus Lain", "📅 Buat Trip Cepat", "🏠 Beranda"],
+        wizardType: "NONE",
       };
     }
 
-    // 5. QUERY DATA REALTIME
-    if (intent === "QUERY_DATA") {
-      const members = getCrewMembers();
-      const cms = getBiroCmsData();
-      const entitlements = getCurrentEntitlements();
-
-      const { count: tripCount } = await supabase
-        .from("trips")
-        .select("*", { count: "exact", head: true });
-
-      const reply = [
-        `📊 **Status Real-Time Biro Wisata:**`,
-        `• **Jadwal Trip Aktif:** ${tripCount ?? 0} dari kuota ${entitlements.maxActiveTrips} trip`,
-        `• **Personel Kru Terdaftar:** ${members.length} dari kuota ${entitlements.maxCrewAccounts} akun`,
-        `• **Armada Bus Rekanan:** ${cms.rekananBus.length} unit bus terdata`,
-        `• **Paket Lisensi:** ${entitlements.tierName} (${entitlements.isLifetime ? "Sekali Bayar / Lifetime" : "Langganan"})`,
-        `• **Mode Desktop:** ${entitlements.allowDesktopMode ? "Aktif (Bisa Buka PC)" : "Mobile Only"}`,
-      ].join("\n");
-
-      return {
-        success: true,
-        actionType: "QUERY_DATA",
-        message: reply,
-      };
-    }
-
-    // HELP / DEFAULT
+    resetWizard();
     return {
-      success: true,
-      actionType: "HELP",
-      message:
-        "💡 **Contoh Perintah yang Bisa Anda Ketik:**\n\n" +
-        "1. `tambah bus PO Subur Jaya SHD plat H 1234 AB kapasitas 50 seat driver Pak Budi`\n" +
-        "2. `tambah kru Mas Joko role Tour Leader nomor 0852345678`\n" +
-        "3. `buat trip Study Tour SMPN 1 ke Bali tanggal 2026-12-15`\n" +
-        "4. `catat pengeluaran isi bensin solar bus 650rb`\n" +
-        "5. `cek status kuota dan kru aktif biro saya`",
-    };
-  } catch (error: any) {
-    console.error("Error executing AI action:", error);
-    return {
-      success: false,
-      actionType: intent,
-      message: `❌ Terjadi kesalahan saat mengeksekusi perintah: ${error?.message || "Kesalahan database"}`,
+      botMessage: "❌ Penambahan bus dibatalkan.",
+      wizardType: "NONE",
     };
   }
+
+  return { botMessage: "Perintah tidak dikenali.", options: ["❌ Batal"] };
+}
+
+/**
+ * C. WIZARD TAMBAH KRU STEP-BY-STEP
+ */
+async function handleCrewWizardStep(input: string): Promise<DialogResponse> {
+  const lower = input.toLowerCase();
+  const isSkip = lower === "skip" || lower === "ga" || lower === "lewati" || lower === "tidak";
+
+  // Langkah 1: Input Nama Kru
+  if (activeDraft.step === 1) {
+    activeDraft.data.nama = input.trim();
+    activeDraft.step = 2;
+
+    return {
+      botMessage:
+        `✅ Nama kru: **${input.trim()}**\n\n` +
+        "👔 **Langkah 2 dari 3: Jabatan / Peran di Lapangan**\n\n" +
+        "Apa tugas / jabatan personel ini di biro wisata Anda?",
+      options: [
+        "Tour Leader",
+        "Driver Utama",
+        "Co-Driver / Kernet",
+        "Koordinator Lapangan",
+        "Staf Operasional",
+        "❌ Batal",
+      ],
+      wizardType: "CREW_WIZARD",
+      stepIndex: 2,
+      totalSteps: 3,
+    };
+  }
+
+  // Langkah 2: Input Jabatan
+  if (activeDraft.step === 2) {
+    let roleName: CrewJabatan = "Tour Leader";
+    if (lower.includes("driver") || lower.includes("sopir")) roleName = "Driver Utama";
+    else if (lower.includes("kernet") || lower.includes("co-driver")) roleName = "Co-Driver / Kernet";
+    else if (lower.includes("korlap") || lower.includes("koordinator")) roleName = "Koordinator Lapangan";
+    else if (lower.includes("staf") || lower.includes("admin")) roleName = "Staf Operasional";
+
+    activeDraft.data.jabatan = roleName;
+    activeDraft.step = 3;
+
+    return {
+      botMessage:
+        `✅ Jabatan: **${roleName}**\n\n` +
+        "📱 **Langkah 3 dari 3: Nomor WhatsApp / Telepon (Opsional)**\n\n" +
+        "Berapa nomor kontak kru ini? *(Contoh `0812345678`, atau ketik **skip**)*",
+      options: ["0812-3456-7890", "⏩ Lewati / skip", "❌ Batal"],
+      wizardType: "CREW_WIZARD",
+      stepIndex: 3,
+      totalSteps: 3,
+    };
+  }
+
+  // Langkah 3: Input Telepon & Konfirmasi
+  if (activeDraft.step === 3) {
+    activeDraft.data.telepon = isSkip ? "0812-0000-0000" : input.trim();
+    activeDraft.step = 4;
+
+    const summary =
+      "📋 **Ringkasan Personel Kru Baru:**\n" +
+      `• **Nama Lengkap:** ${activeDraft.data.nama}\n` +
+      `• **Jabatan:** ${activeDraft.data.jabatan}\n` +
+      `• **Nomor WhatsApp:** ${activeDraft.data.telepon}\n\n` +
+      "Daftarkan kru ini ke database biro sekarang?";
+
+    return {
+      botMessage: summary,
+      options: ["✅ Ya, Daftarkan Kru", "❌ Batal"],
+      wizardType: "CREW_WIZARD",
+      stepIndex: 4,
+      totalSteps: 3,
+    };
+  }
+
+  // Langkah 4: Eksekusi Pendaftaran Kru
+  if (activeDraft.step === 4) {
+    if (lower.includes("ya") || lower.includes("daftar") || lower.includes("simpan")) {
+      const entitlements = getCurrentEntitlements();
+      const existingMembers = getCrewMembers();
+      if (existingMembers.length >= entitlements.maxCrewAccounts) {
+        resetWizard();
+        return {
+          botMessage: `⚠️ Batas kuota akun kru (${entitlements.maxCrewAccounts} akun) telah tercapai. Hubungi Founder untuk menambah slot akun kru biro Anda.`,
+          wizardType: "NONE",
+        };
+      }
+
+      const newMember = await addCrewMemberDB({
+        nama: activeDraft.data.nama,
+        jabatan: activeDraft.data.jabatan,
+        telepon: activeDraft.data.telepon,
+        email: `${activeDraft.data.nama.toLowerCase().replace(/[^a-z0-9]/g, "")}@kru.biro`,
+        assignedTrip: "Standby Operasional",
+      });
+
+      resetWizard();
+      return {
+        botMessage: `🎉 **Kru ${newMember.nama} (${newMember.jabatan}) berhasil terdaftar!**\nKode Kru: \`${newMember.kodeKru}\`. Personel ini kini sudah bisa ditugaskan di jadwal trip mana pun.`,
+        isComplete: true,
+        actionType: "ADD_CREW",
+        navigationPath: "/manajemen-kru",
+        options: ["👤 Tambah Kru Lain", "📅 Buat Trip Baru", "🏠 Beranda"],
+        wizardType: "NONE",
+      };
+    }
+
+    resetWizard();
+    return {
+      botMessage: "❌ Pendaftaran kru dibatalkan.",
+      wizardType: "NONE",
+    };
+  }
+
+  return { botMessage: "Perintah tidak dikenali.", options: ["❌ Batal"] };
+}
+
+/**
+ * D. WIZARD CATAT TRANSAKSI / KAS STEP-BY-STEP
+ */
+async function handleExpenseWizardStep(input: string): Promise<DialogResponse> {
+  const lower = input.toLowerCase();
+
+  // Langkah 1: Pilih Alokasi Trip
+  if (activeDraft.step === 1) {
+    const cleanTripName = input.replace(/^📍\s*/, "").replace(/^🏢\s*/, "").trim();
+    activeDraft.data.trip_name = cleanTripName;
+    activeDraft.step = 2;
+
+    return {
+      botMessage:
+        `✅ Alokasi: **${cleanTripName}**\n\n` +
+        "💸 **Langkah 2 dari 4: Jenis Arus Kas**\n\n" +
+        "Apakah ini transaksi pengeluaran lapangan atau pemasukan?",
+      options: ["Pengeluaran (Beban / Biaya Lapangan)", "Pemasukan (DP / Pelunasan)", "❌ Batal"],
+      wizardType: "EXPENSE_WIZARD",
+      stepIndex: 2,
+      totalSteps: 4,
+    };
+  }
+
+  // Langkah 2: Jenis Transaksi
+  if (activeDraft.step === 2) {
+    activeDraft.data.jenis = lower.includes("masuk") || lower.includes("dp") ? "pemasukan" : "pengeluaran";
+    activeDraft.step = 3;
+
+    return {
+      botMessage:
+        `✅ Jenis: **${activeDraft.data.jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}**\n\n` +
+        "💵 **Langkah 3 dari 4: Nominal Transaksi**\n\n" +
+        "Berapa jumlah nominal rupiahnya? *(Contoh `650rb`, `500000`, atau `1.5jt`)*",
+      options: ["50.000", "150.000", "500.000", "650.000", "1.000.000", "❌ Batal"],
+      wizardType: "EXPENSE_WIZARD",
+      stepIndex: 3,
+      totalSteps: 4,
+    };
+  }
+
+  // Langkah 3: Input Nominal Rupiah
+  if (activeDraft.step === 3) {
+    let nominal = 0;
+    const cleanNum = input.replace(/rp\.?/gi, "").trim();
+    if (cleanNum.toLowerCase().includes("jt") || cleanNum.toLowerCase().includes("juta")) {
+      nominal = parseFloat(cleanNum.replace(/[^0-9\.]/g, "")) * 1000000;
+    } else if (cleanNum.toLowerCase().includes("rb") || cleanNum.toLowerCase().includes("ribu")) {
+      nominal = parseFloat(cleanNum.replace(/[^0-9\.]/g, "")) * 1000;
+    } else {
+      nominal = parseInt(cleanNum.replace(/\./g, "").replace(/[^0-9]/g, ""), 10) || 0;
+    }
+
+    activeDraft.data.jumlah = nominal;
+    activeDraft.step = 4;
+
+    return {
+      botMessage:
+        `✅ Nominal: **Rp ${nominal.toLocaleString("id-ID")}**\n\n` +
+        "📝 **Langkah 4 dari 4: Keterangan / Keperluan**\n\n" +
+        "Untuk keperluan apa transaksi ini? *(Contoh: Isi BBM Solar Bus 1, Bayar Tol Trans Jawa, DP Rombongan)*",
+      options: ["Isi Solar BBM Bus 1", "E-Toll Trans Jawa", "Parkir Wisata & Retribusi", "Konsumsi Kru / Driver", "❌ Batal"],
+      wizardType: "EXPENSE_WIZARD",
+      stepIndex: 4,
+      totalSteps: 4,
+    };
+  }
+
+  // Langkah 4: Keterangan & Eksekusi Simpan
+  if (activeDraft.step === 4) {
+    activeDraft.data.keterangan = input.trim();
+    const user = await getActiveUser();
+    if (!user) {
+      resetWizard();
+      return { botMessage: "Sesi telah berakhir. Harap login kembali.", wizardType: "NONE" };
+    }
+
+    const { error } = await supabase.from("keuangan").insert({
+      user_id: user.id,
+      jenis: activeDraft.data.jenis,
+      jumlah: activeDraft.data.jumlah,
+      keterangan: `${activeDraft.data.keterangan} [${activeDraft.data.trip_name}]`,
+    });
+
+    if (error) {
+      resetWizard();
+      return { botMessage: `❌ Gagal menyimpan transaksi: ${error.message}`, wizardType: "NONE" };
+    }
+
+    logCrewActivity({
+      kategori: "keuangan_lapangan",
+      aksi: `Asisten AI: Catat ${activeDraft.data.jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}`,
+      detail: `Nominal Rp ${activeDraft.data.jumlah.toLocaleString("id-ID")} (${activeDraft.data.keterangan})`,
+      status: "sukses",
+    });
+
+    resetWizard();
+    return {
+      botMessage:
+        `🎉 **Transaksi berhasil dicatat ke buku kas!**\n\n` +
+        `• Jenis: ${activeDraft.data.jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}\n` +
+        `• Nominal: **Rp ${activeDraft.data.jumlah.toLocaleString("id-ID")}**\n` +
+        `• Keterangan: ${activeDraft.data.keterangan}\n\n` +
+        `Saldo kas dan margin laba telah diperbarui secara otomatis.`,
+      isComplete: true,
+      actionType: "ADD_TRANSACTION",
+      navigationPath: "/keuangan",
+      options: ["💰 Catat Kas Lagi", "📅 Buat Trip Baru", "🏠 Beranda"],
+      wizardType: "NONE",
+    };
+  }
+
+  return { botMessage: "Perintah tidak dikenali.", options: ["❌ Batal"] };
 }

@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
@@ -31,6 +31,7 @@ const NewTrip = () => {
     tanggal: "",
     tanggal_selesai: "",
     tujuan: "",
+    jumlah_bus: "1",
     catatan: "",
     nama_kendaraan: "",
     jumlah_penumpang: "",
@@ -64,6 +65,15 @@ const NewTrip = () => {
       }
 
       const budgetNumber = budgetFormatted ? Number(budgetFormatted.replace(/\./g, "").replace(/,/g, ".")) : null;
+      const busCount = parseInt(formData.jumlah_bus, 10) || 1;
+      const vehicleDisplay = formData.nama_kendaraan
+        ? (busCount > 1 ? `${busCount} Bus • ${formData.nama_kendaraan}` : formData.nama_kendaraan)
+        : (busCount > 1 ? `${busCount} Unit Bus` : null);
+
+      const noteText = [
+        busCount > 1 ? `Jumlah Armada: ${busCount} Bus` : null,
+        formData.catatan
+      ].filter(Boolean).join(" • ");
 
       const { data, error } = await supabase
         .from("trips")
@@ -72,8 +82,8 @@ const NewTrip = () => {
           tanggal: formData.tanggal,
           tanggal_selesai: formData.tanggal_selesai || null,
           tujuan: formData.tujuan,
-          catatan: formData.catatan || null,
-          nama_kendaraan: formData.nama_kendaraan || null,
+          catatan: noteText || null,
+          nama_kendaraan: vehicleDisplay,
           jumlah_penumpang: formData.jumlah_penumpang ? parseInt(formData.jumlah_penumpang) : null,
           budget_estimasi: budgetNumber,
           nomor_polisi: formData.nomor_polisi?.toUpperCase() || null,
@@ -93,7 +103,7 @@ const NewTrip = () => {
       logCrewActivity({
         kategori: "operasional_trip",
         aksi: "Membuat Jadwal Trip Baru",
-        detail: `Menambahkan trip baru "${formData.nama_trip}" tujuan ${formData.tujuan} (${formData.tanggal})`,
+        detail: `Menambahkan trip baru "${formData.nama_trip}" (${busCount} Bus) tujuan ${formData.tujuan} (${formData.tanggal})`,
         tripName: formData.nama_trip,
       });
 
@@ -150,7 +160,7 @@ const NewTrip = () => {
                     id="nama_trip"
                     value={formData.nama_trip}
                     onChange={(e) => setFormData({ ...formData, nama_trip: e.target.value })}
-                    placeholder="Contoh: Trip Jakarta - Bandung"
+                    placeholder="Contoh: Study Tour SMPN 1 Bali, Gathering PT Maju"
                     required
                     className="mt-1 border-2"
                   />
@@ -186,20 +196,41 @@ const NewTrip = () => {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="tujuan" className="flex items-center gap-2">
-                      Tujuan <span className="text-destructive">*</span>
+                      Tujuan / Destinasi <span className="text-destructive">*</span>
                     </Label>
-
                   </div>
                   <div className="mt-1 space-y-1.5">
                     <Input
                       id="tujuan"
                       value={formData.tujuan}
                       onChange={(e) => setFormData({ ...formData, tujuan: e.target.value })}
-                      placeholder="Contoh: Bandung, Bromo, atau ketik rute kustom..."
+                      placeholder="Contoh: Bali, Yogyakarta, Bromo & Malang..."
                       required
                       className="border-2 rounded-xl"
                     />
                   </div>
+                </div>
+
+                {/* Input Bawa Berapa Bis */}
+                <div>
+                  <Label htmlFor="jumlah_bus" className="flex items-center gap-2">
+                    <Bus className="w-4 h-4 text-primary" />
+                    Jumlah Armada Bus <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="jumlah_bus"
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={formData.jumlah_bus}
+                    onChange={(e) => setFormData({ ...formData, jumlah_bus: e.target.value })}
+                    placeholder="Berapa bus yang dibawa (contoh: 1, 2, atau 3)"
+                    required
+                    className="mt-1 border-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Bawa berapa bis untuk rombongan ini (default: 1 bus)
+                  </p>
                 </div>
               </div>
             </div>
@@ -210,18 +241,18 @@ const NewTrip = () => {
                 <CollapsibleTrigger className="w-full flex items-center justify-between group">
                   <h3 className="font-semibold text-sm text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-2">
                     <Bus className="w-4 h-4" />
-                    Detail Kendaraan <span className="text-xs bg-muted px-2 py-0.5 rounded-full ml-2">Opsional</span>
+                    Detail Merek & Armada Kendaraan <span className="text-xs bg-muted px-2 py-0.5 rounded-full ml-2">Opsional</span>
                   </h3>
                   <ChevronDown className={`w-4 h-4 transition-transform ${showVehicleDetails ? 'rotate-180' : ''}`} />
                 </CollapsibleTrigger>
                 
                 <CollapsibleContent className="space-y-4 mt-4">
                   <FormField
-                    label="Nama Kendaraan/Bus"
+                    label="Merek / PO Bus"
                     value={formData.nama_kendaraan}
                     onChange={(value) => setFormData({ ...formData, nama_kendaraan: value })}
-                    placeholder="Contoh: Bus Pariwisata Eka"
-                    helpText="Simpan nama kendaraan untuk referensi cepat"
+                    placeholder="Contoh: PO Subur Jaya SHD, PO Haryanto"
+                    helpText="Merek atau nama PO bus rekanan (bisa dikosongkan jika belum ada)"
                     icon={<Bus className="w-4 h-4" />}
                   />
 
@@ -238,7 +269,7 @@ const NewTrip = () => {
                   </div>
 
                   <FormField
-                    label="Nama Kru"
+                    label="Nama Kru / Catatan Driver"
                     value={formData.nama_driver}
                     onChange={(value) => setFormData({ ...formData, nama_driver: value })}
                     type="textarea"
