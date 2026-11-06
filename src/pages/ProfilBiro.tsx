@@ -20,52 +20,39 @@ import {
   Building2,
   Crown,
   Camera,
-  Upload,
   Trash2,
-  Image as ImageIcon,
-  Loader2,
   MapPin,
   Phone,
   Mail,
   Globe,
-  CreditCard,
   ArrowLeft,
   Save,
   FileText,
   Wallet,
   Bus,
   UtensilsCrossed,
-  Compass,
   Plus,
   Users,
   CheckCircle2,
-  Settings,
-  HelpCircle,
-  ExternalLink,
-  RefreshCw,
   LifeBuoy,
-  Share2,
   QrCode,
   ShieldCheck,
   Sparkles,
   Zap,
-  Check,
   ChevronRight,
-  Sliders,
-  Lock,
-  Unlock,
   Key,
   Eye,
   EyeOff,
   LogOut,
   AlertTriangle,
-  FileCheck2,
   Landmark,
-  ShieldAlert,
-  Smartphone,
   BookOpen,
   User,
-  Info,
+  Copy,
+  ExternalLink,
+  Loader2,
+  ShieldAlert,
+  ChevronLeft,
 } from "lucide-react";
 import { CreateSupportTicketModal } from "@/components/CreateSupportTicketModal";
 import {
@@ -87,50 +74,51 @@ import {
   EntitlementState,
   isSuperAdminUser,
 } from "@/utils/licenseEntitlement";
+import { getStoredApiKey, setStoredApiKey } from "@/utils/asistenWisataAI";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAuthCache, getActiveUserSync } from "@/utils/authHelper";
 
-const GEMINI_API_KEY_STORAGE = "catatbiro_gemini_api_key";
-const getStoredApiKey = (): string => {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(GEMINI_API_KEY_STORAGE) || "";
-};
-const setStoredApiKey = (key: string): void => {
-  if (typeof window === "undefined") return;
-  if (!key) {
-    localStorage.removeItem(GEMINI_API_KEY_STORAGE);
-  } else {
-    localStorage.setItem(GEMINI_API_KEY_STORAGE, key);
-  }
-};
+type SettingsSection =
+  | "kop"
+  | "identitas"
+  | "bank"
+  | "bus"
+  | "resto"
+  | "kategori"
+  | "lisensi"
+  | "ai"
+  | "bantuan";
 
 export const ProfilBiro: React.FC = () => {
   const navigate = useNavigate();
 
-  // State Profil & CMS
+  // State Profil & Data
   const [profile, setProfile] = useState<BiroProfile>(getLocalBiroProfile);
   const [cmsData, setCmsData] = useState<BiroCmsData>(getBiroCmsData);
   const [entitlements, setEntitlements] = useState<EntitlementState>(getCurrentEntitlements);
   const isSuper = isSuperAdminUser();
   const activeUser = getActiveUserSync();
 
-  // Modal-modal detail setting (seperti submenu di iOS / Instagram)
-  const [activeModal, setActiveModal] = useState<
-    "kop" | "identitas" | "bank" | "bus" | "resto" | "kategori" | "lisensi" | "ai" | "qr" | "ticket" | null
-  >(null);
+  // Navigation: on desktop default to "kop", on mobile default to null (show menu list)
+  const [activeSection, setActiveSection] = useState<SettingsSection>("kop");
+  const [mobileViewActive, setMobileViewActive] = useState<boolean>(false);
+
+  // Modals
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
 
   // Loading States
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form State Cepat
+  // Forms
   const [newBus, setNewBus] = useState({ namaPO: "", kontakPerson: "", telepon: "", alamatGarasi: "", catatanArmada: "" });
   const [newResto, setNewResto] = useState({ namaResto: "", lokasiRute: "", kontakPerson: "", telepon: "", hargaPerPax: 30000, menuFavorit: "" });
   const [newKatNama, setNewKatNama] = useState("");
   const [newKatJenis, setNewKatJenis] = useState<"pemasukan" | "pengeluaran">("pengeluaran");
 
-  // State Keamanan API Key AI
+  // Gemini AI Key Security
   const [apiKey, setApiKey] = useState(getStoredApiKey() || "");
   const [isEditingApiKey, setIsEditingApiKey] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
@@ -185,8 +173,7 @@ export const ProfilBiro: React.FC = () => {
       setSaving(true);
       await saveBiroProfile(profile);
       saveBiroCmsData(cmsData);
-      toast.success("Pengaturan profil berhasil disimpan!");
-      setActiveModal(null);
+      toast.success("Pengaturan berhasil disimpan!");
     } catch (err: any) {
       toast.error("Gagal menyimpan profil: " + err.message);
     } finally {
@@ -210,7 +197,7 @@ export const ProfilBiro: React.FC = () => {
     setCmsData(updated);
     saveBiroCmsData(updated);
     setNewBus({ namaPO: "", kontakPerson: "", telepon: "", alamatGarasi: "", catatanArmada: "" });
-    toast.success(`PO Bus "${item.namaPO}" berhasil disimpan!`);
+    toast.success(`PO Bus "${item.namaPO}" berhasil ditambahkan!`);
   };
 
   // Tambah Resto
@@ -230,7 +217,7 @@ export const ProfilBiro: React.FC = () => {
     setCmsData(updated);
     saveBiroCmsData(updated);
     setNewResto({ namaResto: "", lokasiRute: "", kontakPerson: "", telepon: "", hargaPerPax: 30000, menuFavorit: "" });
-    toast.success(`Rumah makan "${item.namaResto}" berhasil disimpan!`);
+    toast.success(`Rumah makan "${item.namaResto}" berhasil ditambahkan!`);
   };
 
   // Tambah Kategori Kas
@@ -248,7 +235,7 @@ export const ProfilBiro: React.FC = () => {
     setCmsData(updated);
     saveBiroCmsData(updated);
     setNewKatNama("");
-    toast.success(`Kategori "${item.nama}" berhasil disimpan!`);
+    toast.success(`Pos anggaran "${item.nama}" berhasil ditambahkan!`);
   };
 
   // Hapus Bus
@@ -272,12 +259,12 @@ export const ProfilBiro: React.FC = () => {
     setStoredApiKey(tempApiKey.trim());
     setApiKey(tempApiKey.trim());
     setIsEditingApiKey(false);
-    toast.success("Kunci Gemini API berhasil diperbarui!");
+    toast.success("Kunci Google Gemini API berhasil diperbarui!");
   };
 
   // Logout
   const handleLogout = async () => {
-    if (confirm("Yakin ingin keluar dari akun biro ini?")) {
+    if (confirm("Yakin ingin keluar dari sesi akun biro ini?")) {
       try {
         await supabase.auth.signOut();
       } finally {
@@ -288,994 +275,1427 @@ export const ProfilBiro: React.FC = () => {
     }
   };
 
+  const selectSection = (sec: SettingsSection) => {
+    setActiveSection(sec);
+    setMobileViewActive(true);
+  };
+
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-24 lg:pl-64">
-        {/* HEADER TOP BAR */}
-        <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-24 lg:pb-12 lg:pl-64">
+        {/* TOP BAR / HEADER */}
+        <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => navigate("/dashboard")}
-                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
+              {mobileViewActive ? (
+                <button
+                  type="button"
+                  onClick={() => setMobileViewActive(false)}
+                  className="lg:hidden p-1.5 -ml-1 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 text-sm font-semibold"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  <span>Menu</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard")}
+                  className="p-1.5 -ml-1 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  title="Kembali ke Dashboard"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+              )}
               <div>
-                <h1 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
-                  Pengaturan & Profil Biro
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                  Pengaturan Biro
                 </h1>
-                <p className="text-[11px] text-slate-500 font-mono">
-                  {profile.nama_biro}
+                <p className="text-xs text-slate-500 hidden sm:block">
+                  Kelola identitas resmi, kop surat, rekening, katalog mitra, dan lisensi akun
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveModal("qr")}
-              className="p-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="QR Profil"
-            >
-              <QrCode className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Tampilkan Kode QR Profil"
+              >
+                <QrCode className="w-5 h-5" />
+              </button>
+              <Button
+                size="sm"
+                onClick={() => handleSaveProfile()}
+                disabled={saving}
+                className="h-8 sm:h-9 px-3.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white text-xs font-semibold rounded-xl"
+              >
+                {saving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                Simpan
+              </Button>
+            </div>
           </div>
         </header>
 
-        <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-          {/* 1. KOTAK PROFIL UTAMA (Gaya Akun Apple ID / Instagram Header Card) */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="relative flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-amber-500 p-0.5 shadow-sm">
-                  <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 p-1 flex items-center justify-center overflow-hidden">
-                    {profile.logo_url ? (
-                      <img src={profile.logo_url} alt="Logo" className="w-full h-full object-contain rounded-xl" />
+        {/* MAIN WORKSPACE: 2-COLUMN MASTER-DETAIL ON DESKTOP */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+            
+            {/* ================================================================= */}
+            {/* LEFT COLUMN: IDENTITAS KANTOR & MENU NAVIGASI PENGATURAN           */}
+            {/* (Visible on desktop always; on mobile only when mobileViewActive=false) */}
+            {/* ================================================================= */}
+            <div
+              className={`lg:col-span-4 xl:col-span-4 space-y-5 ${
+                mobileViewActive ? "hidden lg:block" : "block"
+              }`}
+            >
+              {/* KARTU PROFIL BIRO RESMI */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+                <div className="flex items-start gap-4">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 flex items-center justify-center overflow-hidden">
+                      {profile.logo_url ? (
+                        <img
+                          src={profile.logo_url}
+                          alt="Logo Biro"
+                          className="w-full h-full object-contain rounded-xl"
+                        />
+                      ) : (
+                        <Building2 className="w-8 h-8 text-slate-400" />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingLogo}
+                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center shadow-xs transition-colors"
+                      title="Ganti Logo Biro"
+                    >
+                      {uploadingLogo ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Camera className="w-3 h-3" />
+                      )}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-white truncate">
+                        {profile.nama_biro}
+                      </h2>
+                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">
+                        ✓
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                      {profile.slogan || "Biro Perjalanan Wisata & Tour Organizer"}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] font-medium tracking-wide uppercase px-2 py-0.5 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        Paket {entitlements.tier}
+                      </Badge>
+                      <span className="text-[11px] text-slate-400 font-mono truncate">
+                        {activeUser?.email || profile.email}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-2 gap-2 text-[11px] text-slate-500">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    <span className="truncate">{profile.alamat ? profile.alamat.split(",")[0] : "Alamat belum diatur"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    <span className="truncate">{profile.telepon || "No telepon -"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* GRUP MENU PENGATURAN 1: DOKUMEN & IDENTITAS */}
+              <div className="space-y-1.5">
+                <div className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Dokumen & Legalitas
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => selectSection("kop")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "kop" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Kop Surat & Cetak PDF</div>
+                        <div className="text-[11px] text-slate-400 truncate">Pratinjau A4 dokumen resmi</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => selectSection("identitas")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "identitas" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Profil & Kontak Kantor</div>
+                        <div className="text-[11px] text-slate-400 truncate">Alamat, penanggung jawab, kontak</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => selectSection("bank")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "bank" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                        <Landmark className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Rekening Pembayaran</div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {profile.nama_bank || "Bank Mandiri / BCA"}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+                </div>
+              </div>
+
+              {/* GRUP MENU PENGATURAN 2: KATALOG & OPERASIONAL */}
+              <div className="space-y-1.5">
+                <div className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Operasional & Rekanan
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => selectSection("bus")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "bus" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-950/60 dark:text-cyan-400 flex items-center justify-center flex-shrink-0">
+                        <Bus className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Rekanan PO Bus</div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {cmsData.rekananBus.length} PO Bus terdaftar
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => selectSection("resto")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "resto" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                        <UtensilsCrossed className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Rekanan Rumah Makan</div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {cmsData.rekananResto.length} Resto rute terdaftar
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => selectSection("kategori")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "kategori" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                        <Wallet className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Pos Anggaran Kas</div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {cmsData.kategoriKeuangan.length} kategori pemasukan/pengeluaran
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/manajemen-kru")}
+                    className="w-full text-left p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Personel Kru & Hak Akses</div>
+                        <div className="text-[11px] text-slate-400 truncate">Pembatasan menu untuk TL & Driver</div>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+                </div>
+              </div>
+
+              {/* GRUP MENU PENGATURAN 3: SISTEM & BANTUAN */}
+              <div className="space-y-1.5">
+                <div className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Sistem & Langganan
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => selectSection("lisensi")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "lisensi" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                        <Crown className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Paket Lisensi & Kuota</div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          Tier {entitlements.tier.toUpperCase()} • {entitlements.canUseDesktopMode ? "Desktop Aktif" : "Mobile Only"}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => selectSection("ai")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "ai" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Integrasi AI (Google Gemini)</div>
+                        <div className="text-[11px] text-slate-400 truncate">Konfigurasi API Key terlindungi</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/learn")}
+                    className="w-full text-left p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 flex items-center justify-center flex-shrink-0">
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Panduan SOP Biro Wisata</div>
+                        <div className="text-[11px] text-slate-400 truncate">Konversi itinerary Word, denah bus & kas</div>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => selectSection("bantuan")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "bantuan" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                        <LifeBuoy className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold">Pusat Bantuan & Tiket</div>
+                        <div className="text-[11px] text-slate-400 truncate">Lapor kendala ke Super Admin</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+                </div>
+              </div>
+
+              {/* LOGOUT BUTTON */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center gap-2 text-xs font-semibold transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Keluar dari Sesi Biro
+                </button>
+              </div>
+            </div>
+
+            {/* ================================================================= */}
+            {/* RIGHT COLUMN: WORKSPACE AKTIF SESUAI KATEGORI                     */}
+            {/* (Visible on desktop always; on mobile only when mobileViewActive=true) */}
+            {/* ================================================================= */}
+            <div
+              className={`lg:col-span-8 xl:col-span-8 space-y-6 ${
+                mobileViewActive ? "block" : "hidden lg:block"
+              }`}
+            >
+              {/* ------------------------------------------------------------- */}
+              {/* 1. SECTION: KOP SURAT RESMI & LIVE A4 PREVIEW                 */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "kop" && (
+                <div className="space-y-6">
+                  {/* Penjelasan Ringkas & Header Workspace */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                          Kop Surat Dokumen & Cetak PDF Resmi
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Header kop surat ini otomatis dicetak di lembar kwitansi, penawaran wisata, dan invoice resmi biro Anda.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveProfile()}
+                        disabled={saving}
+                        className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-8 px-4 rounded-xl flex-shrink-0"
+                      >
+                        <Save className="w-3.5 h-3.5 mr-1.5" />
+                        Simpan Kop Surat
+                      </Button>
+                    </div>
+
+                    {/* LIVE REALISTIC A4 LETTERHEAD PREVIEW */}
+                    <div className="mt-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Pratinjau Kertas A4 (Kop Surat Resmi)
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          Ukuran Standar 210 x 297 mm
+                        </span>
+                      </div>
+
+                      {/* SIMULASI LEMBAR KERTAS A4 PUTIH */}
+                      <div className="bg-white text-slate-900 border border-slate-300 rounded-xl p-6 sm:p-8 shadow-sm">
+                        {/* KOP HEADER STANDAR DENGAN GARIS GANDA KHAS INDONESIA */}
+                        <div className="flex items-center gap-4 sm:gap-6 pb-4">
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-slate-50 border border-slate-200 p-1 flex items-center justify-center flex-shrink-0">
+                            {profile.logo_url ? (
+                              <img
+                                src={profile.logo_url}
+                                alt="Logo"
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <Building2 className="w-10 h-10 text-slate-300" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 text-center sm:text-left">
+                            <h2 className="text-sm sm:text-base font-black tracking-wide uppercase text-slate-900">
+                              {profile.nama_biro || "NAMA BIRO WISATA ANDA"}
+                            </h2>
+                            <p className="text-[11px] sm:text-xs font-bold text-slate-700 tracking-wide mt-0.5">
+                              {profile.slogan || "BIRO PERJALANAN WISATA & SEWA BUS PARIWISATA"}
+                            </p>
+                            <p className="text-[10px] text-slate-600 mt-1">
+                              {profile.alamat || "Jl. Alamat Kantor Resmi, Kota / Kabupaten"}
+                            </p>
+                            <div className="text-[10px] text-slate-600 font-mono flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 justify-center sm:justify-start">
+                              <span>Telp/WA: {profile.telepon || "0812-xxxx-xxxx"}</span>
+                              {profile.email && <span>• Email: {profile.email}</span>}
+                              {profile.website && <span>• Web: {profile.website}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* GARIS GANDA TEBAL-TIPIS KHAS KOP SURAT INDONESIA */}
+                        <div className="space-y-0.5 my-2">
+                          <div className="h-[2px] bg-slate-900 w-full" />
+                          <div className="h-[0.5px] bg-slate-900 w-full" />
+                        </div>
+
+                        {/* CONTOH ISI DOKUMEN KWITANSI / INVOICE */}
+                        <div className="pt-4 pb-2 space-y-3 opacity-75">
+                          <div className="flex justify-between items-center text-[10px] font-mono text-slate-500">
+                            <span>No: INV/TRIP/{new Date().getFullYear()}/0082</span>
+                            <span>Tanggal: {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+                          </div>
+                          <div className="text-center font-bold text-xs uppercase tracking-wider text-slate-800 my-2">
+                            Kwitansi / Tanda Terima Pembayaran Wisata
+                          </div>
+                          <div className="bg-slate-50 border border-slate-200 rounded p-3 text-[11px] space-y-1.5 font-sans">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Telah Diterima Dari:</span>
+                              <span className="font-semibold text-slate-800">Rombongan Studi Tour SMP / Klien</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Untuk Pembayaran:</span>
+                              <span className="font-semibold text-slate-800">Paket Wisata Bali 4D3N (Armada 2 Bus Jetbus 5)</span>
+                            </div>
+                            <div className="flex justify-between border-t border-slate-200 pt-1.5">
+                              <span className="text-slate-500">Jumlah Pembayaran:</span>
+                              <span className="font-bold text-slate-900">Rp 45.000.000 (Lunas)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* FOOTER INFORMASI REKENING RESMI */}
+                        <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] text-slate-500">
+                          <div>
+                            Pembayaran Sah Melalui Rekening Resmi:
+                            <span className="font-bold text-slate-800 ml-1">
+                              {profile.nama_bank || "Bank Mandiri / BCA"} No. {profile.nomor_rekening || "136-00-xxxx-x"}
+                            </span>
+                            <span className="ml-1">a/n {profile.atas_nama_rekening || profile.nama_biro}</span>
+                          </div>
+                          <div className="text-[9px] font-semibold text-slate-400">
+                            {entitlements.canExportCleanPdf ? "Dokumen Resmi Terverifikasi" : "Dicatat via CatatBiro Wisata"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* FORM EDIT DATA KOP SURAT */}
+                    <form onSubmit={handleSaveProfile} className="mt-8 space-y-4">
+                      <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+                        Formulir Keterangan Kop Surat
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Nama Resmi Perusahaan / Biro di Kop *</Label>
+                          <Input
+                            value={profile.nama_biro}
+                            onChange={(e) => setProfile({ ...profile, nama_biro: e.target.value })}
+                            placeholder="PT Biro Wisata Nusantara"
+                            className="text-xs"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Slogan / Keterangan Usaha</Label>
+                          <Input
+                            value={profile.slogan}
+                            onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
+                            placeholder="Biro Perjalanan Wisata & Sewa Bus Pariwisata"
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Alamat Kantor Lengkap</Label>
+                        <Input
+                          value={profile.alamat || ""}
+                          onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
+                          placeholder="Jl. Pemuda No. 45, Kompleks Ruko Sentra Niaga, Semarang"
+                          className="text-xs"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Telepon / WhatsApp Layanan</Label>
+                          <Input
+                            value={profile.telepon || ""}
+                            onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
+                            placeholder="0812-2578-9000"
+                            className="text-xs font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Email Resmi Kantor</Label>
+                          <Input
+                            value={profile.email || ""}
+                            onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                            placeholder="operasional@birowisata.id"
+                            className="text-xs font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Website Biro</Label>
+                          <Input
+                            value={profile.website || ""}
+                            onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+                            placeholder="www.birowisata.id"
+                            className="text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <Button
+                          type="submit"
+                          disabled={saving}
+                          className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-9 px-5 rounded-xl"
+                        >
+                          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                          Simpan Perubahan Kop Surat
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------- */}
+              {/* 2. SECTION: PROFIL & KONTAK KANTOR                            */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "identitas" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-indigo-600" />
+                        Identitas & Legalitas Biro Wisata
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Informasi identitas kantor yang tampil di portal publik dan dokumen resmi operasional.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleSaveProfile()}
+                      disabled={saving}
+                      className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-8 px-4 rounded-xl flex-shrink-0"
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      Simpan Profil
+                    </Button>
+                  </div>
+
+                  <form onSubmit={handleSaveProfile} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nama Biro Wisata *</Label>
+                        <Input
+                          value={profile.nama_biro}
+                          onChange={(e) => setProfile({ ...profile, nama_biro: e.target.value })}
+                          className="text-xs"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Penanggung Jawab / Pimpinan</Label>
+                        <Input
+                          value={profile.pimpinan || ""}
+                          onChange={(e) => setProfile({ ...profile, pimpinan: e.target.value })}
+                          placeholder="H. Fulan, S.E."
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Slogan / Tagline Usaha</Label>
+                      <Input
+                        value={profile.slogan}
+                        onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
+                        className="text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Alamat Kantor Lengkap</Label>
+                      <Textarea
+                        value={profile.alamat || ""}
+                        onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
+                        rows={3}
+                        className="text-xs"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nomor WhatsApp CS</Label>
+                        <Input
+                          value={profile.telepon || ""}
+                          onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
+                          className="text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Email Kantor</Label>
+                        <Input
+                          value={profile.email || ""}
+                          onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                          className="text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Website Resmi</Label>
+                        <Input
+                          value={profile.website || ""}
+                          onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+                          className="text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <Button
+                        type="submit"
+                        disabled={saving}
+                        className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-9 px-5 rounded-xl"
+                      >
+                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                        Simpan Identitas Biro
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------- */}
+              {/* 3. SECTION: REKENING BANK PEMBAYARAN TAMU                     */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "bank" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Landmark className="w-5 h-5 text-emerald-600" />
+                        Rekening Bank Pembayaran Tamu
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Rekening ini dicantumkan pada surat penawaran, invoice, kwitansi, dan konfirmasi transfer pembayaran paket wisata.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleSaveProfile()}
+                      disabled={saving}
+                      className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-8 px-4 rounded-xl flex-shrink-0"
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      Simpan Rekening
+                    </Button>
+                  </div>
+
+                  {/* KARTU BANK PREVIEW */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white shadow-sm space-y-4 max-w-md">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-100">
+                        {profile.nama_bank || "BANK MANDIRI / BCA"}
+                      </span>
+                      <Landmark className="w-6 h-6 text-emerald-200" />
+                    </div>
+                    <div className="text-lg sm:text-xl font-mono font-bold tracking-wider pt-2">
+                      {profile.nomor_rekening || "136-00-1234567-8"}
+                    </div>
+                    <div className="pt-2 flex justify-between items-end text-xs">
+                      <div>
+                        <div className="text-[10px] text-emerald-200 uppercase">Atas Nama Rekening</div>
+                        <div className="font-semibold">{profile.atas_nama_rekening || profile.nama_biro}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(profile.nomor_rekening || "");
+                          toast.success("Nomor rekening disalin ke clipboard!");
+                        }}
+                        className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                        title="Salin Nomor Rekening"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* FORM EDIT REKENING */}
+                  <form onSubmit={handleSaveProfile} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nama Bank</Label>
+                        <Input
+                          value={profile.nama_bank || ""}
+                          onChange={(e) => setProfile({ ...profile, nama_bank: e.target.value })}
+                          placeholder="Bank Mandiri / BCA / BNI / BRI / BSI"
+                          className="text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nomor Rekening</Label>
+                        <Input
+                          value={profile.nomor_rekening || ""}
+                          onChange={(e) => setProfile({ ...profile, nomor_rekening: e.target.value })}
+                          placeholder="136-00-1234567-8"
+                          className="text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Atas Nama Rekening</Label>
+                        <Input
+                          value={profile.atas_nama_rekening || ""}
+                          onChange={(e) => setProfile({ ...profile, atas_nama_rekening: e.target.value })}
+                          placeholder="PT Catat Biro Wisata"
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <Button
+                        type="submit"
+                        disabled={saving}
+                        className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-9 px-5 rounded-xl"
+                      >
+                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                        Simpan Rekening
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------- */}
+              {/* 4. SECTION: REKANAN PO BUS                                    */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "bus" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Bus className="w-5 h-5 text-cyan-600" />
+                      Katalog Rekanan PO Bus Pariwisata
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Daftar vendor armada bus langganan untuk memudahkan penugasan armada dan komunikasi kru lapangan.
+                    </p>
+                  </div>
+
+                  {/* FORM TAMBAH PO BUS */}
+                  <form onSubmit={handleAddBus} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                      + Tambah Rekanan PO Bus Baru
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <Input
+                        required
+                        placeholder="Nama PO (Contoh: PO Subur Jaya)"
+                        value={newBus.namaPO}
+                        onChange={(e) => setNewBus({ ...newBus, namaPO: e.target.value })}
+                        className="text-xs"
+                      />
+                      <Input
+                        placeholder="Kontak Person (CP / Marketing)"
+                        value={newBus.kontakPerson}
+                        onChange={(e) => setNewBus({ ...newBus, kontakPerson: e.target.value })}
+                        className="text-xs"
+                      />
+                      <Input
+                        placeholder="No. Telepon / WhatsApp"
+                        value={newBus.telepon}
+                        onChange={(e) => setNewBus({ ...newBus, telepon: e.target.value })}
+                        className="text-xs font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        placeholder="Alamat Garasi / Pool Bus"
+                        value={newBus.alamatGarasi}
+                        onChange={(e) => setNewBus({ ...newBus, alamatGarasi: e.target.value })}
+                        className="text-xs"
+                      />
+                      <Input
+                        placeholder="Catatan Armada (Contoh: Jetbus 5 50-Seat, HDD, SHD)"
+                        value={newBus.catatanArmada}
+                        onChange={(e) => setNewBus({ ...newBus, catatanArmada: e.target.value })}
+                        className="text-xs"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button type="submit" size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs h-8 px-4 rounded-lg">
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Simpan ke Rekanan
+                      </Button>
+                    </div>
+                  </form>
+
+                  {/* LIST PO BUS */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-slate-500">
+                      Daftar Rekanan Terdaftar ({cmsData.rekananBus.length})
+                    </div>
+                    {cmsData.rekananBus.length === 0 ? (
+                      <div className="text-center py-8 text-xs text-slate-400">
+                        Belum ada data PO Bus. Tambahkan rekanan bus langganan Anda di atas.
+                      </div>
                     ) : (
-                      <Building2 className="w-8 h-8 text-slate-400" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {cmsData.rekananBus.map((bus) => (
+                          <div
+                            key={bus.id}
+                            className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-start gap-3"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                {bus.namaPO}
+                              </div>
+                              <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                                <span>{bus.kontakPerson || "Marketing"}</span>
+                                <span>•</span>
+                                <span className="font-mono text-cyan-600 dark:text-cyan-400">{bus.telepon || "-"}</span>
+                              </div>
+                              {bus.catatanArmada && (
+                                <div className="text-[10px] text-slate-400 truncate">
+                                  {bus.catatanArmada}
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteBus(bus.id)}
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-7 w-7 p-0 flex-shrink-0"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingLogo}
-                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md hover:bg-indigo-700"
-                  title="Ganti Logo"
-                >
-                  {uploadingLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                />
-              </div>
+              )}
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white truncate">
-                    {profile.nama_biro}
-                  </h2>
-                  <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-bold">
-                    ✓
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 truncate mt-0.5">
-                  {profile.slogan || "Biro Perjalanan Wisata & Tour Organizer"}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <Badge
-                    className={`text-[10px] font-mono uppercase px-2 py-0.5 ${
-                      entitlements.tier === "enterprise"
-                        ? "bg-purple-50 text-purple-700 border-purple-200"
-                        : entitlements.tier === "pro"
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}
-                  >
-                    {entitlements.tier} Tier
-                  </Badge>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    {activeUser?.email || profile.email}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setActiveModal("identitas")}
-              className="text-xs h-8 px-3 rounded-xl border-slate-300 dark:border-slate-700 font-semibold flex-shrink-0"
-            >
-              Ubah
-            </Button>
-          </div>
-
-          {/* 2. KOTAK META ACCOUNTS CENTER (Pusat Akun & Lisensi SaaS) */}
-          <div
-            onClick={() => setActiveModal("lisensi")}
-            className="p-4 rounded-3xl bg-gradient-to-r from-indigo-900 via-slate-900 to-slate-950 text-white border border-indigo-800/40 shadow-sm cursor-pointer hover:border-indigo-700 transition-all flex items-center justify-between gap-3"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
-                <Crown className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
-                    Pusat Akun & Lisensi
-                  </span>
-                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/40 text-[9px] font-mono py-0">
-                    SINKRON LIVE
-                  </Badge>
-                </div>
-                <div className="text-xs text-slate-300 font-medium truncate mt-0.5">
-                  Paket {entitlements.tier.toUpperCase()} • {entitlements.canUseDesktopMode ? "Desktop Mode Aktif" : "Mobile Only"} • {entitlements.maxActiveTrips >= 9000 ? "Trip Unlimited" : `${entitlements.maxActiveTrips} Kuota Trip`}
-                </div>
-              </div>
-            </div>
-
-            <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" />
-          </div>
-
-          {/* 3. GROUP 1: IDENTITAS & DOKUMEN RESMI (Kotak Pengaturan Memanjang ke Bawah) */}
-          <div className="space-y-2">
-            <div className="px-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Identitas & Dokumen Resmi
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
-              {/* Row Kop Surat */}
-              <div
-                onClick={() => setActiveModal("kop")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-4 h-4" />
+              {/* ------------------------------------------------------------- */}
+              {/* 5. SECTION: REKANAN RUMAH MAKAN                               */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "resto" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <UtensilsCrossed className="w-5 h-5 text-amber-600" />
+                      Katalog Rekanan Rumah Makan & Restoran
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Katalog rumah makan rute perjalanan wisata untuk reservasi makan rombongan dan pencatatan kas per pax.
+                    </p>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Kop Surat Resmi & Cetak PDF
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Pratinjau lembar A4, kop surat invoice, kwitansi & laporan
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-200">
-                    A4 Preview
-                  </Badge>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </div>
-              </div>
 
-              {/* Row Identitas & Kontak */}
-              <div
-                onClick={() => setActiveModal("identitas")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Profil & Kontak Kantor
+                  {/* FORM TAMBAH RESTO */}
+                  <form onSubmit={handleAddResto} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                      + Tambah Rumah Makan Baru
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      Alamat fisik, nomor WhatsApp CS, email & website
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <Input
+                        required
+                        placeholder="Nama Resto (Contoh: RM Grafika Cikole)"
+                        value={newResto.namaResto}
+                        onChange={(e) => setNewResto({ ...newResto, namaResto: e.target.value })}
+                        className="text-xs"
+                      />
+                      <Input
+                        placeholder="Lokasi / Rute (Contoh: Lembang, Bandung)"
+                        value={newResto.lokasiRute}
+                        onChange={(e) => setNewResto({ ...newResto, lokasiRute: e.target.value })}
+                        className="text-xs"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Estimasi Harga/Pax (Rp)"
+                        value={newResto.hargaPerPax}
+                        onChange={(e) => setNewResto({ ...newResto, hargaPerPax: Number(e.target.value) })}
+                        className="text-xs font-mono"
+                      />
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        placeholder="Kontak Person (CP Reservasi)"
+                        value={newResto.kontakPerson}
+                        onChange={(e) => setNewResto({ ...newResto, kontakPerson: e.target.value })}
+                        className="text-xs"
+                      />
+                      <Input
+                        placeholder="No. Telepon / WA Reservasi"
+                        value={newResto.telepon}
+                        onChange={(e) => setNewResto({ ...newResto, telepon: e.target.value })}
+                        className="text-xs font-mono"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button type="submit" size="sm" className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 px-4 rounded-lg">
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Simpan ke Rekanan
+                      </Button>
+                    </div>
+                  </form>
+
+                  {/* LIST RESTO */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-slate-500">
+                      Daftar Rumah Makan Terdaftar ({cmsData.rekananResto.length})
+                    </div>
+                    {cmsData.rekananResto.length === 0 ? (
+                      <div className="text-center py-8 text-xs text-slate-400">
+                        Belum ada data resto rekanan. Tambahkan rute resto favorit Anda di atas.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {cmsData.rekananResto.map((resto) => (
+                          <div
+                            key={resto.id}
+                            className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-start gap-3"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                {resto.namaResto}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                {resto.lokasiRute || "Jalur Utama"} •{" "}
+                                <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold">
+                                  Rp {resto.hargaPerPax.toLocaleString("id-ID")}/pax
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                CP: {resto.kontakPerson || "-"} ({resto.telepon || "-"})
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteResto(resto.id)}
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-7 w-7 p-0 flex-shrink-0"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
+              )}
 
-              {/* Row Rekening Bank */}
-              <div
-                onClick={() => setActiveModal("bank")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-                    <Landmark className="w-4 h-4" />
+              {/* ------------------------------------------------------------- */}
+              {/* 6. SECTION: POS ANGGARAN KAS                                  */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "kategori" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Wallet className="w-5 h-5 text-emerald-600" />
+                      Kategori Pos Kas Laba & Biaya Operasional
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Kustomisasi pos anggaran yang muncul saat kru atau admin mencatat pengeluaran trip (solar, tol, parkir, konsumsi, tiket masuk).
+                    </p>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Rekening Pembayaran Tamu
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      {profile.nama_bank || "BCA / Mandiri"} • No. {profile.nomor_rekening || "Belum diatur"}
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
-            </div>
-          </div>
 
-          {/* 4. GROUP 2: REKANAN & KATALOG OPERASIONAL (Kotak Menu Kedua) */}
-          <div className="space-y-2">
-            <div className="px-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Katalog Rekanan & Keuangan
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
-              {/* Row PO Bus */}
-              <div
-                onClick={() => setActiveModal("bus")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center flex-shrink-0">
-                    <Bus className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Katalog Rekanan PO Bus
+                  {/* FORM TAMBAH POS */}
+                  <form onSubmit={handleAddKategori} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                      + Tambah Pos Anggaran Baru
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      {cmsData.rekananBus.length} PO Bus Pariwisata terdaftar
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Input
+                        required
+                        placeholder="Nama Pos (Contoh: BBM Bus Solar, Tol Trans Jawa, Kas TL)"
+                        value={newKatNama}
+                        onChange={(e) => setNewKatNama(e.target.value)}
+                        className="text-xs flex-1"
+                      />
+                      <select
+                        value={newKatJenis}
+                        onChange={(e: any) => setNewKatJenis(e.target.value)}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200"
+                      >
+                        <option value="pengeluaran">Pengeluaran Operasional</option>
+                        <option value="pemasukan">Pemasukan / Uang Muka</option>
+                      </select>
+                      <Button type="submit" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9 px-4 rounded-lg flex-shrink-0">
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Tambah Pos
+                      </Button>
+                    </div>
+                  </form>
+
+                  {/* LIST KATEGORI */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-slate-500">
+                      Daftar Pos Anggaran Aktif ({cmsData.kategoriKeuangan.length})
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {cmsData.kategoriKeuangan.map((kat) => (
+                        <div
+                          key={kat.id}
+                          className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center gap-3"
+                        >
+                          <span className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                            {kat.nama}
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] font-medium uppercase ${
+                              kat.jenis === "pemasukan"
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+                                : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
+                            }`}
+                          >
+                            {kat.jenis}
+                          </Badge>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
+              )}
 
-              {/* Row Resto */}
-              <div
-                onClick={() => setActiveModal("resto")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
-                    <UtensilsCrossed className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Katalog Rumah Makan & Resto
+              {/* ------------------------------------------------------------- */}
+              {/* 7. SECTION: STATUS PAKET LISENSI & KUOTA                      */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "lisensi" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Crown className="w-5 h-5 text-amber-500" />
+                        Status Lisensi & Hak Akses Akun
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Informasi tingkat langganan aktif, kuota trip, kapasitas kru, dan fitur yang disetujui Super Admin.
+                      </p>
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      {cmsData.rekananResto.length} Rumah Makan rute favorit
-                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate("/boost")}
+                      className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 px-4 rounded-xl flex-shrink-0"
+                    >
+                      <Zap className="w-3.5 h-3.5 mr-1.5" />
+                      Upgrade Paket di /boost
+                    </Button>
                   </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
 
-              {/* Row Pos Kas Keuangan */}
-              <div
-                onClick={() => setActiveModal("kategori")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-                    <Wallet className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Kategori Kas Laba & Pengeluaran
+                  {/* KARTU STATUS LISENSI */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                      <div className="text-[11px] font-semibold text-slate-500 uppercase">Tingkat Paket Aktif</div>
+                      <div className="text-lg font-bold text-slate-900 dark:text-white uppercase font-mono">
+                        {entitlements.tier}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {entitlements.tier === "enterprise"
+                          ? "Lisensi Enterprise Dedicated dengan domain & VPS"
+                          : entitlements.tier === "pro"
+                          ? "Lisensi Pro Sekali Bayar dengan akses Desktop"
+                          : "Lisensi Starter Mobile PWA"}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      Pos anggaran solar, tol, makan, tiket, dan uang muka
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
 
-              {/* Row Manajemen Kru */}
-              <div
-                onClick={() => navigate("/manajemen-kru")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Manajemen Personel Kru & Sesi (RBAC)
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                      <div className="text-[11px] font-semibold text-slate-500 uppercase">Akses Mode Desktop PC</div>
+                      <div className="text-lg font-bold">
+                        {entitlements.canUseDesktopMode ? (
+                          <span className="text-emerald-600">✓ Terbuka (Aktif)</span>
+                        ) : (
+                          <span className="text-slate-500">Terkunci (Mobile Only)</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {entitlements.canUseDesktopMode
+                          ? "Anda bebas membuka aplikasi di laptop, PC, dan monitor besar"
+                          : "Upgrade ke Pro/Enterprise untuk membuka antarmuka Desktop PC"}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      Batasan akses kas untuk Tour Leader & driver
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px] text-purple-600 border-purple-200">
-                    Hak Akses
-                  </Badge>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* 5. GROUP 3: KECERDASAN BUATAN & SISTEM */}
-          <div className="space-y-2">
-            <div className="px-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Kecerdasan Buatan & Bantuan
-            </div>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                      <div className="text-[11px] font-semibold text-slate-500 uppercase">Kapasitas Kuota Trip</div>
+                      <div className="text-lg font-bold font-mono text-cyan-600">
+                        {entitlements.maxActiveTrips >= 9000 ? "∞ Tidak Terbatas" : `${entitlements.maxActiveTrips} Jadwal Aktif`}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Batas jumlah trip berjalan secara simultan
+                      </div>
+                    </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
-              {/* Row AI Gemini */}
-              <div
-                onClick={() => setActiveModal("ai")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Kunci Asisten Wisata AI (Google Gemini)
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Konfigurasi API Key dengan konfirmasi ganda
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                      <div className="text-[11px] font-semibold text-slate-500 uppercase">Kapasitas Personel Kru</div>
+                      <div className="text-lg font-bold font-mono text-indigo-600">
+                        {entitlements.maxCrewMembers >= 9000 ? "∞ Tidak Terbatas" : `${entitlements.maxCrewMembers} Akun Kru`}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Jumlah slot login untuk tour leader & driver lapangan
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
-                    Aktif
-                  </Badge>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </div>
-              </div>
 
-              {/* Row Pusat SOP & Panduan */}
-              <div
-                onClick={() => navigate("/learn")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
-                    <BookOpen className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Pusat Panduan & SOP Biro Wisata
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="text-xs text-slate-600 dark:text-slate-400 text-center sm:text-left">
+                      Butuh penambahan slot kuota atau bantuan konfigurasi domain kustom? Hubungi Super Admin langsung.
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      SOP Word parser, denah bus, kas saku, & domain
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowTicketModal(true)}
+                      className="text-xs h-8 px-4 rounded-lg flex-shrink-0"
+                    >
+                      Kirim Tiket ke Admin
+                    </Button>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
+              )}
 
-              {/* Row Bantuan & Tiket */}
-              <div
-                onClick={() => setActiveModal("ticket")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-                    <LifeBuoy className="w-4 h-4" />
+              {/* ------------------------------------------------------------- */}
+              {/* 8. SECTION: INTEGRASI GOOGLE GEMINI AI                        */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "ai" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-violet-600" />
+                      Konfigurasi Asisten AI Wisata (Google Gemini)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Asisten konsultasi itinerary dan rekomendasi rute ditenagai oleh Google Gemini API. Dilindungi proteksi konfirmasi bertingkat agar tidak terhapus tanpa sengaja.
+                    </p>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Pusat Tiket Bantuan & Laporan Kendala
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Kirim pesan langsung ke Super Admin platform
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
-            </div>
-          </div>
 
-          {/* 6. GROUP 4: AKSI AKUN & KELUAR */}
-          <div className="space-y-2">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
-              <div
-                onClick={() => navigate("/boost")}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      Upgrade Lisensi & Cloud VPS
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                        Status Kunci API Gemini:
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className={`text-[10px] ${
+                          apiKey ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400" : "bg-slate-200 text-slate-700"
+                        }`}
+                      >
+                        {apiKey ? "✓ Terhubung Aktif" : "Belum Dikonfigurasi"}
+                      </Badge>
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      Buka Mode Desktop, domain biro.com & VPS
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
 
-              <div
-                onClick={handleLogout}
-                className="p-4 flex items-center justify-between gap-3 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center flex-shrink-0">
-                    <LogOut className="w-4 h-4" />
-                  </div>
-                  <div className="text-xs font-bold text-rose-600">
-                    Keluar dari Akun Biro
+                    {!isEditingApiKey ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type={showApiKey ? "text" : "password"}
+                            readOnly
+                            value={apiKey ? (showApiKey ? apiKey : "••••••••••••••••••••••••••••••••••••••••") : ""}
+                            placeholder="Belum ada API Key tersimpan"
+                            className="text-xs font-mono bg-white dark:bg-slate-900"
+                          />
+                          {apiKey && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="h-9 px-3 flex-shrink-0"
+                              title={showApiKey ? "Sembunyikan" : "Tampilkan Key"}
+                            >
+                              {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setTempApiKey(apiKey);
+                              setShowApiKeyConfirmModal(true);
+                            }}
+                            className="text-xs h-8 px-3 rounded-lg"
+                          >
+                            <Key className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+                            {apiKey ? "Ubah Kunci API Key" : "+ Pasang Kunci API Baru"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 pt-2">
+                        <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Masukkan Google Gemini API Key Baru:
+                        </Label>
+                        <Input
+                          type="text"
+                          value={tempApiKey}
+                          onChange={(e) => setTempApiKey(e.target.value)}
+                          placeholder="AIzaSy..."
+                          className="text-xs font-mono bg-white dark:bg-slate-900"
+                        />
+                        <p className="text-[11px] text-slate-500">
+                          Kunci API dapat diperoleh secara gratis di{" "}
+                          <a
+                            href="https://aistudio.google.com/app/apikey"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 underline font-medium"
+                          >
+                            Google AI Studio
+                          </a>.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsEditingApiKey(false)}
+                            className="text-xs h-8 px-3"
+                          >
+                            Batal
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSaveApiKey}
+                            className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-8 px-4"
+                          >
+                            Simpan Kunci API
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-rose-300" />
-              </div>
+              )}
+
+              {/* ------------------------------------------------------------- */}
+              {/* 9. SECTION: PUSAT BANTUAN & TIKET DUKUNGAN                    */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "bantuan" && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-5">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <LifeBuoy className="w-5 h-5 text-blue-600" />
+                      Pusat Tiket Bantuan & Dukungan Teknis
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Kirim kendala teknis atau permintaan aktivasi fitur langsung ke Super Admin platform CatatBiro.
+                    </p>
+                  </div>
+
+                  <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-4 text-center sm:text-left">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center flex-shrink-0">
+                        <LifeBuoy className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="font-bold text-sm text-slate-900 dark:text-white">
+                          Punya pertanyaan atau menghadapi kendala di sistem?
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          Tim support Super Admin akan menindaklanjuti laporan Anda dan memberikan solusi melalui notifikasi serta WhatsApp.
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => setShowTicketModal(true)}
+                      className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-9 px-5 rounded-xl"
+                    >
+                      + Buat Tiket Kendala Baru
+                    </Button>
+                  </div>
+
+                  <div className="pt-2 text-xs text-slate-400 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <span>Sistem terhubung langsung dengan konsol pengawasan Super Admin secara real-time.</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </main>
 
         {/* ========================================================================= */}
-        {/* MODAL 1: KOP SURAT RESMI & LIVE A4 PREVIEW                                */}
+        {/* MODAL KONFIRMASI GANTI API KEY (KEAMANAN GANDA)                            */}
         {/* ========================================================================= */}
-        <Dialog open={activeModal === "kop"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-600" />
-                Pengaturan Kop Surat & Dokumen Cetak
-              </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500">
-                Kop surat ini otomatis dicetak di lembar PDF kwitansi, invoice, dan laporan resmi biro Anda.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-3">
-              {/* Pratinjau Dokumen A4 */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-950 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl">
-                <div className="flex items-center gap-3 border-b-2 border-slate-900 dark:border-white pb-3">
-                  <div className="w-14 h-14 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 p-1 flex items-center justify-center flex-shrink-0">
-                    {profile.logo_url ? (
-                      <img src={profile.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                    ) : (
-                      <Building2 className="w-6 h-6 text-slate-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 text-left space-y-0.5">
-                    <div className="text-sm font-black uppercase text-slate-900 dark:text-white">
-                      {profile.nama_biro}
-                    </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
-                      {profile.slogan}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      {profile.alamat} • Telp/WA: {profile.telepon}
-                    </div>
-                  </div>
-                </div>
-                <div className="pt-2 text-[10px] text-slate-400 text-right font-mono">
-                  Rekening Resmi: {profile.nama_bank} No. {profile.nomor_rekening} a/n {profile.atas_nama_rekening}
-                </div>
-              </div>
-
-              {/* Form Input Kop Surat */}
-              <form onSubmit={handleSaveProfile} className="space-y-3 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Nama Resmi di Kop *</Label>
-                    <Input
-                      value={profile.nama_biro}
-                      onChange={(e) => setProfile({ ...profile, nama_biro: e.target.value })}
-                      className="text-xs"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Slogan / Keterangan Usaha</Label>
-                    <Input
-                      value={profile.slogan}
-                      onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
-                      className="text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs">Alamat Kantor Lengkap</Label>
-                  <Input
-                    value={profile.alamat || ""}
-                    onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
-                    className="text-xs"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Nomor Telepon / WhatsApp</Label>
-                    <Input
-                      value={profile.telepon || ""}
-                      onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
-                      className="text-xs font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Email Kantor</Label>
-                    <Input
-                      value={profile.email || ""}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="text-xs font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                  <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-xs h-9">
-                    Tutup
-                  </Button>
-                  <Button type="submit" disabled={saving} className="bg-indigo-600 text-white text-xs h-9 px-4">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-                    Simpan Kop Surat
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ========================================================================= */}
-        {/* MODAL 2: IDENTITAS & KONTAK                                               */}
-        {/* ========================================================================= */}
-        <Dialog open={activeModal === "identitas"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold">Edit Profil & Kontak Biro</DialogTitle>
-            </DialogHeader>
-
-            <form onSubmit={handleSaveProfile} className="space-y-3 py-2 text-xs">
-              <div className="space-y-1">
-                <Label className="text-xs">Nama Biro Wisata</Label>
-                <Input
-                  value={profile.nama_biro}
-                  onChange={(e) => setProfile({ ...profile, nama_biro: e.target.value })}
-                  className="text-xs"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">Slogan / Tagline</Label>
-                <Textarea
-                  value={profile.slogan}
-                  onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
-                  rows={2}
-                  className="text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">Alamat Kantor</Label>
-                <Input
-                  value={profile.alamat || ""}
-                  onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
-                  className="text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">No. WhatsApp</Label>
-                <Input
-                  value={profile.telepon || ""}
-                  onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
-                  className="text-xs font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">Website Biro</Label>
-                <Input
-                  value={profile.website || ""}
-                  onChange={(e) => setProfile({ ...profile, website: e.target.value })}
-                  className="text-xs font-mono"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3">
-                <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-xs h-9">
-                  Batal
-                </Button>
-                <Button type="submit" disabled={saving} className="bg-indigo-600 text-white text-xs h-9">
-                  Simpan Perubahan
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* ========================================================================= */}
-        {/* MODAL 3: REKENING BANK                                                    */}
-        {/* ========================================================================= */}
-        <Dialog open={activeModal === "bank"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Landmark className="w-5 h-5 text-emerald-600" />
-                Rekening Pembayaran Tamu
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Nomor rekening ini otomatis dicantumkan di lembar kwitansi & invoice pembayaran tamu.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleSaveProfile} className="space-y-3 py-2 text-xs">
-              <div className="space-y-1">
-                <Label className="text-xs">Nama Bank</Label>
-                <Input
-                  value={profile.nama_bank || ""}
-                  onChange={(e) => setProfile({ ...profile, nama_bank: e.target.value })}
-                  placeholder="Misal: Bank Mandiri / BCA / BNI"
-                  className="text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">Nomor Rekening</Label>
-                <Input
-                  value={profile.nomor_rekening || ""}
-                  onChange={(e) => setProfile({ ...profile, nomor_rekening: e.target.value })}
-                  placeholder="136-00-1234567-8"
-                  className="text-xs font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">Atas Nama Rekening</Label>
-                <Input
-                  value={profile.atas_nama_rekening || ""}
-                  onChange={(e) => setProfile({ ...profile, atas_nama_rekening: e.target.value })}
-                  placeholder="PT Catat Biro Wisata"
-                  className="text-xs"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3">
-                <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-xs h-9">
-                  Batal
-                </Button>
-                <Button type="submit" disabled={saving} className="bg-emerald-600 text-white text-xs h-9">
-                  Simpan Rekening
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* ========================================================================= */}
-        {/* MODAL 4: PO BUS                                                           */}
-        {/* ========================================================================= */}
-        <Dialog open={activeModal === "bus"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Bus className="w-5 h-5 text-cyan-600" />
-                Katalog Rekanan PO Bus
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2 text-xs">
-              {/* Form Tambah PO */}
-              <form onSubmit={handleAddBus} className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-800">
-                <div className="font-bold text-slate-800 dark:text-slate-200">Tambah PO Bus Baru</div>
-                <Input
-                  required
-                  placeholder="Nama PO Bus (Misal: PO Haryanto / Subur Jaya)"
-                  value={newBus.namaPO}
-                  onChange={(e) => setNewBus({ ...newBus, namaPO: e.target.value })}
-                  className="text-xs"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder="Kontak Person (CP)"
-                    value={newBus.kontakPerson}
-                    onChange={(e) => setNewBus({ ...newBus, kontakPerson: e.target.value })}
-                    className="text-xs"
-                  />
-                  <Input
-                    placeholder="No. Telepon / WA"
-                    value={newBus.telepon}
-                    onChange={(e) => setNewBus({ ...newBus, telepon: e.target.value })}
-                    className="text-xs font-mono"
-                  />
-                </div>
-                <Button type="submit" className="w-full bg-cyan-600 text-white text-xs h-8">
-                  + Simpan ke Katalog PO Bus
-                </Button>
-              </form>
-
-              {/* List PO */}
-              <div className="space-y-2">
-                {cmsData.rekananBus.map((bus) => (
-                  <div key={bus.id} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">{bus.namaPO}</div>
-                      <div className="text-slate-500">{bus.kontakPerson} • {bus.telepon}</div>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => handleDeleteBus(bus.id)} className="text-rose-600 h-7 w-7 p-0">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ========================================================================= */}
-        {/* MODAL 5: RESTO                                                            */}
-        {/* ========================================================================= */}
-        <Dialog open={activeModal === "resto"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <UtensilsCrossed className="w-5 h-5 text-amber-600" />
-                Katalog Rumah Makan / Resto
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2 text-xs">
-              <form onSubmit={handleAddResto} className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-800">
-                <div className="font-bold text-slate-800 dark:text-slate-200">Tambah Resto Baru</div>
-                <Input
-                  required
-                  placeholder="Nama Resto (Misal: RM Grafika Cikole)"
-                  value={newResto.namaResto}
-                  onChange={(e) => setNewResto({ ...newResto, namaResto: e.target.value })}
-                  className="text-xs"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder="Lokasi / Rute Perjalanan"
-                    value={newResto.lokasiRute}
-                    onChange={(e) => setNewResto({ ...newResto, lokasiRute: e.target.value })}
-                    className="text-xs"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Harga Rata-Rata/Pax"
-                    value={newResto.hargaPerPax}
-                    onChange={(e) => setNewResto({ ...newResto, hargaPerPax: Number(e.target.value) })}
-                    className="text-xs font-mono"
-                  />
-                </div>
-                <Button type="submit" className="w-full bg-amber-600 text-white text-xs h-8">
-                  + Simpan ke Katalog Resto
-                </Button>
-              </form>
-
-              <div className="space-y-2">
-                {cmsData.rekananResto.map((resto) => (
-                  <div key={resto.id} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">{resto.namaResto}</div>
-                      <div className="text-slate-500">{resto.lokasiRute} • Rp {resto.hargaPerPax.toLocaleString("id-ID")}/pax</div>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => handleDeleteResto(resto.id)} className="text-rose-600 h-7 w-7 p-0">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ========================================================================= */}
-        {/* MODAL 6: KATEGORI KAS                                                     */}
-        {/* ========================================================================= */}
-        <Dialog open={activeModal === "kategori"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-emerald-600" />
-                Pos Kategori Kas Keuangan
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2 text-xs">
-              <form onSubmit={handleAddKategori} className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-800">
-                <div className="font-bold text-slate-800 dark:text-slate-200">Tambah Pos Baru</div>
-                <Input
-                  required
-                  placeholder="Nama Pos (Misal: Kas Tol Cipali, Parkir Wisata)"
-                  value={newKatNama}
-                  onChange={(e) => setNewKatNama(e.target.value)}
-                  className="text-xs"
-                />
-                <div className="flex gap-2">
-                  <select
-                    value={newKatJenis}
-                    onChange={(e: any) => setNewKatJenis(e.target.value)}
-                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 text-xs"
-                  >
-                    <option value="pengeluaran">Pengeluaran Kas</option>
-                    <option value="pemasukan">Pemasukan Kas</option>
-                  </select>
-                  <Button type="submit" className="bg-emerald-600 text-white text-xs h-8">
-                    + Tambah
-                  </Button>
-                </div>
-              </form>
-
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {cmsData.kategoriKeuangan.map((k) => (
-                  <div key={k.id} className="py-2.5 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">{k.nama}</div>
-                      <Badge className={`text-[9px] ${k.jenis === "pemasukan" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-                        {k.jenis.toUpperCase()}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ========================================================================= */}
-        {/* MODAL 7: LISENSI & MATRIKS HAK AKSES                                      */}
-        {/* ========================================================================= */}
-        <Dialog open={activeModal === "lisensi"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 space-y-4">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Crown className="w-5 h-5 text-amber-500" />
-                Pusat Lisensi & Hak Akses Biro
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Status paket dan sakelar fitur yang aktif di akun biro Anda.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <span className="font-semibold text-slate-600 dark:text-slate-400">Paket Lisensi:</span>
-                <Badge className="font-mono uppercase bg-indigo-600 text-white">{entitlements.tier}</Badge>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <span className="font-semibold text-slate-600 dark:text-slate-400">Mode Desktop PC:</span>
-                {entitlements.canUseDesktopMode ? (
-                  <span className="text-emerald-600 font-bold">✓ Aktif (Buka)</span>
-                ) : (
-                  <span className="text-amber-600 font-bold">Terkunci (Mobile Only)</span>
-                )}
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <span className="font-semibold text-slate-600 dark:text-slate-400">Bebas Watermark PDF:</span>
-                {entitlements.canExportCleanPdf ? (
-                  <span className="text-emerald-600 font-bold">✓ Bersih (Kop Resmi)</span>
-                ) : (
-                  <span className="text-slate-500">Watermark CatatBiro</span>
-                )}
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <span className="font-semibold text-slate-600 dark:text-slate-400">Batas Kuota Trip:</span>
-                <span className="font-mono font-bold text-cyan-600">
-                  {entitlements.maxActiveTrips >= 9000 ? "∞ Unlimited" : `${entitlements.maxActiveTrips} Trip`}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <span className="font-semibold text-slate-600 dark:text-slate-400">Kapasitas Kru:</span>
-                <span className="font-mono font-bold text-indigo-600">
-                  {entitlements.maxCrewMembers >= 9000 ? "∞ Unlimited" : `${entitlements.maxCrewMembers} Kru`}
-                </span>
-              </div>
-            </div>
-
-            <Button
-              onClick={() => {
-                setActiveModal(null);
-                navigate("/boost");
-              }}
-              className="w-full bg-gradient-to-r from-amber-500 to-indigo-600 text-white font-semibold text-xs h-9 rounded-xl"
-            >
-              Lihat Pilihan Upgrade Paket di /boost
-            </Button>
-          </DialogContent>
-        </Dialog>
-
-        {/* ========================================================================= */}
-        {/* MODAL 8: AI GEMINI API KEY                                                */}
-        {/* ========================================================================= */}
-        <Dialog open={activeModal === "ai"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 space-y-4">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-                Konfigurasi Kunci AI Gemini
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Asisten AI menggunakan API Key Google AI Studio. Dilindungi konfirmasi keamanan bertingkat.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3 py-2 text-xs">
-              {!isEditingApiKey ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Key Saat Ini:</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setTempApiKey(apiKey);
-                        setShowApiKeyConfirmModal(true);
-                      }}
-                      className="text-xs h-7 px-2.5"
-                    >
-                      <Key className="w-3 h-3 mr-1 text-amber-500" /> Ganti Key
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type={showApiKey ? "text" : "password"}
-                      readOnly
-                      value={apiKey ? "••••••••••••••••••••••••••••••••••••••••" : "Belum diatur"}
-                      className="text-xs font-mono cursor-not-allowed bg-slate-50 dark:bg-slate-950"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="h-9 px-3"
-                    >
-                      {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label className="text-xs">Masukkan Kunci API Gemini Baru</Label>
-                  <Input
-                    type="text"
-                    value={tempApiKey}
-                    onChange={(e) => setTempApiKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className="text-xs font-mono"
-                  />
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button size="sm" variant="outline" onClick={() => setIsEditingApiKey(false)} className="text-xs h-8">
-                      Batal
-                    </Button>
-                    <Button size="sm" onClick={handleSaveApiKey} className="bg-indigo-600 text-white text-xs h-8">
-                      Simpan Key Baru
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* MODAL KONFIRMASI GANTI KEY AI */}
         <Dialog open={showApiKeyConfirmModal} onOpenChange={setShowApiKeyConfirmModal}>
-          <DialogContent className="max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+          <DialogContent className="max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Ubah Kunci Gemini AI?</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Pastikan Anda sudah memiliki API Key Google AI Studio aktif agar fitur konsultasi AI tidak berhenti berfungsi.
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Ubah Kunci Gemini AI?
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Pastikan Anda sudah memiliki API Key Google AI Studio aktif agar fitur konsultasi jadwal dan analisis rute AI tidak berhenti berfungsi.
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowApiKeyConfirmModal(false)} className="flex-1 text-xs h-9">
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowApiKeyConfirmModal(false)}
+                className="flex-1 text-xs h-9 rounded-xl"
+              >
                 Batal
               </Button>
               <Button
@@ -1283,31 +1703,33 @@ export const ProfilBiro: React.FC = () => {
                   setShowApiKeyConfirmModal(false);
                   setIsEditingApiKey(true);
                 }}
-                className="flex-1 bg-amber-600 text-white text-xs h-9"
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-xs h-9 rounded-xl"
               >
-                Ya, Ubah
+                Lanjutkan Ubah
               </Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* MODAL QR CODE */}
-        <Dialog open={activeModal === "qr"} onOpenChange={(o) => !o && setActiveModal(null)}>
-          <DialogContent className="max-w-xs text-center bg-white dark:bg-slate-900 rounded-3xl p-6 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
-              <QrCode className="w-8 h-8" />
+        {/* ========================================================================= */}
+        {/* MODAL QR CODE PROFIL BIRO                                                 */}
+        {/* ========================================================================= */}
+        <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+          <DialogContent className="max-w-xs text-center bg-white dark:bg-slate-900 rounded-2xl p-6 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center mx-auto">
+              <QrCode className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">{profile.nama_biro}</h3>
-              <p className="text-[11px] text-slate-500">Scan QR Code untuk kontak WhatsApp & profil biro</p>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">{profile.nama_biro}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Scan QR Code untuk kontak WhatsApp kantor</p>
             </div>
-            <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-700">
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
                   `https://wa.me/${(profile.telepon || "").replace(/[^0-9]/g, "")}`
                 )}`}
                 alt="QR Code"
-                className="w-40 h-40 rounded-xl"
+                className="w-36 h-36 rounded-lg"
               />
             </div>
             <Button
@@ -1323,18 +1745,20 @@ export const ProfilBiro: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* MODAL BUAT TIKET KENDALA KE SUPER ADMIN */}
+        {/* ========================================================================= */}
+        {/* MODAL TIKET SUPPORT KE SUPER ADMIN                                        */}
+        {/* ========================================================================= */}
         <CreateSupportTicketModal
-          open={activeModal === "ticket"}
-          onOpenChange={(o) => !o && setActiveModal(null)}
+          open={showTicketModal}
+          onOpenChange={setShowTicketModal}
           profile={profile}
           onTicketCreated={() => {
             toast.success("Laporan Anda berhasil dikirim ke Super Admin!");
-            setActiveModal(null);
+            setShowTicketModal(false);
           }}
         />
 
-        {/* BOTTOM NAVIGATION PWA */}
+        {/* BOTTOM NAV UNTUK MOBILE PWA */}
         <BottomNav />
       </div>
     </AuthGuard>
