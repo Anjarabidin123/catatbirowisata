@@ -1353,6 +1353,7 @@ export const ProfilBiro: React.FC = () => {
         <CreateSupportTicketModal
           open={showSupportModal}
           onOpenChange={setShowSupportModal}
+          profile={profile}
           onTicketCreated={() => toast.success("Laporan Anda berhasil dikirimkan ke Super Admin!")}
         />
 

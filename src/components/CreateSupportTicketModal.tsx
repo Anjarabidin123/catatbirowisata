@@ -27,7 +27,7 @@ import {
   User,
   CheckCircle2,
 } from "lucide-react";
-import { BiroProfile } from "@/utils/biroProfile";
+import { BiroProfile, getLocalBiroProfile } from "@/utils/biroProfile";
 import {
   createSupportTicket,
   TicketCategory,
@@ -40,22 +40,27 @@ import { toast } from "sonner";
 interface CreateSupportTicketModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  profile: BiroProfile;
+  profile?: BiroProfile;
+  onTicketCreated?: () => void;
 }
 
 export const CreateSupportTicketModal: React.FC<CreateSupportTicketModalProps> = ({
   open,
   onOpenChange,
   profile,
+  onTicketCreated,
 }) => {
   const settings = getPlatformSettings();
   const [submitting, setSubmitting] = useState(false);
 
+  // Safe fallback profile jika tidak di-pass sebagai prop
+  const currentProfile = profile || getLocalBiroProfile() || ({} as BiroProfile);
+
   // Form Fields
-  const leaderName = profile.pimpinan || (profile as any).pemilik || "";
+  const leaderName = currentProfile.pimpinan || (currentProfile as any).pemilik || "";
   const [senderName, setSenderName] = useState(leaderName);
-  const [senderEmail, setSenderEmail] = useState(profile.email || "");
-  const [senderPhone, setSenderPhone] = useState(profile.telepon || "");
+  const [senderEmail, setSenderEmail] = useState(currentProfile.email || "");
+  const [senderPhone, setSenderPhone] = useState(currentProfile.telepon || "");
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState<TicketCategory>("kendala_teknis");
   const [priority, setPriority] = useState<TicketPriority>("medium");
@@ -63,10 +68,11 @@ export const CreateSupportTicketModal: React.FC<CreateSupportTicketModalProps> =
 
   useEffect(() => {
     if (open) {
-      const currentLeader = profile.pimpinan || (profile as any).pemilik || "";
+      const activeProf = profile || getLocalBiroProfile() || ({} as BiroProfile);
+      const currentLeader = activeProf.pimpinan || (activeProf as any).pemilik || "";
       if (currentLeader) setSenderName(currentLeader);
-      if (profile.email) setSenderEmail(profile.email);
-      if (profile.telepon) setSenderPhone(profile.telepon);
+      if (activeProf.email) setSenderEmail(activeProf.email);
+      if (activeProf.telepon) setSenderPhone(activeProf.telepon);
     }
   }, [open, profile]);
 
@@ -79,19 +85,20 @@ export const CreateSupportTicketModal: React.FC<CreateSupportTicketModalProps> =
 
     setSubmitting(true);
     try {
+      const activeProf = profile || getLocalBiroProfile() || ({} as BiroProfile);
       const impersonatedId = getImpersonatedTenantId();
       const allTenants = getAllTenants();
       const matched = allTenants.find(
-        (t) => t.namaBiro.toLowerCase() === (profile.nama_biro || "").toLowerCase()
+        (t) => t.namaBiro.toLowerCase() === (activeProf.nama_biro || "").toLowerCase()
       );
       const tenantId = impersonatedId || (matched ? matched.id : undefined);
 
       const ticket = createSupportTicket({
         tenantId,
-        tenantName: profile.nama_biro || "Biro Wisata",
+        tenantName: activeProf.nama_biro || "Biro Wisata",
         senderName: senderName.trim() || leaderName || "Pengguna Biro",
-        senderEmail: senderEmail.trim() || profile.email || "user@biro.id",
-        senderPhone: senderPhone.trim() || profile.telepon || undefined,
+        senderEmail: senderEmail.trim() || activeProf.email || "user@biro.id",
+        senderPhone: senderPhone.trim() || activeProf.telepon || undefined,
         subject: subject.trim(),
         category,
         priority,
@@ -107,6 +114,7 @@ export const CreateSupportTicketModal: React.FC<CreateSupportTicketModalProps> =
       setSubject("");
       setDescription("");
       onOpenChange(false);
+      if (onTicketCreated) onTicketCreated();
     } catch (err) {
       toast.error("Gagal mengirim tiket bantuan");
     } finally {
@@ -116,7 +124,8 @@ export const CreateSupportTicketModal: React.FC<CreateSupportTicketModalProps> =
 
   const handleOpenWaCs = () => {
     const csNumber = settings.csWhatsappNumber.replace(/[^0-9]/g, "");
-    const leader = profile.pimpinan || (profile as any).pemilik || "Owner";
+    const activeProf = profile || getLocalBiroProfile() || ({} as BiroProfile);
+    const leader = activeProf.pimpinan || (activeProf as any).pemilik || "Owner";
     const text = encodeURIComponent(
       `Halo Tim Super Admin CatatBiro, saya ${leader} dari ${profile.nama_biro}. Saya ingin berkonsultasi mengenai aplikasi:`
     );
