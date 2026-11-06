@@ -16,6 +16,13 @@ const TripDocumentationTab = lazy(() => import("@/components/TripDocumentationTa
 const VehicleTab = lazy(() => import("@/components/VehicleTab").then(m => ({ default: m.VehicleTab })));
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -88,6 +95,7 @@ const TripDetail = () => {
   const canSeeFinancials = hasPermission("rule_buku_kas_laba");
   const canPrintKwitansi = hasPermission("rule_kwitansi_invoice");
   const canEditNotes = hasPermission("rule_rundown_catatan");
+  const [activeTab, setActiveTab] = useState<string>(() => initialTab || (isKru ? "operasional" : "acuan"));
   const [trip, setTrip] = useState<Trip | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [priceNotes, setPriceNotes] = useState<PriceNote[]>([]);
@@ -106,6 +114,12 @@ const TripDetail = () => {
   const toggleNote = (id: string) => {
     setOpenNotes((prev) => ({ ...prev, [id]: !prev[id] }));
   };
+
+  useEffect(() => {
+    if (requestedTab && validTabs.includes(requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab]);
 
   useEffect(() => {
     if (tripId) {
@@ -216,7 +230,7 @@ const TripDetail = () => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 safe-top lg:pl-64">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32 safe-top lg:pl-64">
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           {/* Top Bar: Navigasi & Pencarian Cepat */}
           <div className="flex items-center gap-3 mb-5">
@@ -324,10 +338,10 @@ const TripDetail = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setBroadcastModalOpen(true)}
-                  className="h-10 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs gap-2 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-800 dark:text-slate-200"
+                  className="h-10 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs gap-2 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
                 >
-                  <MessageSquare className="w-4 h-4 text-emerald-600" />
-                  <span>Broadcast WA</span>
+                  <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-emerald-700 dark:text-emerald-300 font-bold">Broadcast WA</span>
                 </Button>
 
                 {canPrintKwitansi && (
@@ -346,8 +360,31 @@ const TripDetail = () => {
             </div>
           </div>
 
+          {/* Mobile Module Selector Dropdown */}
+          <div className="sm:hidden mb-4">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+              Pilih Modul Tab Trip
+            </label>
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 font-bold text-xs shadow-2xs">
+                <SelectValue placeholder="Pilih Modul" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl z-50">
+                <SelectItem value="acuan" className="text-xs font-semibold py-2">📋 Perencanaan & Destinasi</SelectItem>
+                <SelectItem value="operasional" className="text-xs font-semibold py-2">⚡ Operasional & Kas Lapangan</SelectItem>
+                <SelectItem value="kendaraan" className="text-xs font-semibold py-2">🚌 Kendaraan</SelectItem>
+                {canSeeFinancials && (
+                  <SelectItem value="keuangan" className="text-xs font-semibold py-2">💰 Buku Kas Biro (Owner)</SelectItem>
+                )}
+                <SelectItem value="rundown" className="text-xs font-semibold py-2">⏱️ Rundown Acara</SelectItem>
+                <SelectItem value="catatan" className="text-xs font-semibold py-2">📝 Catatan</SelectItem>
+                <SelectItem value="dokumentasi" className="text-xs font-semibold py-2">📸 Dokumentasi Foto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Role-Adaptive Navbar Tabs */}
-          <Tabs key={role} defaultValue={initialTab || (isKru ? "operasional" : "acuan")} className="w-full">
+          <Tabs key={role} value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="overflow-x-auto pb-1">
               <TabsList className="inline-flex w-auto mb-5 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <TabsTrigger value="acuan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">

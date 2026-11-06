@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Trash2, ChevronDown, Pencil, Eye } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Pencil, Eye, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import { toast } from "sonner";
@@ -301,17 +301,19 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Keuangan</h2>
-        <Button
-          onClick={() => {
-            resetForm();
-            setDialogOpen(true);
-          }}
-          className="gradient-primary text-white"
-          size="sm"
-        >
-          <Plus className="w-3 h-3 mr-1" />
-          Tambah
-        </Button>
+        {items.length > 0 && (
+          <Button
+            onClick={() => {
+              resetForm();
+              setDialogOpen(true);
+            }}
+            className="gradient-primary text-white"
+            size="sm"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Tambah Transaksi
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -319,14 +321,24 @@ export const TripFinancialTab = ({ tripId }: TripFinancialTabProps) => {
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
         </div>
       ) : items.length === 0 ? (
-        <Card className="p-6 text-center">
-          <p className="text-muted-foreground text-sm mb-3">Belum ada data keuangan</p>
-          <Button onClick={() => {
-            resetForm();
-            setDialogOpen(true);
-          }} className="gradient-primary text-white" size="sm">
-            <Plus className="w-3 h-3 mr-1" />
-            Tambah Data
+        <Card className="p-8 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center mx-auto text-blue-600">
+            <Wallet className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Belum Ada Transaksi Keuangan</h4>
+            <p className="text-muted-foreground text-xs mt-0.5">Catat pemasukan atau pengeluaran operasional trip ini</p>
+          </div>
+          <Button
+            onClick={() => {
+              resetForm();
+              setDialogOpen(true);
+            }}
+            className="gradient-primary text-white text-xs font-bold rounded-xl"
+            size="sm"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Catat Transaksi Pertama
           </Button>
         </Card>
       ) : (

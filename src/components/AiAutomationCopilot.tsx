@@ -247,7 +247,7 @@ export const AiAutomationCopilot: React.FC = () => {
       <div className="fixed bottom-20 lg:bottom-6 right-4 z-40">
         <Button
           onClick={() => setIsOpen(true)}
-          className="h-12 px-4 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-xl shadow-blue-500/25 flex items-center gap-2 text-xs font-black tracking-wide border border-white/20 transition-transform active:scale-95 group"
+          className="h-10 w-10 sm:h-12 sm:w-auto p-0 sm:px-4 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-xl shadow-blue-500/25 flex items-center justify-center sm:justify-start gap-2 text-xs font-black tracking-wide border border-white/20 transition-transform active:scale-95 group"
           title="Buka Asisten Pribadi Otomasi (Ctrl+K)"
         >
           <div className="relative">

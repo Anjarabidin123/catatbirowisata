@@ -263,59 +263,56 @@ export const CashbackTrackerWidget: React.FC<CashbackTrackerWidgetProps> = ({
   return (
     <Card className="p-4 sm:p-5 rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
             <Coins className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <span>Pendapatan Komisi & Cashback Mitra</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-700 font-extrabold uppercase">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                Komisi & Fee Rujukan Mitra
+              </h3>
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 bg-amber-50/50 dark:bg-amber-950/40 font-bold">
                 Biro & TL
-              </span>
-            </h3>
-            <p className="text-[10px] text-slate-500">
-              Pantau fee rujukan dari resto rombongan, pusat belanja oleh-oleh & objek wisata
+              </Badge>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              Fee rujukan resto rombongan, pusat belanja oleh-oleh & objek wisata
             </p>
           </div>
         </div>
-
         <Button
           size="sm"
           onClick={() => setShowForm(!showForm)}
-          className="h-8 text-xs font-semibold rounded-xl bg-amber-500 hover:bg-amber-600 text-white gap-1 shadow-xs"
+          className="h-8 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white gap-1.5 shadow-sm shadow-amber-500/20 self-start sm:self-auto flex-shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>{showForm ? "Tutup" : "Catat Komisi"}</span>
+          <span>{showForm ? "Tutup Form" : "Catat Komisi"}</span>
         </Button>
       </div>
 
       {/* Summary Metrics */}
-      <div className="grid grid-cols-3 gap-2.5">
-        <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
-          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
-            Total Potensi
-          </span>
-          <p className="text-base font-black text-amber-800 dark:text-amber-200 mt-0.5">
+      <div className="grid grid-cols-3 gap-2">
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Potensi</span>
+          <p className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 mt-0.5 truncate">
             {formatRupiah(totalKomisi)}
           </p>
         </div>
-
-        <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
-          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
-            Sudah Cair
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs">
+          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Sudah Cair
           </span>
-          <p className="text-base font-black text-emerald-700 dark:text-emerald-300 mt-0.5">
+          <p className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
             {formatRupiah(totalCair)}
           </p>
         </div>
-
-        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            Menunggu Cair
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 shadow-2xs">
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Menunggu
           </span>
-          <p className="text-base font-black text-slate-700 dark:text-slate-300 mt-0.5">
+          <p className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 mt-0.5 truncate">
             {formatRupiah(totalPending)}
           </p>
         </div>

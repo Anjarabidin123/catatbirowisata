@@ -4,10 +4,11 @@
  * 
  * Karakteristik:
  * 1. ROTASI OTOMATIS: Berganti gambar secara otomatis setiap 3 hari sekali.
- * 2. STOK 2 BULAN LEBIH: Berisi 24 foto lanskap kurasi tinggi (24 foto x 3 hari = 72 hari / > 2 bulan).
- * 3. SIKLUS LOOP BERULANG: Setelah 72 hari habis, siklus mengulang kembali dari foto ke-1 secara mulus.
- * 4. DETERMINISTIK & SINKRON: Menggunakan perhitungan hari berbasis epoch tanggal sehingga seluruh perangkat melihat foto yang sama di hari yang sama.
- * 5. HIGH-PERFORMANCE & RELIABLE: Setiap item memiliki URL gambar resolusi tinggi + foto cadangan lokal (/hero-bromo.jpg, dll) jika pengguna sedang offline.
+ * 2. DROPDOWN MANUAL: Pengguna bisa memilih foto pemandangan favorit secara bebas lewat dropdown atau biarkan rotasi otomatis.
+ * 3. STOK 2 BULAN LEBIH: Berisi 24 foto lanskap kurasi tinggi (24 foto x 3 hari = 72 hari / > 2 bulan).
+ * 4. SIKLUS LOOP BERULANG: Setelah 72 hari habis, siklus mengulang kembali dari foto ke-1 secara mulus.
+ * 5. DETERMINISTIK & SINKRON: Menggunakan perhitungan hari berbasis epoch tanggal sehingga seluruh perangkat melihat foto yang sama di hari yang sama.
+ * 6. HIGH-PERFORMANCE & RELIABLE: Setiap item memiliki URL gambar resolusi tinggi + foto cadangan lokal (/hero-bromo.jpg, dll) jika pengguna sedang offline.
  */
 
 export interface TravelWallpaper {
@@ -89,11 +90,11 @@ export const TRAVEL_WALLPAPERS: TravelWallpaper[] = [
   },
   {
     id: "wall-ijen",
-    title: "Danau Asam Tosca Kawah Ijen",
+    title: "Danau Tosca Kawah Ijen Fajar",
     location: "Gunung Ijen, Banyuwangi",
     country: "Jawa Timur, Indonesia",
     category: "indonesia",
-    imageUrl: "https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1200&q=80",
     fallbackUrl: "/hero-bromo.jpg",
   },
   {
@@ -252,30 +253,65 @@ export interface ActiveWallpaperResult extends TravelWallpaper {
   cycleIndex: number;
   totalWallpapers: number;
   wallpaperIndex: number;
+  isManual: boolean;
+}
+
+const STORAGE_KEY = "catatbiro_custom_wallpaper";
+
+export function getCustomWallpaperSetting(): string | null {
+  try {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(STORAGE_KEY);
+    }
+  } catch {}
+  return null;
+}
+
+export function setCustomWallpaperSetting(wallpaperIdOrAuto: string): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      if (!wallpaperIdOrAuto || wallpaperIdOrAuto === "auto") {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, wallpaperIdOrAuto);
+      }
+      window.dispatchEvent(new CustomEvent("wallpaper-changed"));
+    }
+  } catch {}
 }
 
 /**
- * Menghitung foto aktif berdasarkan rotasi per 3 hari sekali.
- * Mengulang dari awal jika sudah mencapai 72 hari (24 foto x 3 hari).
+ * Menghitung foto aktif berdasarkan rotasi per 3 hari sekali atau pilihan manual pengguna.
  */
-export function getActiveTravelWallpaper(offsetOverride?: number): ActiveWallpaperResult {
-  // Epoch awal stabil (1 Januari 2026 UTC)
+export function getActiveTravelWallpaper(): ActiveWallpaperResult {
+  const customId = getCustomWallpaperSetting();
+
+  // Jika pengguna memilih foto spesifik lewat dropdown
+  if (customId && customId !== "auto") {
+    const foundIdx = TRAVEL_WALLPAPERS.findIndex((w) => w.id === customId);
+    if (foundIdx !== -1) {
+      const selected = TRAVEL_WALLPAPERS[foundIdx];
+      return {
+        ...selected,
+        dayInCycle: 1,
+        daysRemaining: 3,
+        cycleIndex: foundIdx,
+        totalWallpapers: TRAVEL_WALLPAPERS.length,
+        wallpaperIndex: foundIdx,
+        isManual: true,
+      };
+    }
+  }
+
+  // Jika mode otomatis (3 hari sekali)
   const baseEpoch = new Date("2026-01-01T00:00:00Z").getTime();
   const now = Date.now();
-  
-  // Total selisih hari sejak epoch
   const totalDays = Math.max(0, Math.floor((now - baseEpoch) / (1000 * 60 * 60 * 24)));
-  
-  // Setiap 3 hari sekali berganti gambar
   const cycleIndex = Math.floor(totalDays / 3);
-  
-  // Modulo panjang daftar foto (looping setelah 24 foto / 72 hari)
-  const baseIndex = (cycleIndex + (offsetOverride || 0)) % TRAVEL_WALLPAPERS.length;
-  const wallpaperIndex = (baseIndex + TRAVEL_WALLPAPERS.length) % TRAVEL_WALLPAPERS.length;
+  const wallpaperIndex = cycleIndex % TRAVEL_WALLPAPERS.length;
   
   const dayInCycle = (totalDays % 3) + 1;
   const daysRemaining = 3 - (totalDays % 3);
-
   const selected = TRAVEL_WALLPAPERS[wallpaperIndex];
 
   return {
@@ -285,5 +321,6 @@ export function getActiveTravelWallpaper(offsetOverride?: number): ActiveWallpap
     cycleIndex,
     totalWallpapers: TRAVEL_WALLPAPERS.length,
     wallpaperIndex,
+    isManual: false,
   };
 }

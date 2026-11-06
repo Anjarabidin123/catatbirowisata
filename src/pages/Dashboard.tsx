@@ -9,6 +9,7 @@ import {
   Bus,
   Calendar,
   ChevronRight,
+  ChevronDown,
   LogOut,
   MapPin,
   Plus,
@@ -30,7 +31,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser, clearAuthCache } from "@/utils/authHelper";
 import { clearBiroProfileCache, getLocalBiroProfile, fetchBiroProfile, BiroProfile } from "@/utils/biroProfile";
 import { getBiroCmsData, BiroCmsData } from "@/utils/biroCmsStore";
-import { getActiveTravelWallpaper } from "@/data/travelWallpapers";
+import {
+  TRAVEL_WALLPAPERS,
+  getActiveTravelWallpaper,
+  setCustomWallpaperSetting,
+} from "@/data/travelWallpapers";
 import { scheduleTripNotifications, setupNotificationListeners } from "@/utils/tripNotifications";
 import { useRole } from "@/contexts/RoleContext";
 import AuthGuard from "@/components/AuthGuard";
@@ -179,7 +184,15 @@ const Dashboard = () => {
   const [filter, setFilter] = useState<FilterKey>("semua");
   const [profile, setProfile] = useState<BiroProfile>(() => getLocalBiroProfile());
   const [cmsData, setCmsData] = useState<BiroCmsData>(() => getBiroCmsData());
-  const activeWallpaper = useMemo(() => getActiveTravelWallpaper(), []);
+  const [activeWallpaper, setActiveWallpaper] = useState(() => getActiveTravelWallpaper());
+
+  useEffect(() => {
+    const handleWallpaperChange = () => {
+      setActiveWallpaper(getActiveTravelWallpaper());
+    };
+    window.addEventListener("wallpaper-changed", handleWallpaperChange);
+    return () => window.removeEventListener("wallpaper-changed", handleWallpaperChange);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -439,15 +452,15 @@ const Dashboard = () => {
         <div className="lg:hidden">
           {/* Visual Hero Header Container (sekitar 32-38% tinggi layar / tidak separuh banget) */}
           <div className="relative overflow-hidden rounded-b-[2.25rem] bg-slate-900 text-white shadow-xl border-b border-slate-800/80">
-            {/* Foto Latar Belakang Wisata (Otomatis Berganti Tiap 3 Hari Sekali) */}
+            {/* Foto Latar Belakang Wisata (Otomatis Berganti Tiap 3 Hari Sekali atau Manual) */}
             <div
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 brightness-[0.62] saturate-[1.25] transition-all duration-1000"
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 brightness-[0.92] saturate-[1.25] transition-all duration-700"
               style={{
                 backgroundImage: `url('${activeWallpaper.imageUrl}'), url('${activeWallpaper.fallbackUrl}')`,
               }}
             />
             {/* Gradient Overlay Gelap agar Teks & Konten Selalu Terbaca Tajam */}
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-slate-900/80 to-slate-950/95 backdrop-blur-[1px]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/50 via-slate-950/20 to-slate-950/80 backdrop-blur-[0.5px]" />
 
             {/* Konten Hero Mobile */}
             <div className="relative z-10 px-4 pt-4 pb-5 space-y-3.5 max-w-md mx-auto">
@@ -610,14 +623,57 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {/* Info Lanskap Wisata Aktif & Jadwal Rotasi 3 Hari */}
+              {/* Info Lanskap Wisata Aktif & Pilihan Dropdown Manual / Otomatis */}
               <div className="flex items-center justify-between px-1 text-[10px] text-slate-300/80 font-medium">
-                <span className="flex items-center gap-1 truncate max-w-[230px]" title={activeWallpaper.title}>
-                  <MapPin className="w-3 h-3 text-cyan-300 flex-shrink-0" />
-                  <span className="truncate">{activeWallpaper.location}</span>
-                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 hover:bg-black/60 border border-white/20 text-[10px] text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                      title="Klik untuk memilih foto pemandangan latar"
+                    >
+                      <MapPin className="w-3 h-3 text-cyan-300 flex-shrink-0" />
+                      <span className="truncate max-w-[150px] font-bold">{activeWallpaper.location}</span>
+                      <ChevronDown className="w-3 h-3 text-white/70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto rounded-2xl p-1.5 z-50">
+                    <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Pilih Foto Pemandangan
+                    </div>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setCustomWallpaperSetting("auto");
+                        toast.success("Mode Rotasi Otomatis (Tiap 3 Hari) aktif");
+                      }}
+                      className="text-xs font-bold gap-2 py-2 rounded-xl cursor-pointer"
+                    >
+                      <span>🔄 Rotasi Otomatis (Tiap 3 Hari)</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {TRAVEL_WALLPAPERS.map((w) => (
+                      <DropdownMenuItem
+                        key={w.id}
+                        onClick={() => {
+                          setCustomWallpaperSetting(w.id);
+                          toast.success(`Foto diganti: ${w.title}`);
+                        }}
+                        className="text-xs py-2 rounded-xl cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="truncate mr-2">
+                          <div className="font-bold truncate">{w.title}</div>
+                          <div className="text-[10px] text-slate-400 truncate">{w.location}</div>
+                        </div>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 flex-shrink-0">
+                          {w.category === "indonesia" ? "🇮🇩 ID" : "🌍 Int"}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/10 backdrop-blur-xs font-mono text-slate-300 flex-shrink-0">
-                  Foto berganti {activeWallpaper.daysRemaining} hari lagi
+                  {activeWallpaper.isManual ? "Mode Manual" : `Foto berganti ${activeWallpaper.daysRemaining} hari lagi`}
                 </span>
               </div>
             </div>
