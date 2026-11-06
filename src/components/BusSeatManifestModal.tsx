@@ -655,7 +655,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
   };
 
   // =========================================================
-  // RENDER SEAT (SKETSA COMPACT DENGAN ARMREST & SANDARAN)
+  // RENDER SEAT (RESPONSIF PENUH DI MOBILE & DESKTOP)
   // =========================================================
   const renderSeatItem = (seatNo: string) => {
     const assigned = manifest[seatNo];
@@ -669,7 +669,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
       <div key={seatNo} className="relative inline-flex items-center flex-shrink-0">
         {/* Armrest Kiri */}
         <div
-          className={`w-1 h-7 sm:h-8 rounded-l-md -mr-[1px] z-10 transition-colors ${
+          className={`w-0.5 sm:w-1 h-6 sm:h-7 rounded-l-sm -mr-[1px] z-10 transition-colors ${
             isOccupied ? "bg-slate-700 dark:bg-slate-400" : "bg-slate-400 dark:bg-slate-600"
           }`}
         />
@@ -678,18 +678,18 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         <button
           type="button"
           onClick={() => handleSeatClick(seatNo)}
-          className={`w-11 sm:w-13 min-h-[52px] sm:min-h-[58px] rounded-xl border-2 transition-all relative flex flex-col justify-between p-1 shadow-2xs group text-left ${
+          className={`w-9 sm:w-11 md:w-12 min-h-[46px] sm:min-h-[52px] rounded-lg sm:rounded-xl border-1.5 sm:border-2 transition-all relative flex flex-col justify-between p-0.5 sm:p-1 shadow-2xs group text-left ${
             isMatchingSearch
               ? "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/80 border-amber-500 shadow-md"
               : isOccupied
-              ? "bg-blue-50/90 dark:bg-blue-950/70 border-slate-800 dark:border-blue-400 hover:border-blue-600 hover:shadow-md"
+              ? "bg-blue-50/95 dark:bg-blue-950/80 border-slate-800 dark:border-blue-400 hover:border-blue-600 hover:shadow-md"
               : "bg-white dark:bg-slate-900 border-slate-700 dark:border-slate-500 hover:bg-slate-50 hover:border-blue-500"
           }`}
           title={`Kursi ${seatNo}: ${assigned ? assigned.name : "Kosong (Klik untuk isi)"}`}
         >
           {/* Headrest Cushion */}
           <div
-            className={`w-7 sm:w-8 h-1.5 rounded-t-md mx-auto -mt-0.5 border-b transition-colors ${
+            className={`w-5 sm:w-7 h-1 sm:h-1.5 rounded-t-sm mx-auto -mt-0.5 border-b transition-colors ${
               isOccupied
                 ? "bg-blue-600 border-blue-700 dark:bg-blue-500"
                 : "bg-slate-300 dark:bg-slate-700 border-slate-400 dark:border-slate-600"
@@ -699,7 +699,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           {/* Nomor Kursi */}
           <div className="flex items-center justify-center w-full my-auto">
             <span
-              className={`text-xs sm:text-sm font-black font-mono tracking-tight ${
+              className={`text-[11px] sm:text-xs md:text-sm font-black font-mono tracking-tight leading-none ${
                 isOccupied
                   ? "text-blue-950 dark:text-blue-100"
                   : "text-slate-900 dark:text-slate-100"
@@ -711,19 +711,19 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
           {/* Nama Penumpang jika terisi */}
           {isOccupied ? (
-            <div className="w-full text-center">
-              <p className="text-[8.5px] sm:text-[9.5px] font-black text-slate-900 dark:text-white truncate leading-none">
+            <div className="w-full text-center overflow-hidden">
+              <p className="text-[7.5px] sm:text-[8.5px] font-black text-slate-900 dark:text-white truncate leading-none">
                 {assigned.name}
               </p>
               {assigned.category && assigned.category !== "Umum" && (
-                <span className="text-[7px] font-bold px-0.5 rounded bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300 inline-block truncate max-w-full mt-0.5">
+                <span className="text-[6.5px] sm:text-[7px] font-bold px-0.5 rounded bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300 inline-block truncate max-w-full">
                   {assigned.category}
                 </span>
               )}
             </div>
           ) : (
             <div className="text-center w-full pb-0.5">
-              <span className="text-[7.5px] font-bold text-slate-400 group-hover:text-blue-600">
+              <span className="text-[7px] font-bold text-slate-400 group-hover:text-blue-600">
                 Kosong
               </span>
             </div>
@@ -732,7 +732,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
         {/* Armrest Kanan */}
         <div
-          className={`w-1 h-7 sm:h-8 rounded-r-md -ml-[1px] z-10 transition-colors ${
+          className={`w-0.5 sm:w-1 h-6 sm:h-7 rounded-r-sm -ml-[1px] z-10 transition-colors ${
             isOccupied ? "bg-slate-700 dark:bg-slate-400" : "bg-slate-400 dark:bg-slate-600"
           }`}
         />
@@ -742,12 +742,12 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[94vh] overflow-y-auto rounded-3xl p-3 sm:p-6 bg-white dark:bg-slate-950">
+      <DialogContent className="w-[96vw] max-w-3xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl p-3 sm:p-5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 shadow-2xl z-50">
         {/* Header Modal Rapi (Dengan pr-8 agar tidak menabrak tombol X di mobile) */}
-        <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-3 pr-8">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
-              <Bus className="w-5 h-5" />
+        <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-2.5 pr-8">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
+              <Bus className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-sm sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
@@ -757,7 +757,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                 <Badge variant="outline" className="text-[9px] sm:text-[10px] font-bold bg-blue-50 text-blue-700 border-blue-200">
                   {busStructure.configLabel}
                 </Badge>
-                <span className="text-[10px] sm:text-xs text-slate-500 font-semibold truncate">
+                <span className="text-[10px] sm:text-xs text-slate-500 font-semibold truncate max-w-[140px] sm:max-w-xs">
                   {tripInfo?.nama_trip || "Trip Pariwisata"}
                 </span>
               </div>
@@ -765,7 +765,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           </div>
 
           {/* Baris Selector Preset & Tombol Atur Denah */}
-          <div className="flex items-center gap-1.5 mt-2.5">
+          <div className="flex items-center gap-1.5 mt-2">
             <Select
               value={busConfig.layout}
               onValueChange={(val: any) => handlePresetChange(val)}
@@ -813,28 +813,28 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
             PANEL KUSTOMISASI DENAH (KIRI 2/3, KANAN 2/3, BARIS, DLL)
             ======================================================== */}
         {showConfigPanel && (
-          <div className="mt-3 p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-              <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-blue-600" />
-                <span>Sesuaikan Formasi Kursi & Tata Letak Kabin Bus</span>
+          <div className="mt-2.5 p-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 space-y-2.5">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1.5">
+              <h4 className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Settings2 className="w-3.5 h-3.5 text-blue-600" />
+                <span>Sesuaikan Formasi Kursi Kabin Bus</span>
               </h4>
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
                 Total: {totalSeats} Kursi
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {/* Kursi Kiri */}
-              <div className="space-y-1">
-                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
                   Kursi Kiri
                 </Label>
                 <Select
                   value={String(busConfig.leftSeatsPerRow)}
                   onValueChange={(val) => updateCustomConfig({ leftSeatsPerRow: Number(val) })}
                 >
-                  <SelectTrigger className="h-8 text-xs font-bold rounded-xl bg-white dark:bg-slate-950">
+                  <SelectTrigger className="h-7 text-xs font-bold rounded-lg bg-white dark:bg-slate-950">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -846,15 +846,15 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               </div>
 
               {/* Kursi Kanan */}
-              <div className="space-y-1">
-                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
                   Kursi Kanan
                 </Label>
                 <Select
                   value={String(busConfig.rightSeatsPerRow)}
                   onValueChange={(val) => updateCustomConfig({ rightSeatsPerRow: Number(val) })}
                 >
-                  <SelectTrigger className="h-8 text-xs font-bold rounded-xl bg-white dark:bg-slate-950">
+                  <SelectTrigger className="h-7 text-xs font-bold rounded-lg bg-white dark:bg-slate-950">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -866,15 +866,15 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               </div>
 
               {/* Jumlah Baris */}
-              <div className="space-y-1">
-                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-                  Jumlah Baris ({busConfig.rowCount})
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
+                  Baris ({busConfig.rowCount})
                 </Label>
                 <Select
                   value={String(busConfig.rowCount)}
                   onValueChange={(val) => updateCustomConfig({ rowCount: Number(val) })}
                 >
-                  <SelectTrigger className="h-8 text-xs font-bold rounded-xl bg-white dark:bg-slate-950">
+                  <SelectTrigger className="h-7 text-xs font-bold rounded-lg bg-white dark:bg-slate-950">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -888,15 +888,15 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               </div>
 
               {/* Gaya Penomoran */}
-              <div className="space-y-1">
-                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
                   Penomoran
                 </Label>
                 <Select
                   value={busConfig.numberingStyle}
                   onValueChange={(val: any) => updateCustomConfig({ numberingStyle: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs font-bold rounded-xl bg-white dark:bg-slate-950">
+                  <SelectTrigger className="h-7 text-xs font-bold rounded-lg bg-white dark:bg-slate-950">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -907,8 +907,8 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               </div>
 
               {/* Bangku Belakang */}
-              <div className="space-y-1">
-                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
                   Bangku Belakang
                 </Label>
                 <Select
@@ -920,7 +920,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                     })
                   }
                 >
-                  <SelectTrigger className="h-8 text-xs font-bold rounded-xl bg-white dark:bg-slate-950">
+                  <SelectTrigger className="h-7 text-xs font-bold rounded-lg bg-white dark:bg-slate-950">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -933,17 +933,17 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               </div>
 
               {/* Pintu Belakang Kiri */}
-              <div className="space-y-1">
-                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
                   Pintu Belakang
                 </Label>
-                <div className="h-8 flex items-center gap-2">
+                <div className="h-7 flex items-center gap-1.5">
                   <Switch
                     checked={busConfig.hasRearDoor}
                     onCheckedChange={(checked) => updateCustomConfig({ hasRearDoor: checked })}
                   />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    {busConfig.hasRearDoor ? "Ada (Kiri)" : "Tidak"}
+                  <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                    {busConfig.hasRearDoor ? "Ada" : "Tidak"}
                   </span>
                 </div>
               </div>
@@ -954,7 +954,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         {/* ========================================================
             TOOLBAR COMPACT: PENCARIAN & AKSI RAPI (TIDAK PENUH DI HP)
             ======================================================== */}
-        <div className="mt-2.5 p-2 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2">
+        <div className="mt-2 p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-1.5">
           {/* Baris 1: Pencarian & Kuota Terisi */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -998,14 +998,14 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                   size="sm"
                   variant="outline"
                   disabled={isProcessingFile}
-                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs font-bold rounded-xl gap-1 border-blue-300 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-950 flex-shrink-0"
+                  className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs font-bold rounded-xl gap-1 border-blue-300 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-950 flex-shrink-0 shadow-2xs"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                   <span>Import / Scan</span>
                   <ChevronDown className="w-3 h-3 text-slate-400" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1">
+              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1 z-[70]">
                 <DropdownMenuItem
                   onClick={() => wordFileInputRef.current?.click()}
                   className="text-xs font-semibold gap-2 py-2 cursor-pointer"
@@ -1036,14 +1036,14 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs font-bold rounded-xl gap-1 border-amber-300 text-amber-800 dark:text-amber-300 bg-white dark:bg-slate-950 flex-shrink-0"
+                  className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs font-bold rounded-xl gap-1 border-amber-300 text-amber-800 dark:text-amber-300 bg-white dark:bg-slate-950 flex-shrink-0 shadow-2xs"
                 >
                   <Download className="w-3.5 h-3.5 text-amber-600" />
                   <span>Ekspor</span>
                   <ChevronDown className="w-3 h-3 text-slate-400" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1">
+              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1 z-[70]">
                 <DropdownMenuItem
                   onClick={handleExportImage}
                   className="text-xs font-semibold gap-2 py-2 cursor-pointer"
@@ -1072,7 +1072,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
             <Button
               size="sm"
               onClick={handleExportWhatsApp}
-              className="h-7 sm:h-8 px-2.5 text-xs font-bold rounded-xl gap-1 bg-emerald-600 hover:bg-emerald-700 text-white flex-shrink-0 shadow-2xs"
+              className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs font-bold rounded-xl gap-1 bg-emerald-600 hover:bg-emerald-700 text-white flex-shrink-0 shadow-2xs"
               title="Kirim Manifest ke WhatsApp"
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -1084,11 +1084,11 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               size="sm"
               variant="outline"
               onClick={handleExportImage}
-              className="h-7 sm:h-8 px-2.5 text-xs font-bold rounded-xl gap-1 bg-white dark:bg-slate-950 border-slate-300 hover:bg-slate-100 text-slate-800 dark:text-slate-200 flex-shrink-0 shadow-2xs"
+              className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs font-bold rounded-xl gap-1 bg-white dark:bg-slate-950 border-slate-300 hover:bg-slate-100 text-slate-800 dark:text-slate-200 flex-shrink-0 shadow-2xs"
               title="Download Gambar Denah"
             >
               <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden sm:inline">Simpan Gambar</span>
+              <span>Simpan Gambar</span>
             </Button>
           </div>
         </div>
@@ -1096,58 +1096,58 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         {/* ========================================================
             VISUAL SKETSA KABIN BUS (PAS DENGAN LORONG PROPORSIONAL)
             ======================================================== */}
-        <div className="mt-3 overflow-x-auto p-1 sm:p-3 flex justify-center">
+        <div className="mt-2.5 overflow-x-auto p-1 flex justify-center no-scrollbar">
           <div
             ref={busCabinRef}
-            className="w-fit max-w-full mx-auto rounded-3xl border-3 sm:border-4 border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-950 p-3 sm:p-5 shadow-xl relative space-y-3"
+            className="w-fit max-w-full mx-auto rounded-2xl sm:rounded-3xl border-3 sm:border-4 border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-950 p-2.5 sm:p-4 shadow-xl relative space-y-2.5 sm:space-y-3"
           >
             {/* Bagian Atas / Depan Bus: Tangga Depan, Tour Leader, dan Sopir */}
-            <div className="flex items-center justify-center gap-2 sm:gap-4 pb-3 border-b-2 border-slate-900 dark:border-slate-700">
+            <div className="flex items-center justify-center gap-1.5 sm:gap-3 pb-2.5 border-b-2 border-slate-900 dark:border-slate-700">
               {/* Kiri Depan: Pintu Masuk (lebar pas dengan kursi di bawahnya) */}
               <div className="flex flex-col items-center justify-center">
-                <div className="w-22 sm:w-26 h-9 sm:h-10 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-1 flex flex-col justify-between">
-                  <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
-                  <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
-                  <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
+                <div className="w-18 sm:w-22 h-8 sm:h-9 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-0.5 sm:p-1 flex flex-col justify-between">
+                  <div className="w-full h-[1.5px] sm:h-[2px] bg-slate-800 dark:bg-slate-400" />
+                  <div className="w-full h-[1.5px] sm:h-[2px] bg-slate-800 dark:bg-slate-400" />
+                  <div className="w-full h-[1.5px] sm:h-[2px] bg-slate-800 dark:bg-slate-400" />
                 </div>
-                <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider text-slate-500 mt-0.5">
+                <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-wider text-slate-500 mt-0.5">
                   Pintu Depan
                 </span>
               </div>
 
               {/* Tengah Depan: Kursi Tour Leader (TL) - pas di lorong */}
-              <div className="w-6 sm:w-8 flex-shrink-0 flex flex-col items-center justify-center">
-                <div className="w-7 sm:w-8 h-8 rounded-lg border-2 border-slate-900 dark:border-slate-400 bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-0.5 text-center shadow-xs">
-                  <span className="text-[8px] font-black text-slate-800 dark:text-slate-200 leading-none">
+              <div className="w-5 sm:w-7 flex-shrink-0 flex flex-col items-center justify-center">
+                <div className="w-7 sm:w-8 h-7 sm:h-8 rounded-lg border-2 border-slate-900 dark:border-slate-400 bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-0.5 text-center shadow-xs">
+                  <span className="text-[7.5px] sm:text-[8px] font-black text-slate-800 dark:text-slate-200 leading-none">
                     TL
                   </span>
                 </div>
-                <span className="text-[7px] font-bold text-slate-400 mt-0.5">Kru</span>
+                <span className="text-[6.5px] sm:text-[7px] font-bold text-slate-400 mt-0.5">Kru</span>
               </div>
 
               {/* Kanan Depan: Kursi Sopir / Driver (lebar pas dengan kursi di bawahnya) */}
               <div className="flex flex-col items-center justify-center">
-                <div className="w-22 sm:w-26 h-9 sm:h-10 rounded-lg border-2 border-slate-900 dark:border-slate-400 bg-slate-200 dark:bg-slate-800 flex items-center justify-center gap-1.5 p-1 shadow-xs">
-                  <User className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 flex-shrink-0" />
-                  <span className="text-[10px] font-black text-slate-900 dark:text-white">
+                <div className="w-18 sm:w-22 h-8 sm:h-9 rounded-lg border-2 border-slate-900 dark:border-slate-400 bg-slate-200 dark:bg-slate-800 flex items-center justify-center gap-1 p-0.5 sm:p-1 shadow-xs">
+                  <User className="w-3 h-3 text-slate-700 dark:text-slate-200 flex-shrink-0" />
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-900 dark:text-white">
                     Sopir
                   </span>
                 </div>
-                <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 mt-0.5 truncate max-w-[100px]">
-                  {tripInfo?.nama_driver || "Kemudi Utama"}
+                <span className="text-[7px] sm:text-[7.5px] font-bold text-slate-500 mt-0.5 truncate max-w-[80px]">
+                  {tripInfo?.nama_driver || "Kemudi"}
                 </span>
               </div>
             </div>
 
             {/* Badan Kabin Kursi Penumpang (Per Baris) */}
-            <div className="space-y-2.5 py-0.5">
+            <div className="space-y-2 py-0.5">
               {busStructure.rows.map((row) => {
                 // Baris Paling Belakang (Bangku 5/6 Kursi Sejajar)
                 if (row.isBackRow && row.backSeats) {
                   return (
-                    <div key={`back-${row.rowNumber}`} className="pt-2">
-                      <div className="p-1.5 sm:p-2 rounded-2xl border-2 border-slate-900 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
-                        <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-nowrap">
+                    <div key={`back-${row.rowNumber}`} className="pt-1.5">
+                      <div className="p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border-2 border-slate-900 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
+                        <div className="flex items-center justify-center gap-0.5 sm:gap-1 flex-nowrap">
                           {row.backSeats.map((seatNo) => renderSeatItem(seatNo))}
                         </div>
                       </div>
@@ -1160,24 +1160,24 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                   return (
                     <div
                       key={`row-${row.rowNumber}`}
-                      className="flex items-center justify-center gap-2 sm:gap-4 py-0.5"
+                      className="flex items-center justify-center gap-1.5 sm:gap-3 py-0.5"
                     >
                       {/* Tangga Pintu Belakang di Sisi Kiri (Persis Sketsa) */}
-                      <div className="w-22 sm:w-26 h-10 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-1 flex flex-col justify-between">
-                        <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
-                        <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
-                        <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
+                      <div className="w-18 sm:w-22 h-8 sm:h-9 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-0.5 sm:p-1 flex flex-col justify-between">
+                        <div className="w-full h-[1.5px] sm:h-[2px] bg-slate-800 dark:bg-slate-400" />
+                        <div className="w-full h-[1.5px] sm:h-[2px] bg-slate-800 dark:bg-slate-400" />
+                        <div className="w-full h-[1.5px] sm:h-[2px] bg-slate-800 dark:bg-slate-400" />
                       </div>
 
                       {/* Lorong Tengah - Fixed Compact Width */}
-                      <div className="w-6 sm:w-8 flex-shrink-0 flex items-center justify-center">
-                        <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 font-mono">
+                      <div className="w-5 sm:w-7 flex-shrink-0 flex items-center justify-center">
+                        <span className="text-[8px] font-black text-slate-300 dark:text-slate-600 font-mono">
                           |
                         </span>
                       </div>
 
                       {/* Kursi Sisi Kanan (misal 25, 26) */}
-                      <div className="flex items-center gap-1 sm:gap-1.5 justify-start">
+                      <div className="flex items-center gap-0.5 sm:gap-1 justify-start">
                         {row.rightSeats.map((seatNo) => renderSeatItem(seatNo))}
                       </div>
                     </div>
@@ -1188,22 +1188,22 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                 return (
                   <div
                     key={`row-${row.rowNumber}`}
-                    className="flex items-center justify-center gap-2 sm:gap-4 py-0.5"
+                    className="flex items-center justify-center gap-1.5 sm:gap-3 py-0.5"
                   >
                     {/* Sisi Kiri (2 atau 3 Kursi) */}
-                    <div className="flex items-center gap-1 sm:gap-1.5 justify-end">
+                    <div className="flex items-center gap-0.5 sm:gap-1 justify-end">
                       {row.leftSeats.map((seatNo) => renderSeatItem(seatNo))}
                     </div>
 
                     {/* LORONG TENGAH (AISLE) - FIXED COMPACT LEGA & PROPORSIONAL */}
-                    <div className="w-6 sm:w-8 flex-shrink-0 flex items-center justify-center py-1">
-                      <span className="text-[9px] font-black font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-1 py-0.5 rounded">
+                    <div className="w-5 sm:w-7 flex-shrink-0 flex items-center justify-center py-0.5">
+                      <span className="text-[8.5px] sm:text-[9.5px] font-black font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-1 py-0.2 rounded">
                         {row.rowNumber}
                       </span>
                     </div>
 
                     {/* Sisi Kanan (2 atau 3 Kursi) */}
-                    <div className="flex items-center gap-1 sm:gap-1.5 justify-start">
+                    <div className="flex items-center gap-0.5 sm:gap-1 justify-start">
                       {row.rightSeats.map((seatNo) => renderSeatItem(seatNo))}
                     </div>
                   </div>
@@ -1215,10 +1215,10 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
         {/* Panel Form Edit Alokasi Kursi Terpilih */}
         {selectedSeat && (
-          <div className="mt-3 p-3.5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-800 space-y-3">
+          <div className="mt-2.5 p-3 rounded-2xl bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-800 space-y-2.5">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600" />
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-blue-600" />
                 <span>Pengaturan Alokasi Kursi #{selectedSeat}</span>
               </h4>
               {manifest[selectedSeat] && (
@@ -1226,37 +1226,37 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                   size="sm"
                   variant="ghost"
                   onClick={() => handleClearSeat(selectedSeat)}
-                  className="h-7 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-100 gap-1"
+                  className="h-6 text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-100 gap-1 px-2"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3 h-3" />
                   <span>Kosongkan Kursi</span>
                 </Button>
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-              <div className="sm:col-span-2 space-y-1">
-                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <div className="sm:col-span-2 space-y-0.5">
+                <Label className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
                   Nama Penumpang *
                 </Label>
                 <Input
                   value={passengerName}
                   onChange={(e) => setPassengerName(e.target.value)}
                   placeholder="Ketik nama lengkap peserta"
-                  className="h-9 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300"
+                  className="h-8 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300"
                   autoFocus
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              <div className="space-y-0.5">
+                <Label className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
                   Kategori
                 </Label>
                 <Select
                   value={passengerCategory}
                   onValueChange={(val: any) => setPassengerCategory(val)}
                 >
-                  <SelectTrigger className="h-9 text-xs font-bold rounded-xl bg-white dark:bg-slate-900">
+                  <SelectTrigger className="h-8 text-xs font-bold rounded-xl bg-white dark:bg-slate-900">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1279,46 +1279,46 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                 </Select>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              <div className="space-y-0.5">
+                <Label className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
                   No. HP / WA
                 </Label>
                 <Input
                   value={passengerPhone}
                   onChange={(e) => setPassengerPhone(e.target.value)}
                   placeholder="0812..."
-                  className="h-9 text-xs font-mono rounded-xl bg-white dark:bg-slate-900"
+                  className="h-8 text-xs font-mono rounded-xl bg-white dark:bg-slate-900"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Catatan Khusus (contoh: Mabuk darat / Dekat pintu / Permintaan keluarga)
+            <div className="space-y-0.5">
+              <Label className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                Catatan Khusus (contoh: Mabuk darat / Dekat pintu)
               </Label>
               <Input
                 value={passengerNotes}
                 onChange={(e) => setPassengerNotes(e.target.value)}
                 placeholder="Catatan permintaan khusus..."
-                className="h-9 text-xs rounded-xl bg-white dark:bg-slate-900"
+                className="h-8 text-xs rounded-xl bg-white dark:bg-slate-900"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-1">
+            <div className="flex justify-end gap-2 pt-0.5">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setSelectedSeat(null)}
-                className="h-8 text-xs font-bold rounded-xl"
+                className="h-7 text-xs font-bold rounded-xl"
               >
                 Batal
               </Button>
               <Button
                 size="sm"
                 onClick={handleSaveSeat}
-                className="h-8 text-xs font-black rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                className="h-7 text-xs font-black rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs px-3"
               >
-                Simpan Alokasi Kursi
+                Simpan Alokasi
               </Button>
             </div>
           </div>
@@ -1329,7 +1329,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           MODAL PREVIEW IMPORT (WORD / FOTO / PASTE)
           ======================================================== */}
       <Dialog open={importPreviewOpen} onOpenChange={setImportPreviewOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-4 sm:p-6">
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-4 sm:p-6 z-[80]">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-blue-600" />
@@ -1402,7 +1402,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           MODAL QUICK PASTE TEKS (DARI WHATSAPP / EXCEL)
           ======================================================== */}
       <Dialog open={quickPasteOpen} onOpenChange={setQuickPasteOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-5">
+        <DialogContent className="sm:max-w-md rounded-3xl p-5 z-[80]">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <ClipboardPaste className="w-5 h-5 text-blue-600" />
