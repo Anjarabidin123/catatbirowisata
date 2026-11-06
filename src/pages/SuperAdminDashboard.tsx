@@ -4,6 +4,7 @@ import {
   isSuperAdminUser,
   SUPER_ADMIN_EMAIL,
   getAllTenants,
+  fetchTenantsFromSupabase,
   TenantRecord,
 } from "@/utils/licenseEntitlement";
 import {
@@ -86,6 +87,13 @@ export const SuperAdminDashboard: React.FC = () => {
     setBroadcasts(getBroadcasts());
     setTickets(getSupportTickets());
     setIsSuper(isSuperAdminUser());
+
+    // Coba sinkronisasi langsung dengan Supabase jika tabel tenants sudah dibuat
+    fetchTenantsFromSupabase().then((liveTenants) => {
+      if (liveTenants && liveTenants.length > 0) {
+        setTenants(liveTenants);
+      }
+    });
   };
 
   useEffect(() => {

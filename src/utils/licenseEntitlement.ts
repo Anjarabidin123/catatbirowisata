@@ -424,6 +424,63 @@ export function getAllTenants(): TenantRecord[] {
 }
 
 /**
+ * Sinkronisasi & ambil daftar tenant langsung dari tabel Supabase public.tenants
+ */
+export async function fetchTenantsFromSupabase(): Promise<TenantRecord[]> {
+  try {
+    const { data, error } = await supabase
+      .from("tenants")
+      .select(`
+        *,
+        feature_entitlements (*)
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("Supabase fetchTenantsFromSupabase info:", error.message);
+      return getAllTenants();
+    }
+
+    if (data && data.length > 0) {
+      const mapped: TenantRecord[] = data.map((row: any) => {
+        const ent = Array.isArray(row.feature_entitlements)
+          ? row.feature_entitlements[0]
+          : row.feature_entitlements;
+
+        return {
+          id: row.id,
+          namaBiro: row.nama_biro,
+          slugBiro: row.slug_biro || "",
+          ownerNama: row.owner_nama,
+          ownerEmail: row.owner_email,
+          ownerPhone: row.owner_phone || "",
+          tier: (row.tier_lisensi as LicenseTier) || "starter",
+          paymentModel: (row.payment_model as PaymentModel) || "lifetime",
+          status: row.status_akun || "active",
+          canUseDesktopMode: ent ? Boolean(ent.can_use_desktop_mode) : false,
+          canExportCleanPdf: ent ? Boolean(ent.can_export_pdf_clean) : false,
+          canUseAI: ent ? Boolean(ent.can_use_ai_assistant) : false,
+          maxActiveTrips: ent ? Number(ent.max_active_trips) || 5 : 5,
+          maxCrewMembers: ent ? Number(ent.max_crew_members) || 2 : 2,
+          customBranding: ent ? Boolean(ent.custom_branding_enabled) : false,
+          hasWebsite: false,
+          nominalBayar: 0,
+          tanggalBayar: row.created_at ? row.created_at.slice(0, 10) : "",
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        };
+      });
+
+      saveTenants(mapped);
+      return mapped;
+    }
+  } catch (err) {
+    console.warn("fetchTenantsFromSupabase error", err);
+  }
+  return getAllTenants();
+}
+
+/**
  * Ambil single tenant berdasarkan ID
  */
 export function getTenantById(id: string): TenantRecord | undefined {

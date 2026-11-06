@@ -223,6 +223,69 @@ CREATE POLICY "Clients insert and read own tickets" ON public.support_tickets
         tenant_id IN (SELECT id FROM public.tenants WHERE user_id = auth.uid())
         OR auth.jwt() ->> 'email' = sender_email
     );
+
+-- AUTO-IMPORT BIRO YANG SUDAH TERDAFTAR DI AUTH.USERS
+INSERT INTO public.tenants (
+    user_id, nama_biro, slug_biro, owner_nama, owner_email, owner_phone, tier_lisensi, payment_model, status_akun
+)
+SELECT 
+    u.id AS user_id,
+    COALESCE(bp.nama_biro, u.raw_user_meta_data->>'nama_biro', split_part(u.email, '@', 1) || ' Tour') AS nama_biro,
+    lower(regexp_replace(COALESCE(bp.nama_biro, split_part(u.email, '@', 1)), '[^a-zA-Z0-9]', '-', 'g')) || '-' || substring(u.id::text, 1, 4) AS slug_biro,
+    COALESCE(bp.pimpinan, u.raw_user_meta_data->>'nama_lengkap', split_part(u.email, '@', 1)) AS owner_nama,
+    u.email AS owner_email,
+    COALESCE(bp.telepon, u.raw_user_meta_data->>'phone', '0812-0000-0000') AS owner_phone,
+    'starter' AS tier_lisensi,
+    'lifetime' AS payment_model,
+    'active' AS status_akun
+FROM auth.users u
+LEFT JOIN public.biro_profiles bp ON bp.user_id = u.id
+WHERE u.email != 'anjarbdn@gmail.com'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.feature_entitlements (
+    tenant_id, can_use_desktop_mode, can_export_pdf_clean, can_use_ai_assistant, max_active_trips, max_crew_members, custom_branding_enabled
+)
+SELECT t.id, false, false, false, 5, 2, false
+FROM public.tenants t
+LEFT JOIN public.feature_entitlements fe ON fe.tenant_id = t.id
+WHERE fe.id IS NULL
+ON CONFLICT DO NOTHING;
+
+-- AUTO-TRIGGER: BIRO BARU YANG DAFTAR OTOMATIS MASUK KE TENANTS
+CREATE OR REPLACE FUNCTION public.handle_new_tenant_signup()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_tenant_id UUID;
+    v_biro_name TEXT;
+BEGIN
+    IF NEW.email = 'anjarbdn@gmail.com' THEN
+        RETURN NEW;
+    END IF;
+    v_biro_name := COALESCE(NEW.raw_user_meta_data->>'nama_biro', split_part(NEW.email, '@', 1) || ' Tour');
+    INSERT INTO public.tenants (
+        user_id, nama_biro, slug_biro, owner_nama, owner_email, owner_phone, tier_lisensi, payment_model, status_akun
+    ) VALUES (
+        NEW.id, v_biro_name,
+        lower(regexp_replace(v_biro_name, '[^a-zA-Z0-9]', '-', 'g')) || '-' || substring(NEW.id::text, 1, 4),
+        COALESCE(NEW.raw_user_meta_data->>'nama_lengkap', split_part(NEW.email, '@', 1)),
+        NEW.email, COALESCE(NEW.raw_user_meta_data->>'phone', '0812-0000-0000'),
+        'starter', 'lifetime', 'active'
+    ) RETURNING id INTO v_tenant_id;
+
+    INSERT INTO public.feature_entitlements (
+        tenant_id, can_use_desktop_mode, can_export_pdf_clean, can_use_ai_assistant, max_active_trips, max_crew_members, custom_branding_enabled
+    ) VALUES (
+        v_tenant_id, false, false, false, 5, 2, false
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_tenant ON auth.users;
+CREATE TRIGGER on_auth_user_created_tenant
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_tenant_signup();
 `;
 
 interface DatabaseManagerViewProps {
