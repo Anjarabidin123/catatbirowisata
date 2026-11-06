@@ -19,6 +19,7 @@ import {
   Target,
   BookOpen,
   Zap,
+  User,
 } from "lucide-react";
 import { isSuperAdminUser } from "@/utils/licenseEntitlement";
 import { getLocalBiroProfile, fetchBiroProfile, BiroProfile, clearBiroProfileCache } from "@/utils/biroProfile";
@@ -243,10 +244,13 @@ export const DesktopSidebar: React.FC = () => {
     ...(canEditBiro
       ? [
           {
-            label: "Pusat Kontrol CMS Biro",
-            path: "/pengaturan-biro",
-            icon: Settings,
-            iconColor: "text-slate-600 dark:text-slate-300",
+            label: "Profil Biro & Kop Surat",
+            path: "/profil",
+            icon: User,
+            iconColor: "text-indigo-600 dark:text-indigo-400",
+            badge: "Meta",
+            badgeClass:
+              "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
           },
         ]
       : []),

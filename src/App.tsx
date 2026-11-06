@@ -33,6 +33,7 @@ const ManajemenKruRBAC = lazy(() => import("./pages/ManajemenKruRBAC"));
 const GoalTargetBiro = lazy(() => import("./pages/GoalTargetBiro"));
 const BoostUpgrade = lazy(() => import("./pages/BoostUpgrade"));
 const LearnKnowledgeBase = lazy(() => import("./pages/LearnKnowledgeBase"));
+const ProfilBiro = lazy(() => import("./pages/ProfilBiro"));
 const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard").then((m) => ({ default: m.SuperAdminDashboard })));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -103,8 +104,10 @@ const App = () => {
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/import-rundown" element={<ImportWordRundown />} />
                 <Route path="/asisten-ai" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/pengaturan" element={<PengaturanBiro />} />
-                <Route path="/pengaturan-biro" element={<PengaturanBiro />} />
+                <Route path="/profil" element={<ProfilBiro />} />
+                <Route path="/pengaturan" element={<ProfilBiro />} />
+                <Route path="/pengaturan-biro" element={<ProfilBiro />} />
+                <Route path="/pengaturan-biro-legacy" element={<PengaturanBiro />} />
                 <Route path="/manajemen-kru" element={<ManajemenKruRBAC />} />
                 <Route path="/goal" element={<GoalTargetBiro />} />
                 <Route path="/boost" element={<BoostUpgrade />} />

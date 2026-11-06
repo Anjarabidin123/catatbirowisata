@@ -371,7 +371,33 @@ export function getCurrentEntitlements(): EntitlementState {
     };
   }
 
-  // 6. Default akun umum: Ambil dari custom tier lokal jika ada
+  // 6. Pencocokan Otomatis Akun Login dengan Data Tenant Supabase
+  const activeUser = getActiveUserSync();
+  const currentEmail = activeUser?.email?.toLowerCase() || "";
+  if (currentEmail && currentEmail !== SUPER_ADMIN_EMAIL.toLowerCase()) {
+    const all = getAllTenants();
+    const matchedTenant = all.find(
+      (t) => t.ownerEmail?.toLowerCase() === currentEmail || t.id === activeUser?.id
+    );
+    if (matchedTenant) {
+      return {
+        isSuperAdmin: isSuper,
+        activePerspective: "normal",
+        tier: matchedTenant.tier,
+        canUseDesktopMode: matchedTenant.canUseDesktopMode,
+        canExportCleanPdf: matchedTenant.canExportCleanPdf,
+        canUseAI: matchedTenant.canUseAI,
+        maxActiveTrips: matchedTenant.maxActiveTrips,
+        maxCrewMembers: matchedTenant.maxCrewMembers,
+        customBranding: matchedTenant.customBranding,
+        hasWebsite: matchedTenant.hasWebsite,
+        activeTenantName: matchedTenant.namaBiro,
+        isImpersonating: false,
+      };
+    }
+  }
+
+  // 7. Default akun umum: Ambil dari custom tier lokal jika ada
   try {
     const customTier = localStorage.getItem("catatbiro_custom_tier") as LicenseTier;
     if (customTier === "starter") {
