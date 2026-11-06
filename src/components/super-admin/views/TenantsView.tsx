@@ -36,16 +36,22 @@ import {
   Globe,
   Trash2,
   Monitor,
-  Smartphone,
   Sparkles,
   FileCheck2,
   Users,
   Compass,
-  AlertTriangle,
-  ExternalLink,
   Phone,
   Mail,
-  Copy,
+  CheckCircle2,
+  CreditCard,
+  LayoutList,
+  LayoutGrid,
+  Info,
+  Calendar,
+  Lock,
+  Check,
+  ShieldCheck,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -65,6 +71,8 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [paymentFilter, setPaymentFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"table" | "card">("table");
 
   // Modal Tambah Biro Baru
   const [showAddModal, setShowAddModal] = useState(false);
@@ -82,14 +90,26 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
     catatan: "",
   });
 
+  // KPI Summary Metrics
+  const metrics = useMemo(() => {
+    const total = tenants.length;
+    const active = tenants.filter((t) => t.status === "active").length;
+    const lifetime = tenants.filter((t) => t.paymentModel === "lifetime").length;
+    const subscription = tenants.filter((t) => t.paymentModel === "subscription").length;
+    return { total, active, lifetime, subscription };
+  }, [tenants]);
+
+  // Filter Data Tenants
   const filteredTenants = useMemo(() => {
     return tenants.filter((t) => {
       if (tierFilter !== "all" && t.tier !== tierFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (paymentFilter !== "all" && t.paymentModel !== paymentFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
           t.namaBiro.toLowerCase().includes(q) ||
+          t.slugBiro.toLowerCase().includes(q) ||
           t.ownerNama.toLowerCase().includes(q) ||
           t.ownerEmail.toLowerCase().includes(q) ||
           t.ownerPhone.includes(q) ||
@@ -98,7 +118,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
       }
       return true;
     });
-  }, [tenants, tierFilter, statusFilter, searchQuery]);
+  }, [tenants, tierFilter, statusFilter, paymentFilter, searchQuery]);
 
   const handleCreateBiro = (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +188,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
   };
 
   const handleDelete = (tenant: TenantRecord) => {
-    if (confirm(`Yakin ingin menghapus biro "${tenant.namaBiro}"? Tindakan ini akan dicatat di log audit.`)) {
+    if (confirm(`Yakin ingin menghapus biro "${tenant.namaBiro}"? Tindakan ini akan menghapus data di Supabase & dicatat di log audit.`)) {
       deleteTenant(tenant.id);
       toast.success(`Biro "${tenant.namaBiro}" berhasil dihapus`);
       onRefresh();
@@ -184,21 +204,85 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
-        <div className="flex flex-1 items-center gap-3 flex-wrap">
-          <div className="relative min-w-[240px] flex-1">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      {/* 1. Top KPI Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4 bg-white border-slate-200 shadow-xs flex items-center gap-3.5 rounded-2xl">
+          <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Total Biro</p>
+            <p className="text-xl font-extrabold text-slate-900">{metrics.total}</p>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-white border-slate-200 shadow-xs flex items-center gap-3.5 rounded-2xl">
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Biro Aktif</p>
+            <p className="text-xl font-extrabold text-emerald-700">{metrics.active}</p>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-white border-slate-200 shadow-xs flex items-center gap-3.5 rounded-2xl">
+          <div className="p-3 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Sekali Bayar</p>
+            <p className="text-xl font-extrabold text-amber-800">{metrics.lifetime}</p>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-white border-slate-200 shadow-xs flex items-center gap-3.5 rounded-2xl">
+          <div className="p-3 rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Langganan SaaS</p>
+            <p className="text-xl font-extrabold text-purple-800">{metrics.subscription}</p>
+          </div>
+        </Card>
+      </div>
+
+      {/* 2. Guidance Banner: Client Directory vs Feature Gating */}
+      <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 rounded-2xl border border-blue-200/80 shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-blue-100 text-blue-700 shrink-0 mt-0.5">
+            <Info className="w-4 h-4" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+              Direktori Master Data Klien & Hubungan Pelanggan
+              <Badge variant="outline" className="text-[10px] bg-white text-indigo-700 border-indigo-200 font-normal">
+                Master Data
+              </Badge>
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Halaman ini difokuskan untuk <strong>kelola identitas biro</strong>, kontak langsung pemilik via WhatsApp 1-klik, status akun, dan <strong>sesi impersonasi (masuk biro)</strong>. Untuk mengubah sakelar batas fitur operasional (Mode Desktop PC, AI Asisten, PDF Bersih, Kuota Trip & Kru), silakan akses menu <strong>Feature Gating A-Z</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Filter & Action Toolbar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+        {/* Search & Filter Group */}
+        <div className="flex flex-1 items-center gap-2.5 flex-wrap">
+          <div className="relative min-w-[220px] flex-1 max-w-sm">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari biro, nama pemilik, email, no HP, atau domain..."
-              className="pl-9 bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl placeholder:text-slate-400"
+              placeholder="Cari biro, nama pemilik, WA, email, domain..."
+              className="pl-9 bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl placeholder:text-slate-400 focus-visible:ring-indigo-500"
             />
           </div>
 
           <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger className="w-[140px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
+            <SelectTrigger className="w-[130px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
               <SelectValue placeholder="Semua Paket" />
             </SelectTrigger>
             <SelectContent className="bg-white border-slate-200 text-slate-900">
@@ -210,7 +294,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
+            <SelectTrigger className="w-[125px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent className="bg-white border-slate-200 text-slate-900">
@@ -221,26 +305,234 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
               <SelectItem value="expired">Expired</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+            <SelectTrigger className="w-[145px] bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-xl">
+              <SelectValue placeholder="Model Bayar" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border-slate-200 text-slate-900">
+              <SelectItem value="all">Semua Model Bayar</SelectItem>
+              <SelectItem value="lifetime">Sekali Bayar (Lifetime)</SelectItem>
+              <SelectItem value="subscription">Langganan SaaS</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <Button
-          onClick={() => setShowAddModal(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-9 px-4 rounded-xl flex items-center gap-1.5 shadow-xs whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          Daftarkan Biro Baru
-        </Button>
+        {/* View Mode Toggle & Add Button */}
+        <div className="flex items-center gap-2">
+          {/* Switcher Tampilan */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                viewMode === "table"
+                  ? "bg-white text-indigo-700 shadow-xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              title="Tampilan Tabel Master Data Kompak"
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Tabel</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("card")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                viewMode === "card"
+                  ? "bg-white text-indigo-700 shadow-xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              title="Tampilan Kartu Profil Biro"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Kartu</span>
+            </button>
+          </div>
+
+          <Button
+            onClick={() => setShowAddModal(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-9 px-3.5 rounded-xl flex items-center gap-1.5 shadow-xs whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Daftarkan Biro
+          </Button>
+        </div>
       </div>
 
-      {/* Tenants Table & Cards */}
-      <div className="space-y-3">
-        {filteredTenants.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2 shadow-xs">
-            <Building2 className="w-8 h-8 mx-auto text-slate-500" />
-            <p className="text-sm font-medium">Tidak ada biro wisata yang cocok dengan pencarian</p>
+      {/* 4. Main Content: Table View (Default) or Card View */}
+      {filteredTenants.length === 0 ? (
+        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2 shadow-xs">
+          <Building2 className="w-8 h-8 mx-auto text-slate-400" />
+          <p className="text-sm font-semibold text-slate-700">Tidak ada biro wisata yang cocok dengan pencarian</p>
+          <p className="text-xs text-slate-500">Ubah filter atau gunakan kata kunci lain.</p>
+        </div>
+      ) : viewMode === "table" ? (
+        /* TABLE VIEW (Default: Compact Enterprise Table) */
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="py-3.5 px-4">Biro Wisata</th>
+                  <th className="py-3.5 px-4">Pemilik & WhatsApp</th>
+                  <th className="py-3.5 px-3">Paket & Lisensi</th>
+                  <th className="py-3.5 px-3">Status</th>
+                  <th className="py-3.5 px-3">Hak Akses Ringkas</th>
+                  <th className="py-3.5 px-4 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredTenants.map((t) => (
+                  <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                    {/* Biro Wisata */}
+                    <td className="py-3.5 px-4 space-y-1">
+                      <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        {t.namaBiro}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
+                        <span className="text-slate-600">{t.slugBiro || t.id}</span>
+                        {t.hasWebsite && t.domainName && (
+                          <span className="inline-flex items-center gap-0.5 text-blue-600 font-sans">
+                            <Globe className="w-3 h-3" />
+                            {t.domainName}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Pemilik & WhatsApp */}
+                    <td className="py-3.5 px-4 space-y-1">
+                      <div className="font-semibold text-slate-900">{t.ownerNama}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* WhatsApp Clickable Direct Link */}
+                        <button
+                          type="button"
+                          onClick={() => handleWhatsAppChat(t)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-medium font-mono transition-colors"
+                          title="Buka Chat WhatsApp Pemilik Biro"
+                        >
+                          <MessageSquare className="w-3 h-3 text-emerald-600" />
+                          {t.ownerPhone}
+                        </button>
+                        <span className="text-[11px] text-slate-500 font-mono hidden xl:inline">
+                          {t.ownerEmail}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Paket & Lisensi */}
+                    <td className="py-3.5 px-3 space-y-1">
+                      <div>
+                        <Badge
+                          className={`text-[10px] uppercase font-mono px-2 py-0.5 ${
+                            t.tier === "enterprise"
+                              ? "bg-purple-50 text-purple-700 border-purple-200"
+                              : t.tier === "pro"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          {t.tier} Tier
+                        </Badge>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium">
+                        {t.paymentModel === "lifetime" ? "Sekali Bayar" : "Langganan SaaS"}
+                      </div>
+                    </td>
+
+                    {/* Status */}
+                    <td className="py-3.5 px-3">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] uppercase font-mono px-2 py-0.5 ${
+                          t.status === "active"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : t.status === "trial"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-rose-50 text-rose-700 border-rose-200"
+                        }`}
+                      >
+                        {t.status}
+                      </Badge>
+                    </td>
+
+                    {/* Hak Akses Ringkas */}
+                    <td className="py-3.5 px-3 space-y-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                            t.canUseDesktopMode
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold"
+                              : "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}
+                          title={t.canUseDesktopMode ? "Mode Desktop PC: Aktif" : "Mode Desktop PC: Terkunci"}
+                        >
+                          <Monitor className="w-3 h-3" />
+                          {t.canUseDesktopMode ? "Desktop" : "Mobile Only"}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-800 border border-cyan-200 font-mono">
+                          {t.maxActiveTrips >= 9000 ? "∞ Trip" : `${t.maxActiveTrips} Trip`}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 font-mono">
+                          {t.maxCrewMembers >= 9000 ? "∞ Kru" : `${t.maxCrewMembers} Kru`}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Aksi */}
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          onClick={() => handleImpersonate(t)}
+                          className="h-7 px-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs rounded-lg shadow-xs flex items-center gap-1"
+                          title="Masuk ke aplikasi sebagai biro ini (Impersonate)"
+                        >
+                          <LogIn className="w-3 h-3 text-indigo-600" />
+                          <span className="hidden sm:inline">Masuk</span>
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          onClick={() => onOpenFeatureModal(t)}
+                          className="h-7 px-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs rounded-lg shadow-xs flex items-center gap-1"
+                          title="Buka Modal Hak Akses & Fitur A-Z"
+                        >
+                          <Sliders className="w-3 h-3 text-amber-600" />
+                          <span className="hidden md:inline">Atur Fitur</span>
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          onClick={() => handleWhatsAppChat(t)}
+                          className="h-7 w-7 p-0 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg shadow-xs"
+                          title="Kirim Pesan WhatsApp Langsung"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          onClick={() => handleDelete(t)}
+                          className="h-7 w-7 p-0 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg shadow-xs"
+                          title="Hapus Klien Biro Ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          filteredTenants.map((t) => (
+        </div>
+      ) : (
+        /* CARD VIEW */
+        <div className="space-y-3">
+          {filteredTenants.map((t) => (
             <Card
               key={t.id}
               className="bg-white border-slate-200 hover:border-slate-300 p-5 rounded-2xl transition-all shadow-xs"
@@ -393,9 +685,9 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                 </div>
               </div>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Modal Tambah Biro Baru */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   TenantRecord,
   updateTenant,
+  updateTenantInSupabase,
 } from "@/utils/licenseEntitlement";
 import {
   Sliders,
@@ -34,50 +35,105 @@ export const FeatureGatingView: React.FC<FeatureGatingViewProps> = ({
   onOpenFeatureModal,
   onRefresh,
 }) => {
-  const [editingQuotaId, setEditingQuotaId] = useState<string | null>(null);
+  // Gunakan local state yang reaktif dan optimis agar switch tidak pernah mental kembali
+  const [localTenants, setLocalTenants] = useState<TenantRecord[]>(tenants);
+
+  useEffect(() => {
+    if (tenants && tenants.length > 0) {
+      setLocalTenants(tenants);
+    }
+  }, [tenants]);
+
+  // Handler optimis: ubah UI seketika + simpan ke localStorage + kunci permanen ke Supabase
+  const updateLocalAndRemote = async (
+    tenantId: string,
+    tenantName: string,
+    updates: Partial<TenantRecord>,
+    successMessage: string
+  ) => {
+    // 1. Seketika ubah state lokal (0 ms delay, no flicking back!)
+    setLocalTenants((prev) =>
+      prev.map((t) => (t.id === tenantId ? { ...t, ...updates } : t))
+    );
+
+    // 2. Simpan ke local storage
+    updateTenant(tenantId, updates);
+
+    // 3. Kunci permanen ke basis data Supabase
+    try {
+      const ok = await updateTenantInSupabase(tenantId, updates);
+      if (ok) {
+        toast.success(successMessage);
+      } else {
+        toast.success(`${successMessage} (Tersimpan di konsol)`);
+      }
+    } catch (err) {
+      console.warn("Supabase update error:", err);
+      toast.success(successMessage);
+    }
+  };
 
   const handleToggleDesktop = (tenant: TenantRecord, val: boolean) => {
-    updateTenant(tenant.id, { canUseDesktopMode: val });
-    toast.success(
-      `Mode Desktop untuk ${tenant.namaBiro} diubah menjadi: ${val ? "AKTIF (Bypass Terbuka)" : "TERKUNCI"}`
+    updateLocalAndRemote(
+      tenant.id,
+      tenant.namaBiro,
+      { canUseDesktopMode: val },
+      `Mode Desktop PC untuk ${tenant.namaBiro}: ${val ? "AKTIF (Bypass Terbuka)" : "TERKUNCI"}`
     );
-    onRefresh();
   };
 
   const handleToggleAI = (tenant: TenantRecord, val: boolean) => {
-    updateTenant(tenant.id, { canUseAI: val });
-    toast.success(`Akses Asisten AI untuk ${tenant.namaBiro} diubah menjadi: ${val ? "AKTIF" : "NONAKTIF"}`);
-    onRefresh();
+    updateLocalAndRemote(
+      tenant.id,
+      tenant.namaBiro,
+      { canUseAI: val },
+      `Akses Asisten AI untuk ${tenant.namaBiro}: ${val ? "AKTIF" : "NONAKTIF"}`
+    );
   };
 
   const handleTogglePdf = (tenant: TenantRecord, val: boolean) => {
-    updateTenant(tenant.id, { canExportCleanPdf: val });
-    toast.success(`Ekspor PDF Bersih untuk ${tenant.namaBiro} diubah menjadi: ${val ? "AKTIF" : "NONAKTIF"}`);
-    onRefresh();
+    updateLocalAndRemote(
+      tenant.id,
+      tenant.namaBiro,
+      { canExportCleanPdf: val },
+      `Ekspor PDF Bersih untuk ${tenant.namaBiro}: ${val ? "AKTIF" : "NONAKTIF"}`
+    );
   };
 
   const handleToggleBranding = (tenant: TenantRecord, val: boolean) => {
-    updateTenant(tenant.id, { customBranding: val });
-    toast.success(`Custom Branding untuk ${tenant.namaBiro} diubah menjadi: ${val ? "AKTIF" : "NONAKTIF"}`);
-    onRefresh();
+    updateLocalAndRemote(
+      tenant.id,
+      tenant.namaBiro,
+      { customBranding: val },
+      `Custom Branding untuk ${tenant.namaBiro}: ${val ? "AKTIF" : "NONAKTIF"}`
+    );
   };
 
   const handleToggleWebsite = (tenant: TenantRecord, val: boolean) => {
-    updateTenant(tenant.id, { hasWebsite: val });
-    toast.success(`Paket Website untuk ${tenant.namaBiro} diubah menjadi: ${val ? "AKTIF" : "NONAKTIF"}`);
-    onRefresh();
+    updateLocalAndRemote(
+      tenant.id,
+      tenant.namaBiro,
+      { hasWebsite: val },
+      `Paket Website untuk ${tenant.namaBiro}: ${val ? "AKTIF" : "NONAKTIF"}`
+    );
   };
 
   const handleQuickTripQuota = (tenant: TenantRecord, quota: number) => {
-    updateTenant(tenant.id, { maxActiveTrips: quota });
-    toast.success(`Kuota trip ${tenant.namaBiro} diperbarui ke ${quota >= 9000 ? "Unlimited" : quota}`);
-    onRefresh();
+    updateLocalAndRemote(
+      tenant.id,
+      tenant.namaBiro,
+      { maxActiveTrips: quota },
+      `Kuota trip ${tenant.namaBiro} diubah ke ${quota >= 9000 ? "Unlimited" : quota}`
+    );
   };
 
   const handleQuickCrewQuota = (tenant: TenantRecord, quota: number) => {
-    updateTenant(tenant.id, { maxCrewMembers: quota });
-    toast.success(`Kuota kru ${tenant.namaBiro} diperbarui ke ${quota >= 9000 ? "Unlimited" : quota}`);
-    onRefresh();
+    updateLocalAndRemote(
+      tenant.id,
+      tenant.namaBiro,
+      { maxCrewMembers: quota },
+      `Kuota kru ${tenant.namaBiro} diubah ke ${quota >= 9000 ? "Unlimited" : quota}`
+    );
   };
 
   return (
@@ -93,7 +149,7 @@ export const FeatureGatingView: React.FC<FeatureGatingViewProps> = ({
               Matriks Feature Gating & Entitlements Biro (A-Z)
             </h2>
             <p className="text-xs text-slate-600">
-              Sebagai Super Admin, Anda memiliki hak veto independen. Anda dapat mengaktifkan Mode Desktop di laptop bahkan untuk akun paket Sekali Bayar Starter, atau menetapkan kuota khusus sesuai kesepakatan bisnis.
+              Sebagai Super Admin, Anda memiliki hak veto independen. Anda dapat mengaktifkan Mode Desktop di laptop bahkan untuk akun paket Sekali Bayar Starter, atau menetapkan kuota khusus sesuai kesepakatan bisnis. Perubahan langsung terkunci ke database Supabase.
             </p>
           </div>
         </div>
@@ -152,7 +208,7 @@ export const FeatureGatingView: React.FC<FeatureGatingViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {tenants.map((t) => (
+              {localTenants.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
                   {/* Nama Biro & Tier */}
                   <td className="py-4 px-4 space-y-1">

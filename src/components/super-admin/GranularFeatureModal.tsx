@@ -24,6 +24,7 @@ import {
   LicenseTier,
   PaymentModel,
   updateTenant,
+  updateTenantInSupabase,
 } from "@/utils/licenseEntitlement";
 import {
   Sliders,
@@ -87,15 +88,17 @@ export const GranularFeatureModal: React.FC<GranularFeatureModalProps> = ({
 
   if (!tenant) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
-      updateTenant(tenant.id, {
+      const updates = {
         ...formData,
         maxActiveTrips: Number(formData.maxActiveTrips) || 5,
         maxCrewMembers: Number(formData.maxCrewMembers) || 2,
         nominalBayar: Number(formData.nominalBayar) || 0,
-      });
-      toast.success(`Hak akses fitur untuk "${tenant.namaBiro}" berhasil diperbarui & dicatat ke Audit Trail!`);
+      };
+      updateTenant(tenant.id, updates);
+      await updateTenantInSupabase(tenant.id, updates);
+      toast.success(`Hak akses fitur untuk "${tenant.namaBiro}" berhasil diperbarui & disimpan ke Supabase!`);
       onOpenChange(false);
       if (onSaved) onSaved();
     } catch (e) {

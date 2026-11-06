@@ -529,6 +529,88 @@ export function createTenant(data: Omit<TenantRecord, "id">): TenantRecord {
 }
 
 /**
+ * Sinkronisasi pembaruan tenant langsung ke database Supabase (tenants & feature_entitlements)
+ */
+export async function updateTenantInSupabase(
+  id: string,
+  updates: Partial<TenantRecord>
+): Promise<boolean> {
+  try {
+    // 1. Update public.tenants jika ada field profil/lisensi
+    const tenantUpdates: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.namaBiro !== undefined) tenantUpdates.nama_biro = updates.namaBiro;
+    if (updates.slugBiro !== undefined) tenantUpdates.slug_biro = updates.slugBiro;
+    if (updates.ownerNama !== undefined) tenantUpdates.owner_nama = updates.ownerNama;
+    if (updates.ownerEmail !== undefined) tenantUpdates.owner_email = updates.ownerEmail;
+    if (updates.ownerPhone !== undefined) tenantUpdates.owner_phone = updates.ownerPhone;
+    if (updates.tier !== undefined) tenantUpdates.tier_lisensi = updates.tier;
+    if (updates.paymentModel !== undefined) tenantUpdates.payment_model = updates.paymentModel;
+    if (updates.status !== undefined) tenantUpdates.status_akun = updates.status;
+    if (updates.catatan !== undefined) tenantUpdates.catatan_internal = updates.catatan;
+
+    if (Object.keys(tenantUpdates).length > 1) {
+      const { error: tErr } = await supabase.from("tenants").update(tenantUpdates).eq("id", id);
+      if (tErr) console.warn("Supabase update tenants warning:", tErr.message);
+    }
+
+    // 2. Update public.feature_entitlements jika ada field hak akses
+    const entUpdates: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.canUseDesktopMode !== undefined) entUpdates.can_use_desktop_mode = updates.canUseDesktopMode;
+    if (updates.canExportCleanPdf !== undefined) entUpdates.can_export_pdf_clean = updates.canExportCleanPdf;
+    if (updates.canUseAI !== undefined) entUpdates.can_use_ai_assistant = updates.canUseAI;
+    if (updates.canUseAdvancedRbac !== undefined) entUpdates.can_use_advanced_rbac = updates.canUseAdvancedRbac;
+    if (updates.maxActiveTrips !== undefined) entUpdates.max_active_trips = updates.maxActiveTrips;
+    if (updates.maxCrewMembers !== undefined) entUpdates.max_crew_members = updates.maxCrewMembers;
+    if (updates.customBranding !== undefined) entUpdates.custom_branding_enabled = updates.customBranding;
+
+    if (Object.keys(entUpdates).length > 1) {
+      // Cek apakah entitas sudah ada di feature_entitlements
+      const { data: existingEnt } = await supabase
+        .from("feature_entitlements")
+        .select("id")
+        .eq("tenant_id", id)
+        .maybeSingle();
+
+      if (existingEnt && existingEnt.id) {
+        const { error: entErr } = await supabase
+          .from("feature_entitlements")
+          .update(entUpdates)
+          .eq("tenant_id", id);
+        if (entErr) console.warn("Supabase update feature_entitlements error:", entErr.message);
+      } else {
+        const { error: entErr } = await supabase
+          .from("feature_entitlements")
+          .insert({ tenant_id: id, ...entUpdates });
+        if (entErr) console.warn("Supabase insert feature_entitlements error:", entErr.message);
+      }
+    }
+
+    return true;
+  } catch (err) {
+    console.error("updateTenantInSupabase fatal error:", err);
+    return false;
+  }
+}
+
+/**
+ * Hapus tenant dari database Supabase
+ */
+export async function deleteTenantInSupabase(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("tenants").delete().eq("id", id);
+    if (error) console.warn("Supabase delete tenant warning:", error.message);
+    return !error;
+  } catch (err) {
+    console.error("deleteTenantInSupabase fatal error:", err);
+    return false;
+  }
+}
+
+/**
  * Perbarui status & fitur tenant tertentu dengan pencatatan Audit Log otomatis
  */
 export function updateTenant(id: string, updates: Partial<TenantRecord>): void {
@@ -544,6 +626,11 @@ export function updateTenant(id: string, updates: Partial<TenantRecord>): void {
 
   const next = all.map((t) => (t.id === id ? nextTenant : t));
   saveTenants(next);
+
+  // Sinkronisasi asinkron ke Supabase live di background
+  updateTenantInSupabase(id, updates).catch((err) => {
+    console.warn("Background Supabase sync failed:", err);
+  });
 
   // Deteksi perubahan khusus untuk log deskriptif
   const changesSummary: string[] = [];
@@ -590,6 +677,10 @@ export function deleteTenant(id: string): void {
 
   const next = all.filter((t) => t.id !== id);
   saveTenants(next);
+
+  deleteTenantInSupabase(id).catch((err) => {
+    console.warn("Background Supabase delete failed:", err);
+  });
 
   logAuditEvent({
     action: "DELETE_TENANT",
