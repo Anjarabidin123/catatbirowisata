@@ -1238,7 +1238,7 @@ export async function assignTripToMultipleCrewDB(
           updated_at: new Date().toISOString(),
         })
         .eq("id", m.id)
-        .catch(() => {});
+        .then(() => {}, (err) => console.warn("Update crew member failed:", err));
     }
   }
 
@@ -1743,7 +1743,7 @@ export function addCrewMember(input: {
   getActiveUser()
     .then((user) => {
       if (user) {
-        supabase.from("crew_members").insert(mapModelToDBCrew(newMember, user.id)).catch(() => {});
+        supabase.from("crew_members").insert(mapModelToDBCrew(newMember, user.id)).then(() => {}, () => {});
       }
     })
     .catch(() => {});
@@ -1783,7 +1783,7 @@ export function updateCrewMember(id: string, patch: Partial<CrewMember>): void {
         }
         if (patch.lastActive !== undefined) dbPatch.last_active = patch.lastActive;
         dbPatch.updated_at = new Date().toISOString();
-        supabase.from("crew_members").update(dbPatch).eq("id", id).catch(() => {});
+        supabase.from("crew_members").update(dbPatch).eq("id", id).then(() => {}, () => {});
       }
     })
     .catch(() => {});
@@ -1799,7 +1799,7 @@ export function deleteCrewMember(id: string): void {
   getActiveUser()
     .then((user) => {
       if (user) {
-        supabase.from("crew_members").delete().eq("id", id).catch(() => {});
+        supabase.from("crew_members").delete().eq("id", id).then(() => {}, () => {});
       }
     })
     .catch(() => {});
@@ -1944,7 +1944,7 @@ export function registerCurrentDeviceLogin(params: {
         supabase
           .from("crew_device_sessions")
           .upsert(mapModelToDBSession(updatedSession, user.id))
-          .catch(() => {});
+          .then(() => {}, () => {});
       }
     })
     .catch(() => {});
@@ -2010,7 +2010,7 @@ export function toggleDeviceSessionStatus(sessionId: string): void {
           .from("crew_device_sessions")
           .update({ is_active: nextActive, last_active: new Date().toISOString() })
           .eq("id", sessionId)
-          .catch(() => {});
+          .then(() => {}, () => {});
 
         if (target.role === "kru" && target.crewId) {
           supabase
@@ -2020,7 +2020,7 @@ export function toggleDeviceSessionStatus(sessionId: string): void {
               last_active: new Date().toISOString(),
             })
             .eq("id", target.crewId)
-            .catch(() => {});
+            .then(() => {}, () => {});
         }
       }
     })
@@ -2096,13 +2096,13 @@ export function restoreCrewAccess(crewId: string): void {
           .from("crew_device_sessions")
           .update({ is_active: true, last_active: new Date().toISOString() })
           .eq("crew_id", crewId)
-          .catch(() => {});
+          .then(() => {}, () => {});
 
         supabase
           .from("crew_members")
           .update({ status: "online", last_active: new Date().toISOString() })
           .eq("id", crewId)
-          .catch(() => {});
+          .then(() => {}, () => {});
       }
     })
     .catch(() => {});
@@ -2231,7 +2231,7 @@ export function logCrewActivity(entry: {
         supabase
           .from("crew_activity_logs")
           .insert(mapModelToDBLog(newLog, user.id))
-          .catch(() => {});
+          .then(() => {}, () => {});
       }
     })
     .catch(() => {});
@@ -2303,7 +2303,7 @@ export function toggleKruPermissionRule(ruleId: string): RBACPermissionRule[] {
             })
             .eq("id", ruleId)
             .eq("user_id", user.id)
-            .catch(() => {});
+            .then(() => {}, () => {});
         }
       })
       .catch(() => {});

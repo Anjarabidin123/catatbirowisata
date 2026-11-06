@@ -482,6 +482,8 @@ async function handleTripWizardStep(input: string): Promise<DialogResponse> {
       activeDraft.data.po_bus = input.replace(/^(po|bus)\s*/i, "PO ").trim();
     }
     activeDraft.step = 6;
+    activeDraft.data.selectedCrewIds = [];
+    activeDraft.data.selectedCrewNames = [];
 
     // Ambil daftar kru / Tour Leader terdaftar untuk opsi tombol
     const members = getCrewMembers();
@@ -494,8 +496,8 @@ async function handleTripWizardStep(input: string): Promise<DialogResponse> {
       botMessage:
         `✅ PO Bus: **${activeDraft.data.po_bus || "Belum ditentukan (Dilewati)"}**\n\n` +
         "👤 **Langkah 6 dari 6: Tour Leader (TL) / Kru yang Bertugas**\n\n" +
-        "Siapa **Tour Leader (TL) / Kru yang bertugas?**\n" +
-        "*(Silakan pilih dari daftar kru biro Anda di bawah ini, atau ketik **skip** jika belum ditentukan)*",
+        "Siapa **Tour Leader (TL) / Kru yang bertugas?** *(Bisa pilih lebih dari 1 orang)*\n\n" +
+        "*(Silakan klik nama kru di bawah ini, atau ketik **skip** jika belum ditentukan)*",
       options: tlOptions,
       wizardType: "TRIP_WIZARD",
       stepIndex: 6,
@@ -503,20 +505,98 @@ async function handleTripWizardStep(input: string): Promise<DialogResponse> {
     };
   }
 
-  // Langkah 6: Input TL / Kru yang bertugas -> Ringkasan & Konfirmasi
+  // Langkah 6: Input TL / Kru yang bertugas -> Multi-TL Selection & Ringkasan
   if (activeDraft.step === 6) {
-    if (isSkip) {
-      activeDraft.data.tl_crew = null;
+    if (!Array.isArray(activeDraft.data.selectedCrewIds)) {
       activeDraft.data.selectedCrewIds = [];
-    } else {
-      const cleanName = input.replace(/^👤\s*/, "").split("(")[0].trim();
-      const members = getCrewMembers();
-      const matched = members.find((m) => m.nama.toLowerCase().includes(cleanName.toLowerCase()));
-      activeDraft.data.tl_crew = matched ? `${matched.nama} (${matched.jabatan})` : cleanName;
-      activeDraft.data.selectedCrewIds = matched ? [matched.id] : [];
     }
-    activeDraft.step = 7; // Masuk ke tahap konfirmasi akhir
+    if (!Array.isArray(activeDraft.data.selectedCrewNames)) {
+      activeDraft.data.selectedCrewNames = [];
+    }
 
+    const isFinish =
+      lower === "selesai" ||
+      lower === "lanjut" ||
+      lower.includes("selesai");
+
+    if (isFinish) {
+      activeDraft.data.tl_crew =
+        activeDraft.data.selectedCrewNames.length > 0
+          ? activeDraft.data.selectedCrewNames.join(", ")
+          : null;
+      activeDraft.step = 7;
+    } else if (isSkip) {
+      if (activeDraft.data.selectedCrewNames.length > 0) {
+        activeDraft.data.tl_crew = activeDraft.data.selectedCrewNames.join(", ");
+      } else {
+        activeDraft.data.tl_crew = null;
+        activeDraft.data.selectedCrewIds = [];
+        activeDraft.data.selectedCrewNames = [];
+      }
+      activeDraft.step = 7;
+    } else {
+      // Input nama kru (bisa via tombol atau ketikan dengan koma, dan, &)
+      const rawTokens = input
+        .split(/[,&]|(?:\s+dan\s+)/i)
+        .map((t) => t.replace(/^[👤+\s]+/, "").trim())
+        .filter(Boolean);
+
+      const members = getCrewMembers().filter((m) => m.status !== "nonaktif");
+
+      for (const raw of rawTokens) {
+        const cleanName = raw.split("(")[0].trim().toLowerCase();
+        if (!cleanName) continue;
+
+        const matched = members.find(
+          (m) =>
+            m.nama.toLowerCase().includes(cleanName) ||
+            cleanName.includes(m.nama.toLowerCase())
+        );
+
+        if (matched) {
+          if (!activeDraft.data.selectedCrewIds.includes(matched.id)) {
+            activeDraft.data.selectedCrewIds.push(matched.id);
+            activeDraft.data.selectedCrewNames.push(`${matched.nama} (${matched.jabatan})`);
+          }
+        } else {
+          const customName = raw.split("(")[0].trim();
+          if (customName && !activeDraft.data.selectedCrewNames.includes(customName)) {
+            activeDraft.data.selectedCrewNames.push(customName);
+          }
+        }
+      }
+
+      // Tetap di Step 6: Tampilkan TL yang sudah dipilih dan sisa TL yang belum dipilih
+      const unselectedMembers = members.filter(
+        (m) => !activeDraft.data.selectedCrewIds.includes(m.id)
+      );
+
+      const options: string[] = ["✅ Selesai Pilih TL & Lanjut"];
+      unselectedMembers.forEach((m) => {
+        options.push(`👤 + ${m.nama} (${m.jabatan})`);
+      });
+      options.push("❌ Batal");
+
+      const selectedListStr =
+        activeDraft.data.selectedCrewNames.length > 0
+          ? activeDraft.data.selectedCrewNames
+              .map((name: string, i: number) => `${i + 1}. **${name}**`)
+              .join("\n")
+          : "_Belum ada kru yang dipilih_";
+
+      return {
+        botMessage:
+          `✅ **Personel TL / Kru yang Dipilih (${activeDraft.data.selectedCrewNames.length}):**\n` +
+          `${selectedListStr}\n\n` +
+          `Klik tombol kru di bawah untuk menambah lagi, atau klik **"Selesai Pilih TL & Lanjut"** jika sudah cukup:`,
+        options,
+        wizardType: "TRIP_WIZARD",
+        stepIndex: 6,
+        totalSteps: 6,
+      };
+    }
+
+    // Masuk ke Step 7: Tampilkan ringkasan final
     const summaryText =
       "📋 **Ringkasan Jadwal Trip Baru:**\n" +
       `• **Nama Acara:** ${activeDraft.data.nama_trip}\n` +
@@ -524,7 +604,7 @@ async function handleTripWizardStep(input: string): Promise<DialogResponse> {
       `• **Tanggal:** ${activeDraft.data.tanggal_display}\n` +
       `• **Jumlah Armada:** ${activeDraft.data.jumlah_bus} Unit Bus\n` +
       `• **Merek / PO Bus:** ${activeDraft.data.po_bus || "Belum ditentukan (Bisa diatur nanti)"}\n` +
-      `• **Personel TL / Kru:** ${activeDraft.data.tl_crew || "Belum ditugaskan"}\n\n` +
+      `• Personel TL / Kru (${activeDraft.data.selectedCrewNames?.length || 0}): ${activeDraft.data.tl_crew || "Belum ditugaskan"}\n\n` +
       "Apakah data di atas sudah benar dan siap disimpan ke sistem?";
 
     return {

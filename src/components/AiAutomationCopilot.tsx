@@ -369,7 +369,8 @@ export const AiAutomationCopilot: React.FC = () => {
                           const isConfirm =
                             opt.includes("Ya,") ||
                             opt.includes("Simpan") ||
-                            opt.includes("Daftarkan");
+                            opt.includes("Daftarkan") ||
+                            opt.includes("Selesai");
 
                           return (
                             <button
@@ -380,6 +381,8 @@ export const AiAutomationCopilot: React.FC = () => {
                                   handleSendMessage("skip");
                                 } else if (isCancel) {
                                   handleSendMessage("batal");
+                                } else if (opt.includes("Selesai")) {
+                                  handleSendMessage("selesai");
                                 } else {
                                   handleSendMessage(opt);
                                 }
