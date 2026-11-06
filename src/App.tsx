@@ -13,7 +13,6 @@ import Auth from "./pages/Auth";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { DesktopModeLockOverlay } from "@/components/DesktopModeLockOverlay";
-import { SuperAdminSimulatorBar } from "@/components/SuperAdminSimulatorBar";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { initAuthListener } from "@/utils/authHelper";
 
@@ -92,7 +91,6 @@ const App = () => {
               <ImpersonationBanner />
               <DesktopSidebar />
               <DesktopModeLockOverlay />
-              <SuperAdminSimulatorBar />
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   <Route path="/" element={<Index />} />

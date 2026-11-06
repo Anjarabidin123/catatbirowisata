@@ -272,11 +272,7 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           data: { role: newRole },
         });
       }
-      toast.success(
-        newRole === "pemilik"
-          ? "Mode Pemilik Biro Aktif (Akses Penuh Keuangan, Laporan & Monitor Kru)"
-          : `Mode Kru Aktif: ${crewIdentity.nama} (${crewIdentity.jabatan})`
-      );
+
     } catch (err) {
       console.warn("Gagal menyinkronkan role ke Supabase:", err);
     }

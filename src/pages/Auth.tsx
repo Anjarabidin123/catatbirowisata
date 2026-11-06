@@ -121,11 +121,6 @@ const Auth = () => {
         }
 
         applyRBACSession();
-        toast.success(
-          selectedRole === "pemilik"
-            ? "Selamat datang, Pemilik Biro! Berhasil masuk dengan hak akses penuh."
-            : "Selamat bertugas! Berhasil masuk ke Posko Operasional Kru."
-        );
         // Replace history agar /auth tidak tersimpan di riwayat back button
         navigate("/dashboard", { replace: true });
       } else {
