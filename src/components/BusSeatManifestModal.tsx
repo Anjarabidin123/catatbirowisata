@@ -7,6 +7,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -649,7 +655,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
   };
 
   // =========================================================
-  // RENDER SEAT (PERSIS SEPERTI SKETSA DENGAN SANDARAN & ARMREST)
+  // RENDER SEAT (SKETSA COMPACT DENGAN ARMREST & SANDARAN)
   // =========================================================
   const renderSeatItem = (seatNo: string) => {
     const assigned = manifest[seatNo];
@@ -660,10 +666,10 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         (assigned && assigned.name.toLowerCase().includes(searchQuery.toLowerCase())));
 
     return (
-      <div key={seatNo} className="relative inline-flex items-center">
+      <div key={seatNo} className="relative inline-flex items-center flex-shrink-0">
         {/* Armrest Kiri */}
         <div
-          className={`w-1.5 h-8 sm:h-9 rounded-l-md -mr-[1px] z-10 transition-colors ${
+          className={`w-1 h-7 sm:h-8 rounded-l-md -mr-[1px] z-10 transition-colors ${
             isOccupied ? "bg-slate-700 dark:bg-slate-400" : "bg-slate-400 dark:bg-slate-600"
           }`}
         />
@@ -672,7 +678,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         <button
           type="button"
           onClick={() => handleSeatClick(seatNo)}
-          className={`w-12 sm:w-14 min-h-[56px] sm:min-h-[64px] rounded-xl border-2 transition-all relative flex flex-col justify-between p-1 shadow-2xs group text-left ${
+          className={`w-11 sm:w-13 min-h-[52px] sm:min-h-[58px] rounded-xl border-2 transition-all relative flex flex-col justify-between p-1 shadow-2xs group text-left ${
             isMatchingSearch
               ? "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/80 border-amber-500 shadow-md"
               : isOccupied
@@ -683,7 +689,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         >
           {/* Headrest Cushion */}
           <div
-            className={`w-8 h-2 rounded-t-lg mx-auto -mt-0.5 border-b transition-colors ${
+            className={`w-7 sm:w-8 h-1.5 rounded-t-md mx-auto -mt-0.5 border-b transition-colors ${
               isOccupied
                 ? "bg-blue-600 border-blue-700 dark:bg-blue-500"
                 : "bg-slate-300 dark:bg-slate-700 border-slate-400 dark:border-slate-600"
@@ -706,18 +712,18 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           {/* Nama Penumpang jika terisi */}
           {isOccupied ? (
             <div className="w-full text-center">
-              <p className="text-[9px] sm:text-[10px] font-black text-slate-900 dark:text-white truncate leading-none">
+              <p className="text-[8.5px] sm:text-[9.5px] font-black text-slate-900 dark:text-white truncate leading-none">
                 {assigned.name}
               </p>
               {assigned.category && assigned.category !== "Umum" && (
-                <span className="text-[7.5px] font-bold px-0.5 rounded bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300 inline-block truncate max-w-full mt-0.5">
+                <span className="text-[7px] font-bold px-0.5 rounded bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300 inline-block truncate max-w-full mt-0.5">
                   {assigned.category}
                 </span>
               )}
             </div>
           ) : (
             <div className="text-center w-full pb-0.5">
-              <span className="text-[8px] font-bold text-slate-400 group-hover:text-blue-600">
+              <span className="text-[7.5px] font-bold text-slate-400 group-hover:text-blue-600">
                 Kosong
               </span>
             </div>
@@ -726,7 +732,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
         {/* Armrest Kanan */}
         <div
-          className={`w-1.5 h-8 sm:h-9 rounded-r-md -ml-[1px] z-10 transition-colors ${
+          className={`w-1 h-7 sm:h-8 rounded-r-md -ml-[1px] z-10 transition-colors ${
             isOccupied ? "bg-slate-700 dark:bg-slate-400" : "bg-slate-400 dark:bg-slate-600"
           }`}
         />
@@ -736,69 +742,70 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[95vh] overflow-y-auto rounded-3xl p-4 sm:p-6 bg-white dark:bg-slate-950">
-        <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
-                <Bus className="w-5 h-5" />
-              </div>
-              <div>
-                <DialogTitle className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                  <span>Denah Kabin & Manifest Penumpang Bus</span>
-                  <Badge variant="outline" className="text-[10px] font-bold bg-blue-50 text-blue-700 border-blue-200">
-                    {busStructure.configLabel}
-                  </Badge>
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Sketsa kabin bus asli dengan konfigurasi kursi bebas (kiri 2/3, lorong, kanan 2/3)
-                </DialogDescription>
+      <DialogContent className="sm:max-w-4xl max-h-[94vh] overflow-y-auto rounded-3xl p-3 sm:p-6 bg-white dark:bg-slate-950">
+        {/* Header Modal Rapi (Dengan pr-8 agar tidak menabrak tombol X di mobile) */}
+        <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-3 pr-8">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
+              <Bus className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-sm sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
+                Denah Kabin & Manifest Bus
+              </DialogTitle>
+              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                <Badge variant="outline" className="text-[9px] sm:text-[10px] font-bold bg-blue-50 text-blue-700 border-blue-200">
+                  {busStructure.configLabel}
+                </Badge>
+                <span className="text-[10px] sm:text-xs text-slate-500 font-semibold truncate">
+                  {tripInfo?.nama_trip || "Trip Pariwisata"}
+                </span>
               </div>
             </div>
+          </div>
 
-            {/* Presets & Tombol Pengaturan Denah */}
-            <div className="flex items-center gap-2 flex-wrap self-start lg:self-auto">
-              <Select
-                value={busConfig.layout}
-                onValueChange={(val: any) => handlePresetChange(val)}
-              >
-                <SelectTrigger className="h-9 text-xs font-bold rounded-xl w-[210px] border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="medium_bus_31" className="text-xs font-semibold">
-                    Medium Bus 31 Seat (Sketsa Standar)
-                  </SelectItem>
-                  <SelectItem value="big_bus_50" className="text-xs font-semibold">
-                    Big Bus 50 Seat (2 - 2)
-                  </SelectItem>
-                  <SelectItem value="big_bus_59" className="text-xs font-semibold">
-                    Big Bus 59 Seat (2 - 3)
-                  </SelectItem>
-                  <SelectItem value="big_bus_60" className="text-xs font-semibold">
-                    Big Bus 60 Seat (3 - 3)
-                  </SelectItem>
-                  <SelectItem value="hiace_14" className="text-xs font-semibold">
-                    Toyota HiAce 14 Seat
-                  </SelectItem>
-                  <SelectItem value="custom" className="text-xs font-semibold">
-                    Custom Bebas
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Baris Selector Preset & Tombol Atur Denah */}
+          <div className="flex items-center gap-1.5 mt-2.5">
+            <Select
+              value={busConfig.layout}
+              onValueChange={(val: any) => handlePresetChange(val)}
+            >
+              <SelectTrigger className="h-8 text-xs font-bold rounded-xl flex-1 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="medium_bus_31" className="text-xs font-semibold">
+                  Medium Bus 31 (Sketsa Standar)
+                </SelectItem>
+                <SelectItem value="big_bus_50" className="text-xs font-semibold">
+                  Big Bus 50 Seat (2 - 2)
+                </SelectItem>
+                <SelectItem value="big_bus_59" className="text-xs font-semibold">
+                  Big Bus 59 Seat (2 - 3)
+                </SelectItem>
+                <SelectItem value="big_bus_60" className="text-xs font-semibold">
+                  Big Bus 60 Seat (3 - 3)
+                </SelectItem>
+                <SelectItem value="hiace_14" className="text-xs font-semibold">
+                  Toyota HiAce 14 Seat
+                </SelectItem>
+                <SelectItem value="custom" className="text-xs font-semibold">
+                  Custom Bebas
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-              <Button
-                variant={showConfigPanel ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowConfigPanel(!showConfigPanel)}
-                className="h-9 text-xs font-black rounded-xl gap-1.5"
-                title="Atur formasi kursi (kiri 2/3, kanan 2/3, jumlah baris)"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Atur Denah</span>
-                {showConfigPanel ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </Button>
-            </div>
+            <Button
+              variant={showConfigPanel ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowConfigPanel(!showConfigPanel)}
+              className="h-8 px-2.5 text-xs font-black rounded-xl gap-1 flex-shrink-0"
+              title="Sesuaikan formasi kursi kiri/kanan"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Atur Denah</span>
+              {showConfigPanel ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </Button>
           </div>
         </DialogHeader>
 
@@ -806,22 +813,22 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
             PANEL KUSTOMISASI DENAH (KIRI 2/3, KANAN 2/3, BARIS, DLL)
             ======================================================== */}
         {showConfigPanel && (
-          <div className="mt-3 p-4 rounded-2xl bg-slate-100 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 space-y-4">
+          <div className="mt-3 p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
               <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-blue-600" />
                 <span>Sesuaikan Formasi Kursi & Tata Letak Kabin Bus</span>
               </h4>
               <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                Total Hasil: {totalSeats} Kursi
+                Total: {totalSeats} Kursi
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
               {/* Kursi Kiri */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-                  Kursi Sisi Kiri
+                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                  Kursi Kiri
                 </Label>
                 <Select
                   value={String(busConfig.leftSeatsPerRow)}
@@ -840,8 +847,8 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
               {/* Kursi Kanan */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-                  Kursi Sisi Kanan
+                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                  Kursi Kanan
                 </Label>
                 <Select
                   value={String(busConfig.rightSeatsPerRow)}
@@ -860,8 +867,8 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
               {/* Jumlah Baris */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-                  Jumlah Baris ({busConfig.rowCount} Baris)
+                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                  Jumlah Baris ({busConfig.rowCount})
                 </Label>
                 <Select
                   value={String(busConfig.rowCount)}
@@ -882,8 +889,8 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
               {/* Gaya Penomoran */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-                  Gaya Penomoran
+                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                  Penomoran
                 </Label>
                 <Select
                   value={busConfig.numberingStyle}
@@ -901,7 +908,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
               {/* Bangku Belakang */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
                   Bangku Belakang
                 </Label>
                 <Select
@@ -927,8 +934,8 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
               {/* Pintu Belakang Kiri */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-                  Tangga Pintu Belakang
+                <Label className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                  Pintu Belakang
                 </Label>
                 <div className="h-8 flex items-center gap-2">
                   <Switch
@@ -936,7 +943,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                     onCheckedChange={(checked) => updateCustomConfig({ hasRearDoor: checked })}
                   />
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    {busConfig.hasRearDoor ? "Ada (Kiri)" : "Tidak Ada"}
+                    {busConfig.hasRearDoor ? "Ada (Kiri)" : "Tidak"}
                   </span>
                 </div>
               </div>
@@ -944,19 +951,14 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           </div>
         )}
 
-        {/* Toolbar Input & Export */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800">
-          {/* Stats Bar & Pencarian */}
-          <div className="flex items-center gap-2.5 flex-wrap flex-1">
-            <Badge className="bg-blue-600 text-white font-black text-xs h-7 px-3 rounded-xl shadow-xs">
-              {occupiedCount} / {totalSeats} Kursi Terisi
-            </Badge>
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-              ({emptyCount} Kosong)
-            </span>
-
-            <div className="relative flex-1 min-w-[170px] max-w-xs">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+        {/* ========================================================
+            TOOLBAR COMPACT: PENCARIAN & AKSI RAPI (TIDAK PENUH DI HP)
+            ======================================================== */}
+        <div className="mt-2.5 p-2 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2">
+          {/* Baris 1: Pencarian & Kuota Terisi */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -964,10 +966,15 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                 className="h-8 pl-8 text-xs font-semibold rounded-xl bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
               />
             </div>
+
+            <Badge className="bg-blue-600 text-white font-black text-[11px] h-8 px-2.5 rounded-xl flex-shrink-0 flex items-center gap-1 shadow-2xs">
+              <span>{occupiedCount}/{totalSeats} Terisi</span>
+            </Badge>
           </div>
 
-          {/* Tombol Import & Export Terintegrasi */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {/* Baris 2: Toolbar Aksi Rapi (Dropdown Dropdown/Pills) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+            {/* Input file Word tersembunyi */}
             <input
               type="file"
               ref={wordFileInputRef}
@@ -975,6 +982,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               accept=".docx,.doc,.txt"
               className="hidden"
             />
+            {/* Input file Foto tersembunyi */}
             <input
               type="file"
               ref={photoFileInputRef}
@@ -983,148 +991,163 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
               className="hidden"
             />
 
-            {/* Tombol Import Word */}
+            {/* Dropdown Menu Import & Scan */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isProcessingFile}
+                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs font-bold rounded-xl gap-1 border-blue-300 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-950 flex-shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Import / Scan</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1">
+                <DropdownMenuItem
+                  onClick={() => wordFileInputRef.current?.click()}
+                  className="text-xs font-semibold gap-2 py-2 cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span>Import File Word (.docx)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => photoFileInputRef.current?.click()}
+                  className="text-xs font-semibold gap-2 py-2 cursor-pointer"
+                >
+                  <Camera className="w-4 h-4 text-purple-600" />
+                  <span>Scan Foto Manifest (AI)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setQuickPasteOpen(true)}
+                  className="text-xs font-semibold gap-2 py-2 cursor-pointer"
+                >
+                  <ClipboardPaste className="w-4 h-4 text-slate-700" />
+                  <span>Salin & Tempel (Paste WA)</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Dropdown Menu Ekspor Dokumen */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs font-bold rounded-xl gap-1 border-amber-300 text-amber-800 dark:text-amber-300 bg-white dark:bg-slate-950 flex-shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Ekspor</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1">
+                <DropdownMenuItem
+                  onClick={handleExportImage}
+                  className="text-xs font-semibold gap-2 py-2 cursor-pointer"
+                >
+                  <ImageIcon className="w-4 h-4 text-amber-600" />
+                  <span>Download Gambar (PNG)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportWord}
+                  className="text-xs font-semibold gap-2 py-2 cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-blue-700" />
+                  <span>Download Dokumen Word (.doc)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportPDF}
+                  className="text-xs font-semibold gap-2 py-2 cursor-pointer"
+                >
+                  <FileDown className="w-4 h-4 text-slate-900 dark:text-slate-100" />
+                  <span>Download PDF Manifest Resmi</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Tombol Cepat Share WA */}
             <Button
               size="sm"
-              variant="outline"
-              onClick={() => wordFileInputRef.current?.click()}
-              disabled={isProcessingFile}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-blue-300 text-blue-700 dark:text-blue-300 hover:bg-blue-50"
-              title="Import daftar nama dari file Word (.docx)"
+              onClick={handleExportWhatsApp}
+              className="h-7 sm:h-8 px-2.5 text-xs font-bold rounded-xl gap-1 bg-emerald-600 hover:bg-emerald-700 text-white flex-shrink-0 shadow-2xs"
+              title="Kirim Manifest ke WhatsApp"
             >
-              <FileText className="w-3.5 h-3.5 text-blue-600" />
-              <span>Import Word</span>
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Kirim WA</span>
             </Button>
 
-            {/* Tombol Scan Foto AI */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => photoFileInputRef.current?.click()}
-              disabled={isProcessingFile}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-purple-300 text-purple-700 dark:text-purple-300 hover:bg-purple-50"
-              title="Scan foto coretan kertas denah bus dengan AI"
-            >
-              <Camera className="w-3.5 h-3.5 text-purple-600" />
-              <span>Scan Foto</span>
-            </Button>
-
-            {/* Tombol Quick Paste */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setQuickPasteOpen(true)}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-slate-300 hover:bg-slate-100"
-              title="Salin dan tempel daftar nama dari chat WA"
-            >
-              <ClipboardPaste className="w-3.5 h-3.5 text-slate-700" />
-              <span>Paste Teks</span>
-            </Button>
-
-            <div className="hidden sm:block h-5 w-[1px] bg-slate-300 dark:bg-slate-700 mx-1" />
-
-            {/* Tombol Export Gambar PNG */}
+            {/* Tombol Cepat Simpan Gambar PNG */}
             <Button
               size="sm"
               variant="outline"
               onClick={handleExportImage}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-amber-300 text-amber-800 dark:text-amber-300 hover:bg-amber-50"
-              title="Download gambar denah bus (PNG) untuk share ke WA"
+              className="h-7 sm:h-8 px-2.5 text-xs font-bold rounded-xl gap-1 bg-white dark:bg-slate-950 border-slate-300 hover:bg-slate-100 text-slate-800 dark:text-slate-200 flex-shrink-0 shadow-2xs"
+              title="Download Gambar Denah"
             >
               <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
-              <span>Gambar (PNG)</span>
-            </Button>
-
-            {/* Tombol Export Word .doc */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleExportWord}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-white dark:bg-slate-950 border-blue-400 text-blue-800 dark:text-blue-200 hover:bg-blue-50"
-              title="Download tabel denah manifest format Microsoft Word"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-700" />
-              <span>Word (.doc)</span>
-            </Button>
-
-            {/* Tombol PDF */}
-            <Button
-              size="sm"
-              onClick={handleExportPDF}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-blue-600 dark:hover:bg-blue-700 shadow-sm"
-              title="Unduh PDF Resmi Manifest"
-            >
-              <FileDown className="w-3.5 h-3.5" />
-              <span>PDF</span>
-            </Button>
-
-            {/* Tombol WhatsApp */}
-            <Button
-              size="sm"
-              onClick={handleExportWhatsApp}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-              title="Bagikan Manifest ke WhatsApp"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>WA</span>
+              <span className="hidden sm:inline">Simpan Gambar</span>
             </Button>
           </div>
         </div>
 
         {/* ========================================================
-            VISUAL SKETSA KABIN BUS (PERSIS SEPERTI GAMBAR USER)
+            VISUAL SKETSA KABIN BUS (PAS DENGAN LORONG PROPORSIONAL)
             ======================================================== */}
-        <div className="mt-4 overflow-x-auto p-2 sm:p-4">
+        <div className="mt-3 overflow-x-auto p-1 sm:p-3 flex justify-center">
           <div
             ref={busCabinRef}
-            className="max-w-xl mx-auto rounded-[32px] border-4 border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-950 p-4 sm:p-6 shadow-2xl relative space-y-4"
+            className="w-fit max-w-full mx-auto rounded-3xl border-3 sm:border-4 border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-950 p-3 sm:p-5 shadow-xl relative space-y-3"
           >
             {/* Bagian Atas / Depan Bus: Tangga Depan, Tour Leader, dan Sopir */}
-            <div className="flex items-start justify-between gap-2 pb-4 border-b-2 border-slate-900 dark:border-slate-700">
-              {/* Kiri Depan: Pintu Masuk / 3 Garis Anak Tangga Boarding */}
-              <div className="space-y-1">
-                <div className="w-20 sm:w-24 h-12 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-1 flex flex-col justify-between">
+            <div className="flex items-center justify-center gap-2 sm:gap-4 pb-3 border-b-2 border-slate-900 dark:border-slate-700">
+              {/* Kiri Depan: Pintu Masuk (lebar pas dengan kursi di bawahnya) */}
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-22 sm:w-26 h-9 sm:h-10 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-1 flex flex-col justify-between">
                   <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
                   <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
                   <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
                 </div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 block text-center">
+                <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider text-slate-500 mt-0.5">
                   Pintu Depan
                 </span>
               </div>
 
-              {/* Tengah Depan: Kursi Tour Leader (TL) */}
-              <div className="flex flex-col items-center pt-2">
-                <div className="w-14 h-10 rounded-xl border-2 border-slate-900 dark:border-slate-400 bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-1 text-center shadow-xs">
-                  <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 leading-tight">
-                    Tour<br />Leader
+              {/* Tengah Depan: Kursi Tour Leader (TL) - pas di lorong */}
+              <div className="w-6 sm:w-8 flex-shrink-0 flex flex-col items-center justify-center">
+                <div className="w-7 sm:w-8 h-8 rounded-lg border-2 border-slate-900 dark:border-slate-400 bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-0.5 text-center shadow-xs">
+                  <span className="text-[8px] font-black text-slate-800 dark:text-slate-200 leading-none">
+                    TL
                   </span>
                 </div>
-                <span className="text-[8px] font-bold text-slate-400 mt-0.5">Kru Biro</span>
+                <span className="text-[7px] font-bold text-slate-400 mt-0.5">Kru</span>
               </div>
 
-              {/* Kanan Depan: Kursi Sopir / Driver */}
-              <div className="flex flex-col items-center">
-                <div className="w-14 sm:w-16 h-11 rounded-xl border-2 border-slate-900 dark:border-slate-400 bg-slate-200 dark:bg-slate-800 flex items-center justify-center p-1 text-center shadow-xs">
-                  <span className="text-[11px] font-black text-slate-900 dark:text-white">
+              {/* Kanan Depan: Kursi Sopir / Driver (lebar pas dengan kursi di bawahnya) */}
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-22 sm:w-26 h-9 sm:h-10 rounded-lg border-2 border-slate-900 dark:border-slate-400 bg-slate-200 dark:bg-slate-800 flex items-center justify-center gap-1.5 p-1 shadow-xs">
+                  <User className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 flex-shrink-0" />
+                  <span className="text-[10px] font-black text-slate-900 dark:text-white">
                     Sopir
                   </span>
                 </div>
-                <span className="text-[8px] font-bold text-slate-500 mt-0.5">
-                  {tripInfo?.nama_driver || "Kemudi"}
+                <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 mt-0.5 truncate max-w-[100px]">
+                  {tripInfo?.nama_driver || "Kemudi Utama"}
                 </span>
               </div>
             </div>
 
             {/* Badan Kabin Kursi Penumpang (Per Baris) */}
-            <div className="space-y-3.5 py-1">
+            <div className="space-y-2.5 py-0.5">
               {busStructure.rows.map((row) => {
                 // Baris Paling Belakang (Bangku 5/6 Kursi Sejajar)
                 if (row.isBackRow && row.backSeats) {
                   return (
                     <div key={`back-${row.rowNumber}`} className="pt-2">
-                      <div className="p-2 sm:p-2.5 rounded-2xl border-2 border-slate-900 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
-                        <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
+                      <div className="p-1.5 sm:p-2 rounded-2xl border-2 border-slate-900 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
+                        <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-nowrap">
                           {row.backSeats.map((seatNo) => renderSeatItem(seatNo))}
                         </div>
                       </div>
@@ -1137,50 +1160,50 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
                   return (
                     <div
                       key={`row-${row.rowNumber}`}
-                      className="flex items-center justify-between gap-2 sm:gap-4 py-0.5"
+                      className="flex items-center justify-center gap-2 sm:gap-4 py-0.5"
                     >
                       {/* Tangga Pintu Belakang di Sisi Kiri (Persis Sketsa) */}
-                      <div className="w-24 sm:w-28 h-12 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-1 flex flex-col justify-between">
+                      <div className="w-22 sm:w-26 h-10 rounded-lg border-2 border-slate-900 dark:border-slate-500 bg-slate-50 dark:bg-slate-900 p-1 flex flex-col justify-between">
                         <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
                         <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
                         <div className="w-full h-[2px] bg-slate-800 dark:bg-slate-400" />
                       </div>
 
-                      {/* Lorong Tengah */}
-                      <div className="flex-1 flex items-center justify-center">
-                        <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 font-mono">
+                      {/* Lorong Tengah - Fixed Compact Width */}
+                      <div className="w-6 sm:w-8 flex-shrink-0 flex items-center justify-center">
+                        <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 font-mono">
                           |
                         </span>
                       </div>
 
                       {/* Kursi Sisi Kanan (misal 25, 26) */}
-                      <div className="flex items-center gap-1.5 sm:gap-2 justify-start">
+                      <div className="flex items-center gap-1 sm:gap-1.5 justify-start">
                         {row.rightSeats.map((seatNo) => renderSeatItem(seatNo))}
                       </div>
                     </div>
                   );
                 }
 
-                // Baris Normal (Kiri 2/3 - Lorong - Kanan 2/3)
+                // Baris Normal (Kiri - Lorong Proporsional - Kanan)
                 return (
                   <div
                     key={`row-${row.rowNumber}`}
-                    className="flex items-center justify-between gap-2 sm:gap-4 py-0.5"
+                    className="flex items-center justify-center gap-2 sm:gap-4 py-0.5"
                   >
-                    {/* Sisi Kiri */}
-                    <div className="flex items-center gap-1 sm:gap-2 justify-end">
+                    {/* Sisi Kiri (2 atau 3 Kursi) */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 justify-end">
                       {row.leftSeats.map((seatNo) => renderSeatItem(seatNo))}
                     </div>
 
-                    {/* LORONG TENGAH (AISLE GANG JALAN) */}
-                    <div className="flex-1 flex items-center justify-center">
-                      <span className="text-[10px] font-black font-mono text-slate-300 dark:text-slate-700">
+                    {/* LORONG TENGAH (AISLE) - FIXED COMPACT LEGA & PROPORSIONAL */}
+                    <div className="w-6 sm:w-8 flex-shrink-0 flex items-center justify-center py-1">
+                      <span className="text-[9px] font-black font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-1 py-0.5 rounded">
                         {row.rowNumber}
                       </span>
                     </div>
 
-                    {/* Sisi Kanan */}
-                    <div className="flex items-center gap-1 sm:gap-2 justify-start">
+                    {/* Sisi Kanan (2 atau 3 Kursi) */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 justify-start">
                       {row.rightSeats.map((seatNo) => renderSeatItem(seatNo))}
                     </div>
                   </div>
@@ -1192,9 +1215,9 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
         {/* Panel Form Edit Alokasi Kursi Terpilih */}
         {selectedSeat && (
-          <div className="mt-4 p-4 rounded-2xl bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-800 space-y-3">
+          <div className="mt-3 p-3.5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-800 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-600" />
                 <span>Pengaturan Alokasi Kursi #{selectedSeat}</span>
               </h4>
@@ -1306,7 +1329,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           MODAL PREVIEW IMPORT (WORD / FOTO / PASTE)
           ======================================================== */}
       <Dialog open={importPreviewOpen} onOpenChange={setImportPreviewOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-5 sm:p-6">
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-blue-600" />
