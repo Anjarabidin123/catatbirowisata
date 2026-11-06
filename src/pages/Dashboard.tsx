@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser, clearAuthCache } from "@/utils/authHelper";
 import { clearBiroProfileCache, getLocalBiroProfile, fetchBiroProfile, BiroProfile } from "@/utils/biroProfile";
 import { getBiroCmsData, BiroCmsData } from "@/utils/biroCmsStore";
+import { getActiveTravelWallpaper } from "@/data/travelWallpapers";
 import { scheduleTripNotifications, setupNotificationListeners } from "@/utils/tripNotifications";
 import { useRole } from "@/contexts/RoleContext";
 import AuthGuard from "@/components/AuthGuard";
@@ -178,6 +179,7 @@ const Dashboard = () => {
   const [filter, setFilter] = useState<FilterKey>("semua");
   const [profile, setProfile] = useState<BiroProfile>(() => getLocalBiroProfile());
   const [cmsData, setCmsData] = useState<BiroCmsData>(() => getBiroCmsData());
+  const activeWallpaper = useMemo(() => getActiveTravelWallpaper(), []);
 
   const loadData = async () => {
     try {
@@ -437,10 +439,12 @@ const Dashboard = () => {
         <div className="lg:hidden">
           {/* Visual Hero Header Container (sekitar 32-38% tinggi layar / tidak separuh banget) */}
           <div className="relative overflow-hidden rounded-b-[2.25rem] bg-slate-900 text-white shadow-xl border-b border-slate-800/80">
-            {/* Foto Latar Belakang Wisata (Bromo / Bali) dengan Filter Estetik */}
+            {/* Foto Latar Belakang Wisata (Otomatis Berganti Tiap 3 Hari Sekali) */}
             <div
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 brightness-[0.65] saturate-[1.25]"
-              style={{ backgroundImage: "url('/hero-bromo.jpg')" }}
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 brightness-[0.62] saturate-[1.25] transition-all duration-1000"
+              style={{
+                backgroundImage: `url('${activeWallpaper.imageUrl}'), url('${activeWallpaper.fallbackUrl}')`,
+              }}
             />
             {/* Gradient Overlay Gelap agar Teks & Konten Selalu Terbaca Tajam */}
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-slate-900/80 to-slate-950/95 backdrop-blur-[1px]" />
@@ -606,21 +610,16 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {/* Spotlight Mini jika ada trip hari ini */}
-              {todayTrips.length > 0 && (
-                <div
-                  onClick={() => openTrip(todayTrips[0].id, "operasional")}
-                  className="px-3.5 py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-white flex items-center justify-between gap-2 text-xs cursor-pointer active:scale-[0.99] transition-all backdrop-blur-xs shadow-md"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0"></span>
-                    <span className="font-bold truncate text-[11px]">
-                      Hari Ini: {todayTrips[0].nama_trip} ({todayTrips[0].tujuan})
-                    </span>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-emerald-200 flex-shrink-0" />
-                </div>
-              )}
+              {/* Info Lanskap Wisata Aktif & Jadwal Rotasi 3 Hari */}
+              <div className="flex items-center justify-between px-1 text-[10px] text-slate-300/80 font-medium">
+                <span className="flex items-center gap-1 truncate max-w-[230px]" title={activeWallpaper.title}>
+                  <MapPin className="w-3 h-3 text-cyan-300 flex-shrink-0" />
+                  <span className="truncate">{activeWallpaper.location}</span>
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/10 backdrop-blur-xs font-mono text-slate-300 flex-shrink-0">
+                  Foto berganti {activeWallpaper.daysRemaining} hari lagi
+                </span>
+              </div>
             </div>
           </div>
 
