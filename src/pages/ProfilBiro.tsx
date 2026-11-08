@@ -78,7 +78,7 @@ import {
 } from "@/utils/licenseEntitlement";
 import { getStoredApiKey, setStoredApiKey } from "@/utils/asistenWisataAI";
 import { supabase } from "@/integrations/supabase/client";
-import { clearAuthCache, getActiveUserSync } from "@/utils/authHelper";
+import { clearAuthCache, getActiveUserSync, safeLogout } from "@/utils/authHelper";
 
 type SettingsSection =
   | "kop"
@@ -256,6 +256,14 @@ export const ProfilBiro: React.FC = () => {
     toast.success("Rumah makan dihapus dari katalog");
   };
 
+  // Hapus Pos Kategori Anggaran
+  const handleDeleteKategori = (id: string) => {
+    const updated = { ...cmsData, kategoriKeuangan: cmsData.kategoriKeuangan.filter((k) => k.id !== id) };
+    setCmsData(updated);
+    saveBiroCmsData(updated);
+    toast.success("Pos anggaran berhasil dihapus");
+  };
+
   // Simpan API Key AI
   const handleSaveApiKey = () => {
     setStoredApiKey(tempApiKey.trim());
@@ -267,13 +275,9 @@ export const ProfilBiro: React.FC = () => {
   // Logout
   const handleLogout = async () => {
     if (confirm("Yakin ingin keluar dari sesi akun biro ini?")) {
-      try {
-        await supabase.auth.signOut();
-      } finally {
-        clearAuthCache();
-        localStorage.clear();
-        navigate("/auth");
-      }
+      await safeLogout();
+      toast.success("Berhasil keluar dari sesi akun");
+      navigate("/auth");
     }
   };
 
@@ -1464,7 +1468,7 @@ export const ProfilBiro: React.FC = () => {
                       Kategori Pos Kas Laba & Biaya Operasional
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      Kustomisasi pos anggaran yang muncul saat kru atau admin mencatat pengeluaran trip (solar, tol, parkir, konsumsi, tiket masuk).
+                      Kustomisasi pos anggaran yang muncul saat kru atau admin mencatat kas operasional trip (tol, parkir, konsumsi, tiket masuk, dll).
                     </p>
                   </div>
 
@@ -1476,7 +1480,7 @@ export const ProfilBiro: React.FC = () => {
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Input
                         required
-                        placeholder="Nama Pos (Contoh: BBM Bus Solar, Tol Trans Jawa, Kas TL)"
+                        placeholder="Nama Pos (Contoh: Tol Trans Jawa, Kas TL, Tiket Masuk)"
                         value={newKatNama}
                         onChange={(e) => setNewKatNama(e.target.value)}
                         className="text-xs flex-1"
@@ -1510,16 +1514,27 @@ export const ProfilBiro: React.FC = () => {
                           <span className="font-semibold text-xs text-slate-800 dark:text-slate-200">
                             {kat.nama}
                           </span>
-                          <Badge
-                            variant="secondary"
-                            className={`text-[10px] font-medium uppercase ${
-                              kat.jenis === "pemasukan"
-                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
-                                : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
-                            }`}
-                          >
-                            {kat.jenis}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="secondary"
+                              className={`text-[10px] font-medium uppercase ${
+                                kat.jenis === "pemasukan"
+                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+                                  : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
+                              }`}
+                            >
+                              {kat.jenis}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteKategori(kat.id)}
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-7 w-7 p-0 flex-shrink-0"
+                              title="Hapus Kategori"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>

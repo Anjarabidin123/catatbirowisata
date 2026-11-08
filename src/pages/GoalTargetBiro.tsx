@@ -68,7 +68,7 @@ export const GoalTargetBiro: React.FC = () => {
   const [targetOmset, setTargetOmset] = useState<number>(50000000);
   const [targetTrips, setTargetTrips] = useState<number>(8);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [inputOmset, setInputOmset] = useState<string>("50000000");
+  const [inputOmset, setInputOmset] = useState<string>("50.000.000");
   const [inputTrips, setInputTrips] = useState<string>("8");
 
   // Load Goals from Storage for the selected month
@@ -80,7 +80,7 @@ export const GoalTargetBiro: React.FC = () => {
         if (parsed[selectedMonth]) {
           setTargetOmset(parsed[selectedMonth].targetOmset);
           setTargetTrips(parsed[selectedMonth].targetTrips);
-          setInputOmset(parsed[selectedMonth].targetOmset.toString());
+          setInputOmset(parsed[selectedMonth].targetOmset.toLocaleString("id-ID"));
           setInputTrips(parsed[selectedMonth].targetTrips.toString());
           return;
         }
@@ -91,7 +91,7 @@ export const GoalTargetBiro: React.FC = () => {
     // Default fallback
     setTargetOmset(50000000);
     setTargetTrips(8);
-    setInputOmset("50000000");
+    setInputOmset((50000000).toLocaleString("id-ID"));
     setInputTrips("8");
   }, [selectedMonth]);
 
@@ -144,7 +144,8 @@ export const GoalTargetBiro: React.FC = () => {
   const monthData = useMemo(() => {
     const pemasukanList = keuanganList.filter((k) => {
       const isPemasukan = k.jenis === "pemasukan";
-      const matchesMonth = k.tanggal && k.tanggal.startsWith(selectedMonth);
+      const rawDate = k.tanggal || k.created_at || "";
+      const matchesMonth = rawDate.startsWith(selectedMonth);
       return isPemasukan && matchesMonth;
     });
 
@@ -671,15 +672,18 @@ export const GoalTargetBiro: React.FC = () => {
                     Rp
                   </span>
                   <Input
-                    type="number"
+                    type="text"
                     value={inputOmset}
-                    onChange={(e) => setInputOmset(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      setInputOmset(raw ? Number(raw).toLocaleString("id-ID") : "");
+                    }}
                     className="pl-10 h-11 text-sm font-black rounded-xl"
-                    placeholder="50000000"
+                    placeholder="50.000.000"
                   />
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Pratinjau: {formatRupiah(parseInt(inputOmset || "0", 10))}
+                  Pratinjau: {formatRupiah(parseInt(inputOmset.replace(/\D/g, "") || "0", 10))}
                 </p>
               </div>
 

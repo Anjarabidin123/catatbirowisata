@@ -34,6 +34,8 @@ import {
   CheckSquare,
   Wallet,
   ShieldCheck,
+  Menu,
+  Pencil,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -46,6 +48,15 @@ import { TripChecklistCard } from "@/components/TripChecklistCard";
 import { TripCrewAssignmentCard } from "@/components/TripCrewAssignmentCard";
 import { PettyCashTracker } from "@/components/PettyCashTracker";
 import { KwitansiInvoiceDialog } from "@/components/KwitansiInvoiceDialog";
+import { EditTripDialog } from "@/components/EditTripDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useRole } from "@/contexts/RoleContext";
 
 interface Trip {
@@ -97,11 +108,12 @@ const TripDetail = () => {
   const [priceNoteDialogOpen, setPriceNoteDialogOpen] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [editingPriceNote, setEditingPriceNote] = useState<PriceNote | undefined>();
-  const [priceNotesExpanded, setPriceNotesExpanded] = useState(false);
+  const [priceNotesExpanded, setPriceNotesExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [manifestModalOpen, setManifestModalOpen] = useState(false);
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [kwitansiModalOpen, setKwitansiModalOpen] = useState(false);
+  const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
   const [openNotes, setOpenNotes] = useState<Record<string, boolean>>({});
 
   const toggleNote = (id: string) => {
@@ -143,14 +155,26 @@ const TripDetail = () => {
       const user = await getActiveUser();
       if (!user || !tripId) return;
 
-      const { data: tripData, error: tripError } = await supabase
+      let tripData = null;
+      const { data: directTrip, error: tripError } = await supabase
         .from("trips")
         .select("*")
         .eq("id", tripId)
-        .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (tripError) throw tripError;
+      if (directTrip) {
+        tripData = directTrip;
+      } else {
+        const { data: userTrip } = await supabase
+          .from("trips")
+          .select("*")
+          .eq("id", tripId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        tripData = userTrip;
+      }
+
+      if (!tripData) throw tripError || new Error("Trip tidak ditemukan");
       setTrip(tripData);
 
       await Promise.all([loadNotes(user.id), loadPriceNotes(user.id)]);
@@ -171,7 +195,6 @@ const TripDetail = () => {
         .from("notes")
         .select("*")
         .eq("trip_id", tripId)
-        .eq("user_id", userId)
         .not("judul", "ilike", "[%]")
         .order("created_at", { ascending: false });
 
@@ -191,7 +214,6 @@ const TripDetail = () => {
         .from("trip_price_notes")
         .select("*")
         .eq("trip_id", tripId)
-        .eq("user_id", userId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
@@ -247,110 +269,140 @@ const TripDetail = () => {
             </div>
           </div>
 
-          {/* Trip Header Eksekutif Desktop */}
-          <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/90 dark:border-slate-700 shadow-xs mb-6 space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-              <div className="space-y-3 flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                    {trip.nama_trip}
-                  </h1>
-                </div>
-
-                {/* Meta Badges Tebal & Berwarna Tegas */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 font-bold text-xs border border-blue-200 dark:border-blue-800">
-                    <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                    <span>
-                      {format(new Date(trip.tanggal), "dd MMMM yyyy", { locale: id })}
-                      {trip.tanggal_selesai && (
-                        <> - {format(new Date(trip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}</>
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 font-bold text-xs border border-rose-200 dark:border-rose-800 capitalize">
-                    <MapPin className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                    <span>{trip.tujuan}</span>
-                  </div>
-
-                  {trip.nama_kendaraan && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold text-xs border border-amber-200 dark:border-amber-800">
-                      <Bus className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                      <span>
-                        {trip.nama_kendaraan}
-                        {trip.nomor_polisi ? ` (${trip.nomor_polisi})` : ""}
-                      </span>
-                    </div>
-                  )}
-
-                  {trip.nama_driver && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 font-bold text-xs border border-emerald-200 dark:border-emerald-800">
-                      <Users className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                      <span>Kru: {trip.nama_driver}</span>
-                    </div>
-                  )}
-
-                  {trip.jumlah_penumpang && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 font-bold text-xs border border-purple-200 dark:border-purple-800">
-                      <Users className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                      <span>{trip.jumlah_penumpang} Penumpang</span>
-                    </div>
-                  )}
-
-                  {canSeeFinancials && trip.budget_estimasi && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-900 dark:text-teal-200 font-bold text-xs border border-teal-200 dark:border-teal-800">
-                      <Wallet className="w-4 h-4 text-teal-600 flex-shrink-0" />
-                      <span>Budget: {formatRupiah(Number(trip.budget_estimasi))}</span>
-                    </div>
-                  )}
-                </div>
-
-                {trip.catatan && (
-                  <div className="pt-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    Catatan Acuan: {trip.catatan}
-                  </div>
-                )}
+          {/* Trip Header Card Ringkas & Hemat Tempat */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/90 dark:border-slate-700 shadow-xs mb-5 space-y-3">
+            {/* Baris Judul & Dropdown Menu di Pojok Atas */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight break-words capitalize">
+                  {trip.nama_trip}
+                </h1>
               </div>
 
-              {/* Strip Tombol Operasional Terintegrasi di Kanan Desktop */}
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0 pt-2 lg:pt-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setManifestModalOpen(true)}
-                  className="h-10 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs gap-2 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-800 dark:text-slate-200"
-                >
-                  <Bus className="w-4 h-4 text-blue-600" />
-                  <span>Manifest Bus</span>
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBroadcastModalOpen(true)}
-                  className="h-10 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs gap-2 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                >
-                  <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-emerald-700 dark:text-emerald-300 font-bold">Broadcast WA</span>
-                </Button>
-
-                {canPrintKwitansi && (
+              {/* Dropdown Menu Pojok Atas (Hemat Tempat) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
-                    type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setKwitansiModalOpen(true)}
-                    className="h-10 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs gap-2 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-800 dark:text-slate-200"
+                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-bold text-xs gap-1.5 shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-700 flex-shrink-0 cursor-pointer"
                   >
-                    <Receipt className="w-4 h-4 text-indigo-600" />
-                    <span>Kwitansi / Inv</span>
+                    <Menu className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                    <span>Menu Trip</span>
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
                   </Button>
-                )}
-              </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-50">
+                  <DropdownMenuLabel className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 py-1">
+                    Aksi & Operasional Trip
+                  </DropdownMenuLabel>
+                  
+                  <DropdownMenuItem
+                    onClick={() => setManifestModalOpen(true)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 transition-colors"
+                  >
+                    <Bus className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <span>Manifest Kursi Bus</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() => setBroadcastModalOpen(true)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-700 transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Broadcast WhatsApp</span>
+                  </DropdownMenuItem>
+
+                  {canPrintKwitansi && (
+                    <DropdownMenuItem
+                      onClick={() => setKwitansiModalOpen(true)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-700 transition-colors"
+                    >
+                      <Receipt className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                      <span>Cetak Kwitansi / Inv</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {canSeeFinancials && (
+                    <DropdownMenuItem
+                      onClick={() => setActiveTab("keuangan")}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-950/60 hover:text-teal-700 transition-colors"
+                    >
+                      <Wallet className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                      <span>Buka Buku Kas Biro</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {canEditNotes && (
+                    <>
+                      <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+                      <DropdownMenuItem
+                        onClick={() => setEditTripDialogOpen(true)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 transition-colors"
+                      >
+                        <Pencil className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span>Edit Informasi Trip</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+
+            {/* Meta Badges Ringkas & Jelas */}
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 font-bold text-xs border border-blue-200 dark:border-blue-800">
+                <Calendar className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <span>
+                  {format(new Date(trip.tanggal), "dd MMMM yyyy", { locale: id })}
+                  {trip.tanggal_selesai && (
+                    <> - {format(new Date(trip.tanggal_selesai), "dd MMMM yyyy", { locale: id })}</>
+                  )}
+                </span>
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 font-bold text-xs border border-rose-200 dark:border-rose-800 capitalize">
+                <MapPin className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                <span>{trip.tujuan}</span>
+              </div>
+
+              {trip.nama_kendaraan && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold text-xs border border-amber-200 dark:border-amber-800">
+                  <Bus className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                  <span>
+                    {trip.nama_kendaraan}
+                    {trip.nomor_polisi ? ` (${trip.nomor_polisi})` : ""}
+                  </span>
+                </div>
+              )}
+
+              {trip.nama_driver && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 font-bold text-xs border border-emerald-200 dark:border-emerald-800">
+                  <Users className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                  <span>Kru: {trip.nama_driver}</span>
+                </div>
+              )}
+
+              {trip.jumlah_penumpang && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 font-bold text-xs border border-purple-200 dark:border-purple-800">
+                  <Users className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                  <span>{trip.jumlah_penumpang} Penumpang</span>
+                </div>
+              )}
+
+              {canSeeFinancials && trip.budget_estimasi && (
+                <button type="button" onClick={() => setActiveTab("keuangan")} title="Klik untuk membuka Buku Kas Biro" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-900 dark:text-teal-200 font-bold text-xs border border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors cursor-pointer">
+                  <Wallet className="w-3.5 h-3.5 text-teal-600 flex-shrink-0" />
+                  <span>Budget: {formatRupiah(Number(trip.budget_estimasi))} (Buka Kas →)</span>
+                </button>
+              )}
+            </div>
+
+            {trip.catatan && (
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 p-2.5 sm:p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                Catatan Acuan: {trip.catatan}
+              </div>
+            )}
           </div>
 
 
@@ -361,6 +413,12 @@ const TripDetail = () => {
                 <TabsTrigger value="acuan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
                   Perencanaan
                 </TabsTrigger>
+                {canSeeFinancials && (
+                  <TabsTrigger value="keuangan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
+                    Buku Kas Biro
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-extrabold">Owner</span>
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="operasional" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
                   Operasional & Kas Lapangan
                   {isKru && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">Utama</span>}
@@ -368,12 +426,6 @@ const TripDetail = () => {
                 <TabsTrigger value="kendaraan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
                   Kendaraan
                 </TabsTrigger>
-                {canSeeFinancials && (
-                  <TabsTrigger value="keuangan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                    Buku Kas Biro
-                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-extrabold">Owner</span>
-                  </TabsTrigger>
-                )}
                 <TabsTrigger value="rundown" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
                   Rundown
                 </TabsTrigger>
@@ -448,13 +500,74 @@ const TripDetail = () => {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-slate-400 text-xs text-center py-4">Belum ada catatan harga tersimpan</p>
+                          <div className="space-y-3">
+                            {trip.catatan ? (
+                              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-900/60 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                                    <span>📋 Catatan Acuan dari Pembuatan Trip:</span>
+                                  </span>
+                                  <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2 py-0.5 rounded-full font-bold">
+                                    Tersimpan
+                                  </span>
+                                </div>
+                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-amber-200/60 leading-relaxed">
+                                  "{trip.catatan}"
+                                </p>
+                                {canEditNotes && (
+                                  <Button
+                                    size="sm"
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingPriceNote({
+                                        id: "",
+                                        keterangan: "Paket Rombongan (Acuan Trip)",
+                                        jumlah: Number(trip.budget_estimasi || 0),
+                                        catatan: trip.catatan || "",
+                                      });
+                                      setPriceNoteDialogOpen(true);
+                                    }}
+                                    className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl gap-1.5 shadow-2xs"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Masukkan Catatan Ini ke Rincian Harga Resmi</span>
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-slate-400 text-xs text-center py-4">Belum ada catatan harga tersimpan</p>
+                            )}
+                          </div>
                         )}
                       </div>
                     </CollapsibleContent>
                   </div>
                 </Collapsible>
               </Card>
+
+              {/* Shortcut Cepat Buka Kas & Laba untuk Owner */}
+              {canSeeFinancials && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                      <Wallet className="w-4 h-4 text-emerald-600" />
+                      <span>Pembukuan Kas Masuk & Keluar</span>
+                    </p>
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                      Lihat rincian DP/pelunasan paket dan seluruh pengeluaran operasional trip ini.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    type="button"
+                    onClick={() => setActiveTab("keuangan")}
+                    className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex-shrink-0 shadow-2xs gap-1"
+                  >
+                    <span>Buka Kas</span>
+                    <span>→</span>
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             {/* Tab: Operasional Lapangan (Checklist 14 Poin & Petty Cash TL) */}
@@ -644,6 +757,15 @@ const TripDetail = () => {
           onOpenChange={setKwitansiModalOpen}
           defaultTripId={tripId}
         />
+
+        {trip && (
+          <EditTripDialog
+            open={editTripDialogOpen}
+            onOpenChange={setEditTripDialogOpen}
+            trip={trip}
+            onSuccess={loadTripData}
+          />
+        )}
 
         <BottomNav />
       </div>

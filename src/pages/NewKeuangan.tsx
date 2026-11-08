@@ -199,7 +199,7 @@ const NewKeuangan = () => {
                         💰 Pemasukan (Omset / Pembayaran DP / Pelunasan)
                       </SelectItem>
                       <SelectItem value="pengeluaran" className="text-xs">
-                        💸 Pengeluaran (Beban Operasional / BBM / Tol / Resto)
+                        💸 Pengeluaran (Beban Operasional / Tol & Parkir / Resto / Tiket)
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -220,7 +220,7 @@ const NewKeuangan = () => {
                   required
                   value={formData.keterangan}
                   onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                  placeholder="Contoh: Solar SPBU Brebes / DP Booking Bus Pariwisata / Tiket Masuk Bromo 45 pax"
+                  placeholder="Contoh: DP Booking Bus Pariwisata / Saldo E-Toll & Parkir / Tiket Masuk Bromo 45 pax"
                   rows={3}
                   className="mt-1 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 resize-none"
                 />

@@ -100,7 +100,6 @@ export const RundownAcara = ({
       .from("rundown_acara")
       .select("*")
       .eq("trip_id", tripId)
-      .eq("user_id", user.id)
       .order("hari_ke", { ascending: true })
       .order("jam_mulai", { ascending: true });
 
@@ -225,6 +224,10 @@ export const RundownAcara = ({
         description: "Anda tidak memiliki izin menginput transaksi pengeluaran.",
         variant: "destructive",
       });
+      return;
+    }
+    if (!tripId) {
+      toast({ title: "Error", description: "ID Trip tidak valid", variant: "destructive" });
       return;
     }
     if (loading) return; // Prevent double submission

@@ -294,7 +294,6 @@ export const generateRundownPDF = async (
     : "Armada Bus Pariwisata";
   const driverInfo = tripInfo.nama_driver || "Kru Pengemudi & TL";
   const paxInfo = tripInfo.jumlah_penumpang ? `${tripInfo.jumlah_penumpang} Peserta (Pax)` : "Rombongan Wisata";
-  const notes = tripInfo.catatan || null;
 
   const tripSpecsBody: any[] = [
     [
@@ -317,12 +316,8 @@ export const generateRundownPDF = async (
     ],
   ];
 
-  if (notes) {
-    tripSpecsBody.push([
-      { content: "Catatan Khusus", styles: { fontStyle: "bold", fillColor: [241, 245, 249], textColor: [15, 23, 42] } },
-      { content: notes, colSpan: 3 },
-    ]);
-  }
+  // Catatan internal trip (seperti deal harga, komitmen panitia, pengembalian uang, dan free kaos)
+  // TIDAK DITAMPILKAN di dokumen Rundown resmi demi melindungi kerahasiaan & privasi komersial biro saat dibagikan ke peserta/tamu.
 
   autoTable(doc, {
     startY: currentY,

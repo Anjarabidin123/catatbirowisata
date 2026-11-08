@@ -173,13 +173,13 @@ export function isSuperAdminUser(): boolean {
   if (typeof window === "undefined") return false;
   const user = getActiveUserSync();
   const currentEmail = user?.email?.toLowerCase() || "";
-  
-  // Jika sedang login dengan anjarbdn@gmail.com -> Bypass mutlak root
-  if (currentEmail === SUPER_ADMIN_EMAIL.toLowerCase()) {
+
+  // 1. Jika sedang login dengan email anjarbdn@gmail.com -> Super Admin SAH (Founder)
+  if (currentEmail && currentEmail === SUPER_ADMIN_EMAIL.toLowerCase()) {
     return true;
   }
 
-  // Fallback dev mode / local override jika disimpan di session
+  // 2. Akses Super Admin di workstation Founder lokal (memungkinkan Mas Anjar mengelola biro walau sedang menguji akun biro)
   try {
     const override = localStorage.getItem("catatbiro_is_superadmin_override");
     if (override === "true") return true;
@@ -371,30 +371,87 @@ export function getCurrentEntitlements(): EntitlementState {
     };
   }
 
-  // 6. Pencocokan Otomatis Akun Login dengan Data Tenant Supabase
+  // 6. Pencocokan Otomatis Akun Login & Profil Biro dengan Konfigurasi Super Admin
   const activeUser = getActiveUserSync();
-  const currentEmail = activeUser?.email?.toLowerCase() || "";
-  if (currentEmail && currentEmail !== SUPER_ADMIN_EMAIL.toLowerCase()) {
-    const all = getAllTenants();
-    const matchedTenant = all.find(
-      (t) => t.ownerEmail?.toLowerCase() === currentEmail || t.id === activeUser?.id
-    );
-    if (matchedTenant) {
-      return {
-        isSuperAdmin: isSuper,
-        activePerspective: "normal",
-        tier: matchedTenant.tier,
-        canUseDesktopMode: matchedTenant.canUseDesktopMode,
-        canExportCleanPdf: matchedTenant.canExportCleanPdf,
-        canUseAI: matchedTenant.canUseAI,
-        maxActiveTrips: matchedTenant.maxActiveTrips,
-        maxCrewMembers: matchedTenant.maxCrewMembers,
-        customBranding: matchedTenant.customBranding,
-        hasWebsite: matchedTenant.hasWebsite,
-        activeTenantName: matchedTenant.namaBiro,
-        isImpersonating: false,
-      };
+  const currentEmail = activeUser?.email?.toLowerCase().trim() || "";
+
+  let localProfile: { nama_biro?: string; pimpinan?: string; email?: string } | null = null;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = localStorage.getItem("app_biro_profile_v1");
+      if (raw) localProfile = JSON.parse(raw);
+    } catch {}
+  }
+  const profBiro = localProfile?.nama_biro?.toLowerCase().trim() || "";
+  const profPimpinan = localProfile?.pimpinan?.toLowerCase().trim() || "";
+  const profEmail = localProfile?.email?.toLowerCase().trim() || "";
+
+  const all = getAllTenants();
+  const matchedTenant = all.find((t) => {
+    // A. Cocokkan ID Akun Supabase jika ada
+    if (activeUser?.id && (t.id === activeUser.id || (t as any).userId === activeUser.id)) {
+      return true;
     }
+
+    // B. Cocokkan Email Login Aktif
+    if (currentEmail && t.ownerEmail && t.ownerEmail.toLowerCase().trim() === currentEmail) {
+      return true;
+    }
+
+    // C. Cocokkan Email dari Profil Biro Lokal
+    if (profEmail && t.ownerEmail && t.ownerEmail.toLowerCase().trim() === profEmail) {
+      return true;
+    }
+
+    // D. Cocokkan Nama Biro
+    if (profBiro && t.namaBiro) {
+      const tBiro = t.namaBiro.toLowerCase().trim();
+      if (tBiro === profBiro) return true;
+      if (profBiro.length >= 4 && tBiro.length >= 4) {
+        if (tBiro.includes(profBiro) || profBiro.includes(tBiro)) return true;
+      }
+    }
+
+    // E. Cocokkan Nama Pemilik / Pimpinan
+    if (profPimpinan && t.ownerNama) {
+      const tOwner = t.ownerNama.toLowerCase().trim();
+      if (tOwner === profPimpinan) return true;
+      if (profPimpinan.length >= 4 && tOwner.length >= 4) {
+        if (tOwner.includes(profPimpinan) || profPimpinan.includes(tOwner)) return true;
+      }
+    }
+
+    // F. Heuristik Khusus Biro 69 Tour Organizer / Muanafi (jika profil atau akun mengandung 69 / Muanafi)
+    const is69Profile =
+      /69|enam\s*sembilan|muanafi|munafi/i.test(profBiro) ||
+      /muanafi|munafi/i.test(profPimpinan) ||
+      /69|munafi/i.test(currentEmail);
+    const is69Tenant =
+      /69|enam\s*sembilan|muanafi|munafi/i.test(t.namaBiro) ||
+      /muanafi|munafi/i.test(t.ownerNama) ||
+      /69|munafi/i.test(t.ownerEmail);
+    if (is69Profile && is69Tenant) {
+      return true;
+    }
+
+    return false;
+  });
+
+  if (matchedTenant) {
+    return {
+      isSuperAdmin: isSuper,
+      activePerspective: "normal",
+      tier: matchedTenant.tier,
+      canUseDesktopMode: matchedTenant.canUseDesktopMode,
+      canExportCleanPdf: matchedTenant.canExportCleanPdf,
+      canUseAI: matchedTenant.canUseAI,
+      maxActiveTrips: matchedTenant.maxActiveTrips,
+      maxCrewMembers: matchedTenant.maxCrewMembers,
+      customBranding: matchedTenant.customBranding,
+      hasWebsite: matchedTenant.hasWebsite,
+      activeTenantName: matchedTenant.namaBiro,
+      isImpersonating: false,
+    };
   }
 
   // 7. Default akun umum: Ambil dari custom tier lokal jika ada

@@ -155,7 +155,7 @@ export async function processConversationalMessage(rawInput: string): Promise<Di
         "📅 Buat Trip Baru",
         "🚌 Tambah Bus",
         "👤 Daftarkan Kru",
-        "💰 Catat Kas BBM",
+        "💰 Catat Kas Operasional",
         "📊 Cek Kuota & Kru",
       ],
       wizardType: "NONE",
@@ -297,10 +297,12 @@ export async function processConversationalMessage(rawInput: string): Promise<Di
   if (
     lower.includes("catat pengeluaran") ||
     lower.includes("catat biaya") ||
+    lower.includes("catat kas") ||
+    lower.includes("kas operasional") ||
+    lower.includes("pengeluaran operasional") ||
     lower.includes("beli bensin") ||
     lower.includes("isi bbm") ||
     lower.includes("bayar tol") ||
-    lower.includes("catat kas") ||
     lower.includes("pemasukan") ||
     lower.includes("terima dp")
   ) {
@@ -312,12 +314,17 @@ export async function processConversationalMessage(rawInput: string): Promise<Di
       },
     };
 
-    // Ambil daftar trip aktif untuk dijadikan opsi tombol
-    const { data: recentTrips } = await supabase
+    // Ambil daftar trip aktif milik user untuk dijadikan opsi tombol
+    const user = await getActiveUser();
+    let tripQuery = supabase
       .from("trips")
       .select("id, nama_trip")
-      .order("tanggal", { ascending: false })
-      .limit(3);
+      .order("tanggal", { ascending: false });
+
+    if (user?.id) {
+      tripQuery = tripQuery.eq("user_id", user.id);
+    }
+    const { data: recentTrips } = await tripQuery.limit(5);
 
     const tripOptions = (recentTrips || []).map((t) => `📍 ${t.nama_trip}`);
     tripOptions.push("🏢 Kas Umum / Kantor", "❌ Batal");
@@ -360,7 +367,7 @@ export async function processConversationalMessage(rawInput: string): Promise<Di
         "📅 Buat Trip Baru",
         "🚌 Tambah Bus",
         "👤 Daftarkan Kru",
-        "💰 Catat Kas BBM",
+        "💰 Catat Kas Operasional",
       ],
       wizardType: "NONE",
     };
@@ -375,7 +382,7 @@ export async function processConversationalMessage(rawInput: string): Promise<Di
       "📅 Buat Trip Baru",
       "🚌 Tambah Bus",
       "👤 Daftarkan Kru",
-      "💰 Catat Kas BBM",
+      "💰 Catat Kas Operasional",
       "📊 Cek Kuota & Kru",
     ],
     wizardType: "NONE",
@@ -694,7 +701,7 @@ async function handleTripWizardStep(input: string): Promise<DialogResponse> {
         isComplete: true,
         actionType: "CREATE_TRIP",
         navigationPath: `/trips/${tripId}`,
-        options: ["📅 Buat Trip Lainnya", "💰 Catat Kas BBM", "🏠 Kembali ke Beranda"],
+        options: ["📅 Buat Trip Lainnya", "💰 Catat Kas Operasional", "🏠 Kembali ke Beranda"],
         wizardType: "NONE",
       };
     }
@@ -984,13 +991,84 @@ async function handleExpenseWizardStep(input: string): Promise<DialogResponse> {
 
   // Langkah 1: Pilih Alokasi Trip
   if (activeDraft.step === 1) {
-    const cleanTripName = input.replace(/^📍\s*/, "").replace(/^🏢\s*/, "").trim();
-    activeDraft.data.trip_name = cleanTripName;
+    const cleanTripName = input.replace(/^[📍🏢\s]+/, "").trim();
+    const user = await getActiveUser();
+
+    // Ambil daftar trip milik biro/user
+    let tripQuery = supabase
+      .from("trips")
+      .select("id, nama_trip")
+      .order("tanggal", { ascending: false });
+
+    if (user?.id) {
+      tripQuery = tripQuery.eq("user_id", user.id);
+    }
+    const { data: trips } = await tripQuery;
+
+    let matchedTrip = trips?.find(
+      (t) =>
+        t.id === cleanTripName ||
+        t.nama_trip.toLowerCase() === cleanTripName.toLowerCase() ||
+        t.nama_trip.toLowerCase().includes(cleanTripName.toLowerCase()) ||
+        cleanTripName.toLowerCase().includes(t.nama_trip.toLowerCase())
+    );
+
+    const isOffice =
+      cleanTripName.toLowerCase().includes("kantor") ||
+      cleanTripName.toLowerCase().includes("umum") ||
+      cleanTripName.toLowerCase().includes("kas umum");
+
+    if (!matchedTrip && isOffice) {
+      // Cari apakah sudah pernah dibuat trip khusus kantor
+      matchedTrip = trips?.find(
+        (t) =>
+          t.nama_trip.toLowerCase().includes("kantor") ||
+          t.nama_trip.toLowerCase().includes("kas umum")
+      );
+
+      // Jika belum ada, buatkan otomatis 1 trip resmi kantor
+      if (!matchedTrip && user?.id) {
+        const todayIso = format(new Date(), "yyyy-MM-dd");
+        const { data: newOfficeTrip } = await supabase
+          .from("trips")
+          .insert({
+            nama_trip: "Kas Kantor & Operasional Umum",
+            tujuan: "Kantor Operasional Biro",
+            tanggal: todayIso,
+            nama_kendaraan: "Operasional Kantor",
+            user_id: user.id,
+          })
+          .select("id, nama_trip")
+          .single();
+        if (newOfficeTrip) {
+          matchedTrip = newOfficeTrip;
+        }
+      }
+    }
+
+    // Fallback: Jika user mengetik nama sembarang tapi ada trip di database, gunakan trip pertama
+    if (!matchedTrip && trips && trips.length > 0) {
+      matchedTrip = trips[0];
+    }
+
+    if (!matchedTrip) {
+      resetWizard();
+      return {
+        botMessage:
+          "⚠️ **Belum ada jadwal trip yang terdaftar di sistem biro Anda.**\n\n" +
+          "Silakan buat trip baru terlebih dahulu agar transaksi kas memiliki alokasi kegiatan yang sah.",
+        options: ["📅 Buat Trip Baru", "❌ Batal"],
+        wizardType: "NONE",
+      };
+    }
+
+    activeDraft.data.trip_id = matchedTrip.id;
+    activeDraft.data.trip_name = matchedTrip.nama_trip;
     activeDraft.step = 2;
 
     return {
       botMessage:
-        `✅ Alokasi: **${cleanTripName}**\n\n` +
+        `✅ Alokasi: **${matchedTrip.nama_trip}**\n\n` +
         "💸 **Langkah 2 dari 4: Jenis Arus Kas**\n\n" +
         "Apakah ini transaksi pengeluaran lapangan atau pemasukan?",
       options: ["Pengeluaran (Beban / Biaya Lapangan)", "Pemasukan (DP / Pelunasan)", "❌ Batal"],
@@ -1009,8 +1087,8 @@ async function handleExpenseWizardStep(input: string): Promise<DialogResponse> {
       botMessage:
         `✅ Jenis: **${activeDraft.data.jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}**\n\n` +
         "💵 **Langkah 3 dari 4: Nominal Transaksi**\n\n" +
-        "Berapa jumlah nominal rupiahnya? *(Contoh `650rb`, `500000`, atau `1.5jt`)*",
-      options: ["50.000", "150.000", "500.000", "650.000", "1.000.000", "❌ Batal"],
+        "Berapa jumlah nominal rupiahnya? *(Contoh `50.000`, `360.000`, atau `1.500.000`)*",
+      options: ["50.000", "150.000", "360.000", "500.000", "1.000.000", "❌ Batal"],
       wizardType: "EXPENSE_WIZARD",
       stepIndex: 3,
       totalSteps: 4,
@@ -1036,8 +1114,8 @@ async function handleExpenseWizardStep(input: string): Promise<DialogResponse> {
       botMessage:
         `✅ Nominal: **Rp ${nominal.toLocaleString("id-ID")}**\n\n` +
         "📝 **Langkah 4 dari 4: Keterangan / Keperluan**\n\n" +
-        "Untuk keperluan apa transaksi ini? *(Contoh: Isi BBM Solar Bus 1, Bayar Tol Trans Jawa, DP Rombongan)*",
-      options: ["Isi Solar BBM Bus 1", "E-Toll Trans Jawa", "Parkir Wisata & Retribusi", "Konsumsi Kru / Driver", "❌ Batal"],
+        "Untuk keperluan apa transaksi ini? *(Contoh: Saldo E-Toll Trans Jawa, Tiket Masuk Wisata, Parkir & Retribusi, Konsumsi Driver)*",
+      options: ["E-Toll Trans Jawa", "Parkir Wisata & Retribusi", "Konsumsi Kru / Driver", "Tiket Masuk Wisata", "❌ Batal"],
       wizardType: "EXPENSE_WIZARD",
       stepIndex: 4,
       totalSteps: 4,
@@ -1053,11 +1131,41 @@ async function handleExpenseWizardStep(input: string): Promise<DialogResponse> {
       return { botMessage: "Sesi telah berakhir. Harap login kembali.", wizardType: "NONE" };
     }
 
+    // Perlindungan lapis ganda agar trip_id tidak pernah null
+    let tripId = activeDraft.data.trip_id;
+    if (!tripId) {
+      let fallbackQuery = supabase
+        .from("trips")
+        .select("id, nama_trip")
+        .order("tanggal", { ascending: false });
+      if (user.id) {
+        fallbackQuery = fallbackQuery.eq("user_id", user.id);
+      }
+      const { data: latestTrip } = await fallbackQuery.limit(1).maybeSingle();
+      if (latestTrip) {
+        tripId = latestTrip.id;
+        activeDraft.data.trip_id = latestTrip.id;
+        activeDraft.data.trip_name = activeDraft.data.trip_name || latestTrip.nama_trip;
+      }
+    }
+
+    if (!tripId) {
+      resetWizard();
+      return {
+        botMessage: "❌ Gagal mencatat transaksi: Jadwal trip tidak ditemukan. Silakan buat trip baru terlebih dahulu.",
+        options: ["📅 Buat Trip Baru", "❌ Batal"],
+        wizardType: "NONE",
+      };
+    }
+
+    const todayDate = format(new Date(), "yyyy-MM-dd");
     const { error } = await supabase.from("keuangan").insert({
+      trip_id: tripId,
       user_id: user.id,
       jenis: activeDraft.data.jenis,
       jumlah: activeDraft.data.jumlah,
-      keterangan: `${activeDraft.data.keterangan} [${activeDraft.data.trip_name}]`,
+      keterangan: `${activeDraft.data.keterangan}`,
+      tanggal: todayDate,
     });
 
     if (error) {
@@ -1069,20 +1177,28 @@ async function handleExpenseWizardStep(input: string): Promise<DialogResponse> {
       kategori: "keuangan_lapangan",
       aksi: `Asisten AI: Catat ${activeDraft.data.jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}`,
       detail: `Nominal Rp ${activeDraft.data.jumlah.toLocaleString("id-ID")} (${activeDraft.data.keterangan})`,
+      tripName: activeDraft.data.trip_name,
       status: "sukses",
     });
+
+    const finalTripId = tripId;
+    const finalTripName = activeDraft.data.trip_name;
+    const finalJenis = activeDraft.data.jenis;
+    const finalJumlah = activeDraft.data.jumlah;
+    const finalKet = activeDraft.data.keterangan;
 
     resetWizard();
     return {
       botMessage:
         `🎉 **Transaksi berhasil dicatat ke buku kas!**\n\n` +
-        `• Jenis: ${activeDraft.data.jenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}\n` +
-        `• Nominal: **Rp ${activeDraft.data.jumlah.toLocaleString("id-ID")}**\n` +
-        `• Keterangan: ${activeDraft.data.keterangan}\n\n` +
+        `• Alokasi: **${finalTripName}**\n` +
+        `• Jenis: ${finalJenis === "pemasukan" ? "Pemasukan" : "Pengeluaran"}\n` +
+        `• Nominal: **Rp ${finalJumlah.toLocaleString("id-ID")}**\n` +
+        `• Keterangan: ${finalKet}\n\n` +
         `Saldo kas dan margin laba telah diperbarui secara otomatis.`,
       isComplete: true,
       actionType: "ADD_TRANSACTION",
-      navigationPath: "/keuangan",
+      navigationPath: `/trips/${finalTripId}`,
       options: ["💰 Catat Kas Lagi", "📅 Buat Trip Baru", "🏠 Beranda"],
       wizardType: "NONE",
     };

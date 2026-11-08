@@ -113,7 +113,7 @@ const Keuangan = () => {
   // Filter data by month
   const filteredKeuangan = useMemo(() => {
     return keuangan.filter((k) => {
-      const kDate = new Date(k.tanggal);
+      const kDate = new Date(k.tanggal || (k as any).created_at || Date.now());
       const todayDate = new Date();
 
       if (filterMonth === "current") {
@@ -268,7 +268,7 @@ const Keuangan = () => {
               <p className="text-xs text-muted-foreground mt-0.5">
                 {canSeeFinancials
                   ? "Akses penuh Buku Kas Biro: rekapitulasi omset klien, pengeluaran armada, laba bersih & kwitansi resmi"
-                  : `Petugas: ${activeCrew.nama} • Khusus pencatatan uang saku operasional lapangan (BBM, Tol, Parkir, Konsumsi)`}
+                  : `Petugas: ${activeCrew.nama} • Khusus pencatatan uang saku operasional lapangan (Tol, Parkir, Resto/Konsumsi, Tiket)`}
               </p>
             </div>
             <div className="flex items-center gap-2">

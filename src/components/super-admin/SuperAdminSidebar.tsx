@@ -21,6 +21,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { SUPER_ADMIN_EMAIL } from "@/utils/licenseEntitlement";
+import { getActiveUserSync } from "@/utils/authHelper";
 
 export interface SuperAdminNavGroup {
   title: string;
@@ -212,18 +213,27 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
         </div>
 
         {/* Master User Card (Clean Solid 2px Border) */}
-        <div className="mt-3 p-2 rounded-xl bg-white border-2 border-slate-200 shadow-xs flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">
-            NA
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-bold text-slate-900 truncate">{SUPER_ADMIN_EMAIL}</div>
-            <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Unconditional Bypass
+        {(() => {
+          const currentUser = getActiveUserSync();
+          const displayEmail = currentUser?.email || SUPER_ADMIN_EMAIL;
+          const displayInitials = (displayEmail.split("@")[0] || "SA").slice(0, 2).toUpperCase();
+          const isFounder = displayEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+
+          return (
+            <div className="mt-3 p-2 rounded-xl bg-white border-2 border-slate-200 shadow-xs flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">
+                {displayInitials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-slate-900 truncate">{displayEmail}</div>
+                <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  {isFounder ? "Founder Whitelist" : "Session Super Admin"}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* Navigation List */}

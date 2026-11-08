@@ -119,3 +119,54 @@ export const clearAuthCache = () => {
   inMemoryUser = null;
   inMemorySession = null;
 };
+
+/**
+ * Logout aman: HANYA bersihkan token sesi Supabase dan cache auth in-memory.
+ * JANGAN PERNAH menghapus konfigurasi tenant Super Admin, audit logs, target omset,
+ * profil biro, atau lisensi lokal!
+ */
+export const safeLogout = async () => {
+  try {
+    await supabase.auth.signOut().catch(() => {});
+  } finally {
+    clearAuthCache();
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        const preserveKeys = new Set([
+          "catatbiro_tenants_store_v1",
+          "catatbiro_super_admin_audit_logs_v1",
+          "catatbiro_platform_settings_v1",
+          "catatbiro_monthly_goals_v1",
+          "catatbiro_is_superadmin_override",
+          "catatbiro_downloaded_pdfs_v1",
+          "catatbiro_custom_tier",
+          "catatbiro_support_tickets_v1",
+          "catatbiro_system_broadcasts_v1",
+          "app_biro_profile_v1",
+          "catatbiro_cms_data_v1",
+          "app_remembered_email",
+          "vite-ui-theme",
+        ]);
+
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key || preserveKeys.has(key)) continue;
+
+          // Hapus token sesi Supabase dan state transient saja
+          if (
+            (key.startsWith("sb-") && key.endsWith("-auth-token")) ||
+            key === "active_trip_id" ||
+            key === "catatbiro_impersonated_tenant_id_v1" ||
+            key === "catatbiro_cached_trips"
+          ) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+      } catch (e) {
+        console.warn("safeLogout storage cleanup warning:", e);
+      }
+    }
+  }
+};

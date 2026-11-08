@@ -41,13 +41,23 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
   const storageKey = `petty_cash_data_${tripId}`;
   const loadedTripRef = React.useRef<string | null>(null);
 
-  // Kategori Dinamis dari CMS Biro
+  // Helper filter pos BBM (karena sewa bus biasanya sudah include BBM/solar)
+  const isBbmCategoryOrDesc = (kategori: string, keterangan: string) => {
+    const text = `${kategori} ${keterangan}`.toLowerCase();
+    return (
+      (text.includes("bahan bakar") || text.includes("solar bus") || text.includes("kas bbm") || text.includes("bbm")) &&
+      !text.includes("non-bbm")
+    );
+  };
+
+  // Kategori Dinamis dari CMS Biro (tanpa pos BBM)
   const cmsExpenseCategories = useMemo(() => {
     const cms = getBiroCmsData();
-    const list = cms.kategoriKeuangan.filter((k) => k.jenis === "pengeluaran");
+    const list = cms.kategoriKeuangan
+      .filter((k) => k.jenis === "pengeluaran")
+      .filter((k) => !/bahan bakar|solar|bbm/i.test(k.nama));
     if (list.length > 0) return list.map((k) => k.nama);
     return [
-      "Bahan Bakar & Solar Bus",
       "Saldo Tol & Parkir",
       "Prasmanan & Restoran",
       "Snack Box & Air Mineral",
@@ -72,14 +82,15 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
-        return JSON.parse(saved).items || [];
+        const rawItems = JSON.parse(saved).items || [];
+        return rawItems.filter((it: PettyCashItem) => !isBbmCategoryOrDesc(it.kategori || "", it.keterangan || ""));
       }
     } catch {}
     return [];
   });
 
   const [newItemKet, setNewItemKet] = useState("");
-  const [newItemKategori, setNewItemKategori] = useState(() => cmsExpenseCategories[0] || "Bahan Bakar & Solar Bus");
+  const [newItemKategori, setNewItemKategori] = useState(() => cmsExpenseCategories[0] || "Saldo Tol & Parkir");
   const [newItemJumlah, setNewItemJumlah] = useState<number>(0);
   const [syncing, setSyncing] = useState(false);
 
@@ -90,14 +101,17 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
     }
   }, [cmsExpenseCategories, newItemKategori]);
 
-  // Muat data saat tripId berubah
+  // Muat data saat tripId berubah (bersihkan item BBM lama)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         setModalAwal(parsed.modalAwal ?? 2000000);
-        setItems(parsed.items || []);
+        const filtered = (parsed.items || []).filter(
+          (it: PettyCashItem) => !isBbmCategoryOrDesc(it.kategori || "", it.keterangan || "")
+        );
+        setItems(filtered);
         loadedTripRef.current = tripId;
         return;
       }
@@ -198,8 +212,25 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
         return;
       }
 
+      let targetTripId = tripId;
+      if (!targetTripId) {
+        const { data: latestTrip } = await supabase
+          .from("trips")
+          .select("id")
+          .eq("user_id", user.id)
+          .order("tanggal", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        targetTripId = latestTrip?.id || "";
+      }
+
+      if (!targetTripId) {
+        toast.error("Gagal sinkronisasi: ID trip tidak valid");
+        return;
+      }
+
       const inserts = unsyncedItems.map((it) => ({
-        trip_id: tripId,
+        trip_id: targetTripId,
         user_id: user.id,
         keterangan: `[${it.kategori}] ${it.keterangan}`,
         jumlah: it.jumlah,
@@ -248,7 +279,7 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
           </span>
           <RupiahInput
             value={modalAwal || ""}
-            onChange={(val) => setModalAwal(typeof val === "number" ? val : parseFloat(val) || 0)}
+            onChange={(val) => setModalAwal(typeof val === "number" ? val : Number(String(val).replace(/\./g, "").replace(/,/g, ".")) || 0)}
             className="h-9 font-bold text-slate-900 dark:text-slate-100 rounded-xl"
             placeholder="0"
           />
@@ -316,14 +347,14 @@ export const PettyCashTracker: React.FC<PettyCashTrackerProps> = ({
               <Input
                 value={newItemKet}
                 onChange={(e) => setNewItemKet(e.target.value)}
-                placeholder="Rincian (contoh: Solar SPBU Batang / Snack 45 pax)"
+                placeholder="Rincian (contoh: Tiket Masuk Wisata / Snack 45 pax)"
                 className="h-9 text-xs rounded-xl"
               />
             </div>
             <div className="sm:col-span-3">
               <RupiahInput
                 value={newItemJumlah || ""}
-                onChange={(val) => setNewItemJumlah(typeof val === "number" ? val : parseFloat(val) || 0)}
+                onChange={(val) => setNewItemJumlah(typeof val === "number" ? val : Number(String(val).replace(/\./g, "").replace(/,/g, ".")) || 0)}
                 placeholder="Nominal (Rp)"
                 className="h-9 text-xs font-semibold rounded-xl"
               />

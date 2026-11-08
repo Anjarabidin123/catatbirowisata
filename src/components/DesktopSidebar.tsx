@@ -26,7 +26,7 @@ import { isSuperAdminUser } from "@/utils/licenseEntitlement";
 import { getLocalBiroProfile, fetchBiroProfile, BiroProfile, clearBiroProfileCache } from "@/utils/biroProfile";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getActiveUser, clearAuthCache } from "@/utils/authHelper";
+import { getActiveUser, clearAuthCache, safeLogout } from "@/utils/authHelper";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ export const DesktopSidebar: React.FC = () => {
     getActiveUser().then((user) => {
       if (user?.email) {
         setUserEmail(user.email);
+        setIsSuper(isSuperAdminUser());
       }
     });
 
@@ -71,6 +72,7 @@ export const DesktopSidebar: React.FC = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user?.email || "");
+      setIsSuper(isSuperAdminUser());
     });
 
     const handleEntitlementUpdate = () => setIsSuper(isSuperAdminUser());
@@ -85,28 +87,11 @@ export const DesktopSidebar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut().catch(() => {});
-    } finally {
-      clearAuthCache();
+      await safeLogout();
       clearBiroProfileCache();
-      try {
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (
-            key &&
-            (key.startsWith("sb-") ||
-              key.includes("supabase") ||
-              key === "active_trip_id" ||
-              key === "app_user_role")
-          ) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach((k) => localStorage.removeItem(k));
-      } catch (e) {}
-
       toast.success("Berhasil keluar dari sistem");
+      navigate("/auth");
+    } catch (e) {
       navigate("/auth");
     }
   };

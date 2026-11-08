@@ -2,6 +2,32 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+export const formatRupiahNumber = (angka: string | number | null | undefined): string => {
+  if (angka === null || angka === undefined || angka === "") return "";
+  const str = String(angka);
+  // Remove non-digit characters
+  const numberString = str.replace(/[^,\d]/g, "");
+  if (!numberString) return "";
+  const split = numberString.split(",");
+  const sisa = split[0].length % 3;
+  let rupiah = split[0].substr(0, sisa);
+  const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+  if (ribuan) {
+    const separator = sisa ? "." : "";
+    rupiah += separator + ribuan.join(".");
+  }
+
+  rupiah = split[1] !== undefined ? rupiah + "," + split[1] : rupiah;
+  return rupiah;
+};
+
+export const unformatRupiah = (formatted: string | number | null | undefined): number => {
+  if (typeof formatted === "number") return formatted;
+  if (!formatted) return 0;
+  return Number(String(formatted).replace(/\./g, "").replace(/,/g, ".")) || 0;
+};
+
 interface RupiahInputProps {
   label?: string;
   value: string | number;
@@ -21,33 +47,13 @@ export const RupiahInput = ({
   id,
   className = ""
 }: RupiahInputProps) => {
-  const formatRupiah = (angka: string) => {
-    // Remove non-digit characters
-    const numberString = angka.replace(/[^,\d]/g, "");
-    const split = numberString.split(",");
-    const sisa = split[0].length % 3;
-    let rupiah = split[0].substr(0, sisa);
-    const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-
-    if (ribuan) {
-      const separator = sisa ? "." : "";
-      rupiah += separator + ribuan.join(".");
-    }
-
-    rupiah = split[1] !== undefined ? rupiah + "," + split[1] : rupiah;
-    return rupiah;
-  };
-
-  const stringValue = typeof value === "number" ? (value > 0 ? String(value) : "") : String(value || "");
+  // Selalu tampilkan angka dengan titik pemisah ribuan otomatis (cth: 360000 -> 360.000)
+  const displayValue = formatRupiahNumber(value);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
-    const formattedValue = formatRupiah(inputValue);
+    const formattedValue = formatRupiahNumber(inputValue);
     onChange(formattedValue);
-  };
-
-  const unformatRupiah = (formatted: string): number => {
-    return Number(formatted.replace(/\./g, "").replace(/,/g, ".")) || 0;
   };
 
   return (
@@ -60,18 +66,19 @@ export const RupiahInput = ({
         <Input
           id={id}
           type="text"
-          value={stringValue}
+          value={displayValue}
           onChange={handleChange}
           placeholder={placeholder}
           required={required}
           className={`pl-9 ${className}`}
         />
       </div>
-      {stringValue && (
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          {unformatRupiah(stringValue).toLocaleString("id-ID", {
+      {displayValue && (
+        <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+          {unformatRupiah(displayValue).toLocaleString("id-ID", {
             style: "currency",
             currency: "IDR",
+            maximumFractionDigits: 0,
           })}
         </p>
       )}

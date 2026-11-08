@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -357,7 +357,7 @@ export const KwitansiInvoiceDialog: React.FC<KwitansiInvoiceDialogProps> = ({
             </div>
             <RupiahInput
               value={nominal || ""}
-              onChange={(val) => setNominal(typeof val === "number" ? val : parseFloat(val) || 0)}
+              onChange={(val) => setNominal(typeof val === "number" ? val : Number(String(val).replace(/\./g, "").replace(/,/g, ".")) || 0)}
               placeholder="0"
               className="h-10 text-base font-bold text-blue-700 dark:text-blue-300 rounded-xl bg-white dark:bg-slate-900"
             />

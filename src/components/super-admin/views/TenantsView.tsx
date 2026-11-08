@@ -801,10 +801,14 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
               <div className="space-y-1">
                 <Label className="text-xs text-slate-700 font-medium">Nominal Bayar (Rp)</Label>
                 <Input
-                  type="number"
-                  value={newBiroForm.nominalBayar}
-                  onChange={(e) => setNewBiroForm({ ...newBiroForm, nominalBayar: parseInt(e.target.value) || 0 })}
-                  className="bg-white border-slate-300 text-slate-900 text-xs font-mono"
+                  type="text"
+                  value={newBiroForm.nominalBayar ? newBiroForm.nominalBayar.toLocaleString("id-ID") : ""}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    setNewBiroForm({ ...newBiroForm, nominalBayar: parseInt(clean, 10) || 0 });
+                  }}
+                  placeholder="750.000"
+                  className="bg-white border-slate-300 text-slate-900 text-xs font-mono font-bold"
                 />
               </div>
             </div>

@@ -74,8 +74,7 @@ export const DEFAULT_CMS_DATA: BiroCmsData = {
     { id: "kat-in-1", nama: "Pelunasan Paket Wisata", jenis: "pemasukan", deskripsi: "Pembayaran lunas dari instansi/sekolah" },
     { id: "kat-in-2", nama: "Uang Muka (DP) Rombongan", jenis: "pemasukan", deskripsi: "DP booking tanggal trip" },
     { id: "kat-in-3", nama: "Sewa Bus Lepas / Carter", jenis: "pemasukan", deskripsi: "Pendapatan sewa armada saja" },
-    { id: "kat-in-4", nama: "Cashback & Komisi Vendor", jenis: "pemasukan", deskripsi: "Cashback resto, oleh-oleh, atau SPBU" },
-    { id: "kat-out-1", nama: "Bahan Bakar & Solar Bus", jenis: "pengeluaran", deskripsi: "BBM perjalanan armada" },
+    { id: "kat-in-4", nama: "Cashback & Komisi Vendor", jenis: "pemasukan", deskripsi: "Cashback resto, oleh-oleh, dll" },
     { id: "kat-out-2", nama: "Saldo Tol & Parkir", jenis: "pengeluaran", deskripsi: "E-Toll dan retribusi parkir wisata" },
     { id: "kat-out-3", nama: "Prasmanan & Restoran", jenis: "pengeluaran", deskripsi: "Makan siang/malam rombongan" },
     { id: "kat-out-4", nama: "Snack Box & Air Mineral", jenis: "pengeluaran", deskripsi: "Logistik konsumsi perjalanan" },
@@ -179,9 +178,14 @@ export function getBiroCmsData(): BiroCmsData {
     if (raw) {
       const parsed = JSON.parse(raw);
       const rawCategories = parsed.kategoriKeuangan || DEFAULT_CMS_DATA.kategoriKeuangan;
-      // Bersihkan kategori Tour Leader lama dan normalkan flag isDefault agar semuanya dapat dihapus
+      // Bersihkan kategori Tour Leader lama dan pos BBM (karena sudah include paket bayar bus)
       const sanitizedCategories = rawCategories
-        .filter((k: any) => !k.nama.toLowerCase().includes("tour leader"))
+        .filter((k: any) => {
+          const lower = (k.nama || "").toLowerCase();
+          if (lower.includes("tour leader")) return false;
+          if (lower.includes("bahan bakar") || lower.includes("solar") || lower === "bbm" || lower.includes("kas bbm")) return false;
+          return true;
+        })
         .map((k: any) => ({ ...k, isDefault: false }));
 
       memoryCmsCache = {

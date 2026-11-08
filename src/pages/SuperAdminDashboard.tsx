@@ -7,6 +7,7 @@ import {
   fetchTenantsFromSupabase,
   TenantRecord,
 } from "@/utils/licenseEntitlement";
+import { getActiveUserSync } from "@/utils/authHelper";
 import {
   getAuditLogs,
   SuperAdminAuditLog,
@@ -134,6 +135,11 @@ export const SuperAdminDashboard: React.FC = () => {
 
   // If user is not Super Admin (anjarbdn@gmail.com), show enterprise authorization barrier
   if (!isSuper) {
+    const currentEmail = getActiveUserSync()?.email;
+    const isDifferentUser = Boolean(
+      currentEmail && currentEmail.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()
+    );
+
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 bg-white border border-rose-200 rounded-3xl text-center space-y-6 shadow-xl">
@@ -148,36 +154,45 @@ export const SuperAdminDashboard: React.FC = () => {
             <p className="text-xs text-slate-600 leading-relaxed">
               Konsol Super Admin Master hanya dapat diakses secara eksklusif oleh akun Founder whitelist (<strong className="text-amber-700">{SUPER_ADMIN_EMAIL}</strong>).
             </p>
+            {currentEmail && (
+              <p className="text-[11px] text-slate-500">
+                Akun yang sedang login: <strong className="text-slate-800">{currentEmail}</strong> (Bukan Super Admin).
+              </p>
+            )}
           </div>
 
-          <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 text-left space-y-1">
-            <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-amber-600" />
-              Developer Bypass (Testing Mode):
+          {!isDifferentUser && (
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 text-left space-y-1">
+              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                <Key className="w-3.5 h-3.5 text-amber-600" />
+                Developer Bypass (Testing Mode):
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Anda dapat mengaktifkan bypass pengujian lokal sementara dengan tombol di bawah:
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500">
-              Anda dapat mengaktifkan bypass pengujian lokal sementara dengan tombol di bawah:
-            </p>
-          </div>
+          )}
 
           <div className="space-y-2">
-            <Button
-              onClick={() => {
-                localStorage.setItem("catatbiro_is_superadmin_override", "true");
-                setIsSuper(true);
-                toast.success("Bypass Super Admin diaktifkan untuk sesi ini!");
-                refreshAllData();
-              }}
-              className="w-full bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-semibold text-xs h-10 rounded-xl shadow-xs"
-            >
-              <Crown className="w-4 h-4 mr-1.5" />
-              Aktifkan Akses Founder Bypass
-            </Button>
+            {!isDifferentUser && (
+              <Button
+                onClick={() => {
+                  localStorage.setItem("catatbiro_is_superadmin_override", "true");
+                  setIsSuper(true);
+                  toast.success("Bypass Super Admin diaktifkan untuk sesi ini!");
+                  refreshAllData();
+                }}
+                className="w-full bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-semibold text-xs h-10 rounded-xl shadow-xs"
+              >
+                <Crown className="w-4 h-4 mr-1.5" />
+                Aktifkan Akses Founder Bypass
+              </Button>
+            )}
 
             <Button
               variant="outline"
               onClick={() => navigate("/dashboard")}
-              className="w-full border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs h-9 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+              className="w-full border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs h-9 rounded-xl flex items-center justify-center gap-1.5 shadow-xs font-bold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Kembali ke Aplikasi Biro

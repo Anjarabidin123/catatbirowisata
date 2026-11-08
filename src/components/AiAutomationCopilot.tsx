@@ -66,8 +66,8 @@ const QUICK_COMMANDS = [
     desc: "Registrasi TL / Driver",
   },
   {
-    label: "💰 Catat Kas BBM",
-    cmd: "catat pengeluaran bbm",
+    label: "💰 Catat Kas Operasional",
+    cmd: "catat kas operasional",
     desc: "Catat pengeluaran trip",
   },
   {
@@ -99,7 +99,7 @@ export const AiAutomationCopilot: React.FC = () => {
           "📅 Buat Trip Baru",
           "🚌 Tambah Bus",
           "👤 Daftarkan Kru",
-          "💰 Catat Kas BBM",
+          "💰 Catat Kas Operasional",
           "📊 Cek Status & Kuota",
         ],
         timestamp: new Date().toLocaleTimeString("id-ID", {
@@ -228,7 +228,7 @@ export const AiAutomationCopilot: React.FC = () => {
           "📅 Buat Trip Baru",
           "🚌 Tambah Bus",
           "👤 Daftarkan Kru",
-          "💰 Catat Kas BBM",
+          "💰 Catat Kas Operasional",
           "📊 Cek Status & Kuota",
         ],
         timestamp: new Date().toLocaleTimeString("id-ID", {
@@ -237,6 +237,41 @@ export const AiAutomationCopilot: React.FC = () => {
         }),
       },
     ]);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+
+    // Cek apakah wizard sedang di langkah input nominal rupiah (Langkah 3 dari EXPENSE_WIZARD)
+    const isExpenseNominalStep =
+      wizardState.wizardType === "EXPENSE_WIZARD" && wizardState.step === 3;
+
+    if (isExpenseNominalStep) {
+      // Jika pengguna mengetik unit teks (cth: "500rb", "1.5jt", "skip", "batal")
+      const hasAlphabet = /[a-zA-Z]/.test(rawVal);
+      if (hasAlphabet) {
+        setInputPrompt(rawVal);
+      } else {
+        // Angka murni atau angka dengan titik: otomatis format ribuan dengan titik (cth: 360000 -> 360.000)
+        const digits = rawVal.replace(/\D/g, "");
+        if (digits) {
+          const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          setInputPrompt(formatted);
+        } else {
+          setInputPrompt("");
+        }
+      }
+    } else {
+      // Jika di luar wizard tapi pengguna mengetik angka nominal murni 4 digit ke atas (cth: 500000)
+      const isPureLargeNumber = /^\d{4,}$/.test(rawVal.replace(/\./g, ""));
+      if (isPureLargeNumber && !/[a-zA-Z\s]/.test(rawVal)) {
+        const digits = rawVal.replace(/\D/g, "");
+        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        setInputPrompt(formatted);
+      } else {
+        setInputPrompt(rawVal);
+      }
+    }
   };
 
   const isWizardActive = wizardState.wizardType !== "NONE";
@@ -460,7 +495,7 @@ export const AiAutomationCopilot: React.FC = () => {
                 <Input
                   ref={inputRef}
                   value={inputPrompt}
-                  onChange={(e) => setInputPrompt(e.target.value)}
+                  onChange={handleInputChange}
                   placeholder={
                     isWizardActive
                       ? "Ketik jawaban atau pilih opsi di atas (ketik 'skip' / 'ga' jika ingin dilewati)..."
