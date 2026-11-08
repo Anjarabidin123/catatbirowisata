@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import {
   ParsedRundownItem,
+  extractWordDocument,
   extractTextFromWordFile,
   summarizeWordRundownWithAI,
   batchSaveRundownToTrip,
@@ -62,6 +63,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState("");
   const [extractedRawText, setExtractedRawText] = useState("");
+  const [extractedHtml, setExtractedHtml] = useState("");
 
   // State Hasil Rangkuman
   const [isProcessing, setIsProcessing] = useState(false);
@@ -113,7 +115,9 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
     if (!file) return;
     setSelectedFile(file);
     try {
-      const text = await extractTextFromWordFile(file);
+      const extracted = await extractWordDocument(file);
+      const text = extracted.rawText;
+      setExtractedHtml(extracted.html);
       setExtractedRawText(text);
       toast.success(`File "${file.name}" berhasil dibaca.`);
     } catch (err: any) {
@@ -139,10 +143,18 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
 
     try {
       const targetTrip = trips.find((t) => t.id === selectedTripId);
-      const items = await summarizeWordRundownWithAI(textToProcess, {
-        nama_trip: targetTrip?.nama_trip || defaultTripName,
-        tujuan: targetTrip?.tujuan,
-      });
+      // AI & Table parser
+      const items = await summarizeWordRundownWithAI(
+        textToProcess,
+        {
+          nama_trip: targetTrip?.nama_trip || defaultTripName,
+          tujuan: targetTrip?.tujuan,
+        },
+        mode === "upload" ? extractedHtml : undefined
+      );
+
+
+
 
       if (items.length === 0) {
         toast.warning("Tidak ditemukan jadwal waktu pada dokumen ini.");

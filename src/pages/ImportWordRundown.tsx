@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthGuard from "@/components/AuthGuard";
 import BottomNav from "@/components/BottomNav";
@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import {
   ParsedRundownItem,
+  extractWordDocument,
   extractTextFromWordFile,
   summarizeWordRundownWithAI,
   batchSaveRundownToTrip,
@@ -48,6 +49,7 @@ const ImportWordRundown: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState("");
   const [extractedRawText, setExtractedRawText] = useState("");
+  const [extractedHtml, setExtractedHtml] = useState("");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -91,7 +93,9 @@ const ImportWordRundown: React.FC = () => {
     if (!file) return;
     setSelectedFile(file);
     try {
-      const text = await extractTextFromWordFile(file);
+      const extracted = await extractWordDocument(file);
+      const text = extracted.rawText;
+      setExtractedHtml(extracted.html);
       setExtractedRawText(text);
       toast.success(`File "${file.name}" berhasil dibaca.`);
     } catch (err: any) {
@@ -117,10 +121,17 @@ const ImportWordRundown: React.FC = () => {
 
     try {
       const targetTrip = trips.find((t) => t.id === selectedTripId);
-      const items = await summarizeWordRundownWithAI(textToProcess, {
-        nama_trip: targetTrip?.nama_trip,
-        tujuan: targetTrip?.tujuan,
-      });
+      const items = await summarizeWordRundownWithAI(
+        textToProcess,
+        {
+          nama_trip: targetTrip?.nama_trip,
+          tujuan: targetTrip?.tujuan,
+        },
+        mode === "upload" ? extractedHtml : undefined
+      );
+
+
+
 
       if (items.length === 0) {
         toast.warning("Tidak ditemukan format jadwal jam pada dokumen ini.");
