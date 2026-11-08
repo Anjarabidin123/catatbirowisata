@@ -1,5 +1,5 @@
 import type jsPDF from "jspdf";
-import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { getLocalBiroProfile, BiroProfile, formatLegalitasBiro } from "./biroProfile";
 import { getCurrentEntitlements } from "./licenseEntitlement";
 import { getBiroCmsData } from "./biroCmsStore";
 
@@ -83,7 +83,7 @@ const loadImage = (src: string): Promise<HTMLImageElement | null> => {
 };
 
 /**
- * Menggambar KOP SURAT FORMAL & PROFESIONAL
+ * Menggambar KOP SURAT FORMAL & PROFESIONAL (AHU & NIB Legalitas, Alamat, Kontak, Garis Ganda)
  */
 const drawKopSurat = (
   doc: jsPDF,
@@ -111,48 +111,61 @@ const drawKopSurat = (
 
   // 2. Teks Kop Surat Resmi (Center / Terstruktur Rapi)
   const textCenter = (textStartX + marginRight) / 2;
+  const legalitasText = formatLegalitasBiro(profile);
+  let curY = topY + 5;
 
   // Nama Biro (Besar, Bold, Warna Navy Formal)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(15, 44, 89); // Deep Navy
-  doc.text((profile.nama_biro || "BIRO PERJALANAN WISATA").toUpperCase(), textCenter, topY + 6, {
+  doc.text((profile.nama_biro || "BIRO PERJALANAN WISATA").toUpperCase(), textCenter, curY, {
     align: "center",
   });
+  curY += 4.5;
 
-  // Slogan / Bidang Usaha
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(30, 58, 138); // Royal Blue
-  doc.text(
-    (profile.slogan || "Biro Perjalanan Wisata & Layanan Transportasi Pariwisata").toUpperCase(),
-    textCenter,
-    topY + 11,
-    { align: "center" }
-  );
+  // Baris Legalitas Resmi: SK Kemenkumham AHU & NIB OSS
+  if (legalitasText) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(30, 41, 59);
+    doc.text(legalitasText.toUpperCase(), textCenter, curY, { align: "center" });
+    curY += 4;
+  } else if (profile.slogan) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(30, 58, 138); // Royal Blue
+    doc.text(profile.slogan.toUpperCase(), textCenter, curY, { align: "center" });
+    curY += 4;
+  }
 
   // Alamat Kantor
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(51, 65, 85); // Slate 700
-  const alamatText = profile.alamat || "Kantor Pusat Operasional & Reservasi Armada Wisata Nusantara";
-  doc.text(alamatText, textCenter, topY + 16, { align: "center" });
+  const alamatText = profile.alamat
+    ? `Alamat : ${profile.alamat}`
+    : "Alamat : Jl. Stasiun No. 15 Kelurahan Bintoro Kec. Demak Kab. Demak Jawa Tengah 59511";
+  doc.text(alamatText, textCenter, curY, { align: "center" });
+  curY += 3.8;
 
   // Kontak Resmi (Telepon, Email, Website)
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.3);
   doc.setTextColor(71, 85, 105); // Slate 600
-  const kontakText = `Telp/WA: ${profile.telepon || "0812-2578-9000"}  |  Email: ${profile.email || "operasional@birowisata.id"}  |  Web: ${profile.website || "www.catatbirowisata.id"}`;
-  doc.text(kontakText, textCenter, topY + 20.5, { align: "center" });
+  const kontakText = `Contact Person / WA : ${profile.telepon || "0822-2630-1433"}${
+    profile.email ? `  |  Email: ${profile.email}` : ""
+  }${profile.website ? `  |  Web: ${profile.website}` : ""}`;
+  doc.text(kontakText, textCenter, curY, { align: "center" });
+  curY += 3.5;
 
   // 3. Garis Ganda Resmi Kop Surat (Ciri Khas Dokumen Formal Indonesia)
-  const lineY = topY + 24;
+  const lineY = Math.max(curY, topY + logoHeight + 1);
   // Garis tebal atas
   doc.setDrawColor(15, 44, 89);
   doc.setLineWidth(1.2);
   doc.line(marginLeft, lineY, marginRight, lineY);
 
   // Garis tipis bawah
-  doc.setLineWidth(0.4);
+  doc.setLineWidth(0.35);
   doc.line(marginLeft, lineY + 1.2, marginRight, lineY + 1.2);
 
   return lineY + 6;

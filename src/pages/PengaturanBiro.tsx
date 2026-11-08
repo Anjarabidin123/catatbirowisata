@@ -48,6 +48,7 @@ import {
   LifeBuoy,
 } from "lucide-react";
 import { CreateSupportTicketModal } from "@/components/CreateSupportTicketModal";
+import { KopSuratBiro } from "@/components/KopSuratBiro";
 import {
   getLocalBiroProfile,
   saveBiroProfile,
@@ -495,6 +496,74 @@ const PengaturanBiro = () => {
                         className="h-10 text-xs sm:text-sm rounded-xl font-semibold"
                       />
                     </div>
+
+                    {/* Legalitas Kemenkumham & NIB OSS */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <span>Legalitas Resmi (AHU & NIB OSS)</span>
+                        </Label>
+                        <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300">
+                          Dicetak di Kop Surat
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="nomor_ahu" className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Nomor SK AHU Kemenkumham
+                          </Label>
+                          <Input
+                            id="nomor_ahu"
+                            value={profile.nomor_ahu || ""}
+                            onChange={(e) => setProfile({ ...profile, nomor_ahu: e.target.value })}
+                            placeholder="AHU-0016871-AH.0114 TH 2025"
+                            className="h-9 text-xs font-mono uppercase rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="nomor_nib" className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Nomor Induk Berusaha (NIB)
+                          </Label>
+                          <Input
+                            id="nomor_nib"
+                            value={profile.nomor_nib || ""}
+                            onChange={(e) => setProfile({ ...profile, nomor_nib: e.target.value })}
+                            placeholder="1604260107228"
+                            className="h-9 text-xs font-mono rounded-xl"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="npwp" className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            NPWP Badan Usaha (Opsional)
+                          </Label>
+                          <Input
+                            id="npwp"
+                            value={profile.npwp || ""}
+                            onChange={(e) => setProfile({ ...profile, npwp: e.target.value })}
+                            placeholder="00.000.000.0-000.000"
+                            className="h-9 text-xs font-mono rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="nama_badan_usaha" className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Nama Badan Usaha / PT / CV
+                          </Label>
+                          <Input
+                            id="nama_badan_usaha"
+                            value={profile.nama_badan_usaha || ""}
+                            onChange={(e) => setProfile({ ...profile, nama_badan_usaha: e.target.value })}
+                            placeholder="PT ENAM SEMBILAN WISATA"
+                            className="h-9 text-xs uppercase rounded-xl"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -599,150 +668,173 @@ const PengaturanBiro = () => {
                 TAB 2: CMS DOKUMEN & PENGESAHAN PDF
             ========================================================= */}
             {activeTab === "dokumen" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-                  <CardHeader className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800">
-                    <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <span>Format Penomoran & Catatan Dokumen</span>
-                    </CardTitle>
-                    <CardDescription className="text-xs text-slate-500">
-                      Konfigurasikan format nomor surat resmi dan catatan kaki yang tercetak pada laporan keuangan dan invoice.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-5 space-y-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Format Pola Nomor Surat / Kwitansi
-                      </Label>
-                      <Input
-                        value={cmsData.dokumen.formatNomorSurat}
-                        onChange={(e) =>
-                          setCmsData({
-                            ...cmsData,
-                            dokumen: { ...cmsData.dokumen, formatNomorSurat: e.target.value },
-                          })
-                        }
-                        placeholder="Contoh: CBW/KEU/{YYYY}/{MM}/{NO}"
-                        className="h-10 text-xs sm:text-sm font-mono font-bold rounded-xl"
-                      />
-                      <p className="text-[11px] text-slate-500">
-                        Variabel otomatis: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{"{YYYY}"}</code> (tahun), <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{"{MM}"}</code> (bulan), <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{"{NO}"}</code> (urutan).
+              <div className="space-y-5">
+                {/* LIVE PREVIEW KOP SURAT RESMI BIRO */}
+                <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs p-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <span>Pratinjau Kop Surat Resmi Dokumen (A4)</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Format resmi Indonesia: Logo, Badan Usaha, Legalitas SK AHU & NIB OSS, Alamat, Kontak, dan Garis Ganda.
                       </p>
                     </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Catatan Kaki Laporan Keuangan (Footer PDF)
-                      </Label>
-                      <Textarea
-                        value={cmsData.dokumen.footerTeksLaporan}
-                        onChange={(e) =>
-                          setCmsData({
-                            ...cmsData,
-                            dokumen: { ...cmsData.dokumen, footerTeksLaporan: e.target.value },
-                          })
-                        }
-                        rows={2}
-                        className="text-xs rounded-xl"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Ketentuan & Syarat Kwitansi / Invoice
-                      </Label>
-                      <Textarea
-                        value={cmsData.dokumen.syaratKwitansi}
-                        onChange={(e) =>
-                          setCmsData({
-                            ...cmsData,
-                            dokumen: { ...cmsData.dokumen, syaratKwitansi: e.target.value },
-                          })
-                        }
-                        rows={2}
-                        className="text-xs rounded-xl"
-                      />
-                    </div>
-                  </CardContent>
+                    <Badge variant="secondary" className="text-[10px] font-mono">
+                      Standar A4 Legalitas
+                    </Badge>
+                  </div>
+                  <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <KopSuratBiro profile={profile} />
+                  </div>
                 </Card>
 
-                <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-                  <CardHeader className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800">
-                    <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-                      <UserCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Pejabat Penandatangan Laporan Keuangan</span>
-                    </CardTitle>
-                    <CardDescription className="text-xs text-slate-500">
-                      Tanda tangan resmi laporan keuangan kantor kini mutlak dilakukan oleh Bagian Keuangan dan Pimpinan Biro (bebas dari penanda Tour Leader).
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-5 space-y-4">
-                    <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900 text-xs text-blue-900 dark:text-blue-200 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                        <span>Format Pengesahan Ganda (Dual Signatures)</span>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+                    <CardHeader className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800">
+                      <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <span>Format Penomoran & Catatan Dokumen</span>
+                      </CardTitle>
+                      <CardDescription className="text-xs text-slate-500">
+                        Konfigurasikan format nomor surat resmi dan catatan kaki yang tercetak pada laporan keuangan dan invoice.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-5 space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Format Pola Nomor Surat / Kwitansi
+                        </Label>
+                        <Input
+                          value={cmsData.dokumen.formatNomorSurat}
+                          onChange={(e) =>
+                            setCmsData({
+                              ...cmsData,
+                              dokumen: { ...cmsData.dokumen, formatNomorSurat: e.target.value },
+                            })
+                          }
+                          placeholder="Contoh: CBW/KEU/{YYYY}/{MM}/{NO}"
+                          className="h-10 text-xs sm:text-sm font-mono font-bold rounded-xl"
+                        />
+                        <p className="text-[11px] text-slate-500">
+                          Variabel otomatis: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{"{YYYY}"}</code> (tahun), <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{"{MM}"}</code> (bulan), <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{"{NO}"}</code> (urutan).
+                        </p>
                       </div>
-                      <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
-                        Sisi kiri ditandatangani oleh <strong>Bagian Keuangan & Kasir</strong> sebagai pembuat rekap biaya, dan sisi kanan disahkan oleh <strong>Pimpinan Biro / Direktur</strong>.
-                      </p>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Nama Pejabat Bagian Keuangan (Kiri)
-                      </Label>
-                      <Input
-                        value={cmsData.dokumen.namaBagianKeuangan}
-                        onChange={(e) =>
-                          setCmsData({
-                            ...cmsData,
-                            dokumen: { ...cmsData.dokumen, namaBagianKeuangan: e.target.value },
-                          })
-                        }
-                        placeholder="Contoh: Staff Keuangan & Kasir"
-                        className="h-10 text-xs sm:text-sm rounded-xl font-bold"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Jabatan Bagian Keuangan
-                      </Label>
-                      <Input
-                        value={cmsData.dokumen.jabatanBagianKeuangan}
-                        onChange={(e) =>
-                          setCmsData({
-                            ...cmsData,
-                            dokumen: { ...cmsData.dokumen, jabatanBagianKeuangan: e.target.value },
-                          })
-                        }
-                        placeholder="Contoh: Bagian Administrasi & Keuangan"
-                        className="h-10 text-xs sm:text-sm rounded-xl font-semibold"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                      <div>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                          Tampilkan Area Stempel Dokumen
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          Beri ruang lingkaran stempel basah resmi di samping tanda tangan
-                        </span>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Catatan Kaki Laporan Keuangan (Footer PDF)
+                        </Label>
+                        <Textarea
+                          value={cmsData.dokumen.footerTeksLaporan}
+                          onChange={(e) =>
+                            setCmsData({
+                              ...cmsData,
+                              dokumen: { ...cmsData.dokumen, footerTeksLaporan: e.target.value },
+                            })
+                          }
+                          rows={2}
+                          className="text-xs rounded-xl"
+                        />
                       </div>
-                      <Switch
-                        checked={cmsData.dokumen.tampilkanStempelDigital}
-                        onCheckedChange={(val) =>
-                          setCmsData({
-                            ...cmsData,
-                            dokumen: { ...cmsData.dokumen, tampilkanStempelDigital: val },
-                          })
-                        }
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Ketentuan & Syarat Kwitansi / Invoice
+                        </Label>
+                        <Textarea
+                          value={cmsData.dokumen.syaratKwitansi}
+                          onChange={(e) =>
+                            setCmsData({
+                              ...cmsData,
+                              dokumen: { ...cmsData.dokumen, syaratKwitansi: e.target.value },
+                            })
+                          }
+                          rows={2}
+                          className="text-xs rounded-xl"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+                    <CardHeader className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800">
+                      <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                        <UserCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Pejabat Penandatangan Laporan Keuangan</span>
+                      </CardTitle>
+                      <CardDescription className="text-xs text-slate-500">
+                        Tanda tangan resmi laporan keuangan kantor kini mutlak dilakukan oleh Bagian Keuangan dan Pimpinan Biro (bebas dari penanda Tour Leader).
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-5 space-y-4">
+                      <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                        <div className="font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                          <span>Format Pengesahan Ganda (Dual Signatures)</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                          Sisi kiri ditandatangani oleh <strong>Bagian Keuangan & Kasir</strong> sebagai pembuat rekap biaya, dan sisi kanan disahkan oleh <strong>Pimpinan Biro / Direktur</strong>.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Nama Pejabat Bagian Keuangan (Kiri)
+                        </Label>
+                        <Input
+                          value={cmsData.dokumen.namaBagianKeuangan}
+                          onChange={(e) =>
+                            setCmsData({
+                              ...cmsData,
+                              dokumen: { ...cmsData.dokumen, namaBagianKeuangan: e.target.value },
+                            })
+                          }
+                          placeholder="Contoh: Staff Keuangan & Kasir"
+                          className="h-10 text-xs sm:text-sm rounded-xl font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Jabatan Bagian Keuangan
+                        </Label>
+                        <Input
+                          value={cmsData.dokumen.jabatanBagianKeuangan}
+                          onChange={(e) =>
+                            setCmsData({
+                              ...cmsData,
+                              dokumen: { ...cmsData.dokumen, jabatanBagianKeuangan: e.target.value },
+                            })
+                          }
+                          placeholder="Contoh: Bagian Administrasi & Keuangan"
+                          className="h-10 text-xs sm:text-sm rounded-xl font-semibold"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                            Tampilkan Area Stempel Dokumen
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            Beri ruang lingkaran stempel basah resmi di samping tanda tangan
+                          </span>
+                        </div>
+                        <Switch
+                          checked={cmsData.dokumen.tampilkanStempelDigital}
+                          onCheckedChange={(val) =>
+                            setCmsData({
+                              ...cmsData,
+                              dokumen: { ...cmsData.dokumen, tampilkanStempelDigital: val },
+                            })
+                          }
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
 

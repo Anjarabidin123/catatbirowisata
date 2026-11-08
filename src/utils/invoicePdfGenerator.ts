@@ -64,7 +64,7 @@ const loadImage = (src: string): Promise<HTMLImageElement | null> => {
 };
 
 /**
- * Menggambar Kop Surat Resmi Biro Wisata
+ * Menggambar Kop Surat Resmi Biro Wisata (AHU & NIB Legalitas, Alamat, Kontak, Garis Ganda)
  */
 const drawKopSurat = (
   doc: jsPDF,
@@ -91,50 +91,58 @@ const drawKopSurat = (
 
   const textCenter = (textStartX + marginRight) / 2;
   const legalitasText = formatLegalitasBiro(profile);
+  let curY = topY + 5;
 
-  // Nama Biro Wisata
+  // 1. Nama Biro Wisata
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(15, 23, 42);
-  doc.text((profile.nama_biro || "CATAT BIRO WISATA").toUpperCase(), textCenter, topY + 6, {
+  doc.text((profile.nama_biro || "CATAT BIRO WISATA").toUpperCase(), textCenter, curY, {
     align: "center",
   });
+  curY += 4.5;
 
-  // Slogan
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(30, 58, 138);
-  doc.text(
-    (profile.slogan || "Biro Perjalanan Wisata & Sewa Bus Pariwisata").toUpperCase(),
-    textCenter,
-    topY + 11,
-    { align: "center" }
-  );
+  // 2. Baris Legalitas Resmi: SK Kemenkumham AHU & NIB OSS
+  if (legalitasText) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(30, 41, 59);
+    doc.text(legalitasText.toUpperCase(), textCenter, curY, { align: "center" });
+    curY += 4;
+  } else if (profile.slogan) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(30, 58, 138);
+    doc.text(profile.slogan.toUpperCase(), textCenter, curY, { align: "center" });
+    curY += 4;
+  }
 
-  // Alamat
+  // 3. Alamat Kantor
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(51, 65, 85);
-  doc.text(
-    profile.alamat || "Jl. Raya Demak - Kudus KM 4, Demak, Jawa Tengah",
-    textCenter,
-    topY + 16,
-    { align: "center" }
-  );
+  const alamatText = profile.alamat
+    ? `Alamat : ${profile.alamat}`
+    : "Alamat : Jl. Stasiun No. 15 Kelurahan Bintoro Kec. Demak Kab. Demak Jawa Tengah 59511";
+  doc.text(alamatText, textCenter, curY, { align: "center" });
+  curY += 3.8;
 
-  // Kontak
-  doc.setFontSize(7.5);
+  // 4. Kontak Resmi
+  doc.setFontSize(7.3);
   doc.setTextColor(71, 85, 105);
-  const kontakText = `Telp/WA: ${profile.telepon || "0812-2578-9000"}  |  Email: ${profile.email || "operasional@birowisata.id"}  |  Web: ${profile.website || "www.catatbirowisata.id"}`;
-  doc.text(kontakText, textCenter, topY + 20.5, { align: "center" });
+  const kontakText = `Contact Person / WA : ${profile.telepon || "0822-2630-1433"}${
+    profile.email ? `  |  Email: ${profile.email}` : ""
+  }${profile.website ? `  |  Web: ${profile.website}` : ""}`;
+  doc.text(kontakText, textCenter, curY, { align: "center" });
+  curY += 3.5;
 
-  // Garis Ganda Resmi Kop
-  const lineY = topY + 24;
-  doc.setDrawColor(15, 44, 89);
+  // 5. Garis Ganda Resmi Kop Surat (Ciri Khas Dokumen Formal Indonesia)
+  const lineY = Math.max(curY, topY + logoHeight + 1);
+  doc.setDrawColor(15, 23, 42);
   doc.setLineWidth(1.2);
   doc.line(marginLeft, lineY, marginRight, lineY);
 
-  doc.setLineWidth(0.4);
+  doc.setLineWidth(0.35);
   doc.line(marginLeft, lineY + 1.2, marginRight, lineY + 1.2);
 
   return lineY + 6;

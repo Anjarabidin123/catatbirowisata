@@ -9,7 +9,7 @@
  */
 
 import { getStoredApiKey } from "./asistenWisataAI";
-import { BiroProfile } from "./biroProfile";
+import { BiroProfile, formatLegalitasBiro } from "./biroProfile";
 
 export type BusLayoutType =
   | "medium_bus_31"
@@ -573,7 +573,7 @@ export function exportManifestToWordDoc(
             <h1 style="color:#0f2c59; font-size:16pt; font-weight:bold; letter-spacing:-0.5px; margin:0;">
               ${(profile.nama_biro || "BIRO PERJALANAN WISATA").toUpperCase()}
             </h1>
-            <p style="margin:2px 0; font-size:9pt; color:#475569;">
+            ${formatLegalitasBiro(profile) ? `<p style="margin:2px 0; font-size:8.5pt; font-weight:bold; color:#1e293b; text-transform:uppercase; letter-spacing:0.5px;">${formatLegalitasBiro(profile)}</p>` : ""}<p style="margin:2px 0; font-size:9pt; color:#475569;">
               ${profile.slogan || "Layanan Tour & Travel Pariwisata Profesional"}
             </p>
             <p style="margin:2px 0; font-size:8.5pt; color:#64748b;">

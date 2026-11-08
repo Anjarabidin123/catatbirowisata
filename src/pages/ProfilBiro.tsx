@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 import { CreateSupportTicketModal } from "@/components/CreateSupportTicketModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { KopSuratBiro } from "@/components/KopSuratBiro";
 import {
   getLocalBiroProfile,
   saveBiroProfile,
@@ -765,42 +766,8 @@ export const ProfilBiro: React.FC = () => {
 
                       {/* SIMULASI LEMBAR KERTAS A4 PUTIH */}
                       <div className="bg-white text-slate-900 border border-slate-300 rounded-xl p-6 sm:p-8 shadow-sm">
-                        {/* KOP HEADER STANDAR DENGAN GARIS GANDA KHAS INDONESIA */}
-                        <div className="flex items-center gap-4 sm:gap-6 pb-4">
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-slate-50 border border-slate-200 p-1 flex items-center justify-center flex-shrink-0">
-                            {profile.logo_url ? (
-                              <img
-                                src={profile.logo_url}
-                                alt="Logo"
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <Building2 className="w-10 h-10 text-slate-300" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0 text-center sm:text-left">
-                            <h2 className="text-sm sm:text-base font-black tracking-wide uppercase text-slate-900">
-                              {profile.nama_biro || "NAMA BIRO WISATA ANDA"}
-                            </h2>
-                            <p className="text-[11px] sm:text-xs font-bold text-slate-700 tracking-wide mt-0.5">
-                              {profile.slogan || "BIRO PERJALANAN WISATA & SEWA BUS PARIWISATA"}
-                            </p>
-                            <p className="text-[10px] text-slate-600 mt-1">
-                              {profile.alamat || "Jl. Alamat Kantor Resmi, Kota / Kabupaten"}
-                            </p>
-                            <div className="text-[10px] text-slate-600 font-mono flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 justify-center sm:justify-start">
-                              <span>Telp/WA: {profile.telepon || "0812-xxxx-xxxx"}</span>
-                              {profile.email && <span>• Email: {profile.email}</span>}
-                              {profile.website && <span>• Web: {profile.website}</span>}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* GARIS GANDA TEBAL-TIPIS KHAS KOP SURAT INDONESIA */}
-                        <div className="space-y-0.5 my-2">
-                          <div className="h-[2px] bg-slate-900 w-full" />
-                          <div className="h-[0.5px] bg-slate-900 w-full" />
-                        </div>
+                        {/* KOP HEADER STANDAR DENGAN GARIS GANDA RESMI INDONESIA (AHU & NIB) */}
+                        <KopSuratBiro profile={profile} />
 
                         {/* CONTOH ISI DOKUMEN KWITANSI / INVOICE */}
                         <div className="pt-4 pb-2 space-y-3 opacity-75">
@@ -868,6 +835,73 @@ export const ProfilBiro: React.FC = () => {
                             placeholder="Biro Perjalanan Wisata & Sewa Bus Pariwisata"
                             className="text-xs"
                           />
+                        </div>
+                      </div>
+
+                      {/* LEGALITAS RESMI INDONESIA (AHU & NIB OSS) */}
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                            Legalitas Resmi Biro (Kemenkumham & OSS)
+                          </span>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                            Dicetak di Kop Surat
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              Nomor SK AHU Kemenkumham
+                            </Label>
+                            <Input
+                              value={profile.nomor_ahu || ""}
+                              onChange={(e) => setProfile({ ...profile, nomor_ahu: e.target.value })}
+                              placeholder="Contoh: AHU-0016871-AH.0114 TH 2025"
+                              className="text-xs font-mono uppercase"
+                            />
+                            <p className="text-[10px] text-slate-400">
+                              Format: AHU-xxxxxxx-AH.xxxx TH xxxx
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              Nomor Induk Berusaha (NIB OSS)
+                            </Label>
+                            <Input
+                              value={profile.nomor_nib || ""}
+                              onChange={(e) => setProfile({ ...profile, nomor_nib: e.target.value })}
+                              placeholder="Contoh: 1604260107228"
+                              className="text-xs font-mono"
+                            />
+                            <p className="text-[10px] text-slate-400">
+                              Nomor 13 digit NIB resmi OSS
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              NPWP Badan Usaha (Opsional)
+                            </Label>
+                            <Input
+                              value={profile.npwp || ""}
+                              onChange={(e) => setProfile({ ...profile, npwp: e.target.value })}
+                              placeholder="Contoh: 00.000.000.0-000.000"
+                              className="text-xs font-mono"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              Nama Badan Usaha / PT / CV (Opsional)
+                            </Label>
+                            <Input
+                              value={profile.nama_badan_usaha || ""}
+                              onChange={(e) => setProfile({ ...profile, nama_badan_usaha: e.target.value })}
+                              placeholder="Contoh: PT ENAM SEMBILAN WISATA ABADI"
+                              className="text-xs uppercase"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -981,6 +1015,67 @@ export const ProfilBiro: React.FC = () => {
                         onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
                         className="text-xs"
                       />
+                    </div>
+
+                    {/* LEGALITAS RESMI INDONESIA (AHU & NIB OSS) */}
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          Legalitas & Izin Berusaha (Kemenkumham AHU & NIB OSS)
+                        </span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                          Resmi Terverifikasi
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            Nomor SK AHU Kemenkumham
+                          </Label>
+                          <Input
+                            value={profile.nomor_ahu || ""}
+                            onChange={(e) => setProfile({ ...profile, nomor_ahu: e.target.value })}
+                            placeholder="Contoh: AHU-0016871-AH.0114 TH 2025"
+                            className="text-xs font-mono uppercase"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            Nomor Induk Berusaha (NIB OSS)
+                          </Label>
+                          <Input
+                            value={profile.nomor_nib || ""}
+                            onChange={(e) => setProfile({ ...profile, nomor_nib: e.target.value })}
+                            placeholder="Contoh: 1604260107228"
+                            className="text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            NPWP Badan Usaha (Opsional)
+                          </Label>
+                          <Input
+                            value={profile.npwp || ""}
+                            onChange={(e) => setProfile({ ...profile, npwp: e.target.value })}
+                            placeholder="Contoh: 00.000.000.0-000.000"
+                            className="text-xs font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            Nama Badan Usaha / PT / CV
+                          </Label>
+                          <Input
+                            value={profile.nama_badan_usaha || ""}
+                            onChange={(e) => setProfile({ ...profile, nama_badan_usaha: e.target.value })}
+                            placeholder="Contoh: PT ENAM SEMBILAN WISATA ABADI"
+                            className="text-xs uppercase"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">

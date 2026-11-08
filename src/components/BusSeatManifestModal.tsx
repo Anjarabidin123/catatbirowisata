@@ -56,7 +56,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
-import { getLocalBiroProfile } from "@/utils/biroProfile";
+import { getLocalBiroProfile, formatLegalitasBiro } from "@/utils/biroProfile";
 import { logCrewActivity } from "@/utils/rbacAuditLogger";
 import { useRole } from "@/contexts/RoleContext";
 import {
@@ -532,24 +532,61 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
     const profile = getLocalBiroProfile();
     const doc = new jsPDFClass({ orientation: "portrait", unit: "mm", format: "a4" });
 
-    // Kop
+    // Kop Resmi Biro (AHU, NIB, & Garis Ganda)
+    const legalitasText = formatLegalitasBiro(profile);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(15, 44, 89);
-    doc.text(profile.nama_biro.toUpperCase(), 105, 15, { align: "center" });
+    let curY = 13;
+    doc.text(profile.nama_biro.toUpperCase(), 105, curY, { align: "center" });
+    curY += 4.5;
+
+    if (legalitasText) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(30, 41, 59);
+      doc.text(legalitasText.toUpperCase(), 105, curY, { align: "center" });
+      curY += 4;
+    } else if (profile.slogan) {
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      doc.text(profile.slogan, 105, curY, { align: "center" });
+      curY += 4;
+    }
+
+    if (profile.alamat || profile.telepon) {
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(71, 85, 105);
+      const infoKontak = [
+        profile.alamat ? `Alamat: ${profile.alamat}` : null,
+        profile.telepon ? `CP/WA: ${profile.telepon}` : null,
+      ].filter(Boolean).join("  |  ");
+      doc.text(infoKontak, 105, curY, { align: "center" });
+      curY += 3.5;
+    }
+
+    const lineY = curY + 1;
+    doc.setLineWidth(1.2);
+    doc.setDrawColor(15, 44, 89);
+    doc.line(14, lineY, 196, lineY);
+    doc.setLineWidth(0.35);
+    doc.line(14, lineY + 1.2, 196, lineY + 1.2);
+
+    const titleY = lineY + 7;
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text(profile.slogan || "Biro Perjalanan Wisata", 105, 20, { align: "center" });
+
 
     doc.setLineWidth(0.8);
     doc.setDrawColor(15, 44, 89);
-    doc.line(14, 23, 196, 23);
+
 
     // Title
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("MANIFEST RESMI ALOKASI KURSI BUS PARIWISATA", 105, 30, { align: "center" });
+    doc.text("MANIFEST RESMI ALOKASI KURSI BUS PARIWISATA", 105, titleY, { align: "center" });
 
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
@@ -557,19 +594,19 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
     doc.text(
       `Rombongan: ${tripInfo?.nama_trip || "Trip"}  |  Destinasi: ${tripInfo?.tujuan || "-"}`,
       14,
-      37
+      titleY + 7
     );
     doc.text(
       `Armada: ${tripInfo?.nama_kendaraan || "Bus Pariwisata"} (${tripInfo?.nomor_polisi || "-"})  |  Driver: ${
         tripInfo?.nama_driver || "-"
       }`,
       14,
-      42
+      titleY + 12
     );
     doc.text(
       `Tipe: ${busStructure.title}  |  Kapasitas: ${totalSeats} Kursi  |  Terisi: ${occupiedCount} Peserta  |  Kosong: ${emptyCount} Kursi`,
       14,
-      47
+      titleY + 17
     );
 
     const sortedSeats = [...seatList].sort((a, b) => {
@@ -594,7 +631,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
     });
 
     autoTable(doc, {
-      startY: 52,
+      startY: titleY + 22,
       head: [["No Kursi", "Nama Peserta", "Kategori", "No. Telepon / WA", "Catatan Khusus"]],
       body: rows,
       theme: "grid",
