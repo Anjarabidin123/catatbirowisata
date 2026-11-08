@@ -493,9 +493,13 @@ export const DesktopSidebar: React.FC = () => {
       {/* Footer User, Theme Toggle, Device Status & Logout */}
       <div className="p-3 border-t border-slate-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm space-y-2">
         {/* Kontrol Mode Terang / Gelap / Sistem (Bisa memaksa Mode Terang walau Chrome Gelap) */}
-        <div className="flex items-center justify-between gap-1.5">
-          <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Tema</span>
-          <ThemeToggle variant="segmented" />
+        <div className="space-y-1">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Tema Tampilan
+            </span>
+          </div>
+          <ThemeToggle variant="segmented" className="w-full" />
         </div>
 
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg">

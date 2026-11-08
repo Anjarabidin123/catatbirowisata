@@ -334,8 +334,7 @@ export async function scanPhotoManifestWithAI(
   file: File,
   apiKeyParam?: string
 ): Promise<{ seat?: string; name: string; notes?: string }[]> {
-  const fallbackKey = "AQ.Ab8RN6KzU9HOTTXOtiMly1vYqrgzwKPXpKYqXsEGTvJxlrdQnw";
-  const apiKey = (apiKeyParam || getStoredApiKey() || fallbackKey).trim();
+  const apiKey = (apiKeyParam || getStoredApiKey() || "").trim();
 
   const base64Data = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

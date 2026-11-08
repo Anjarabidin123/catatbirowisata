@@ -351,7 +351,7 @@ export const GoalTargetBiro: React.FC = () => {
           </div>
 
           {/* Hero Milestone Status Card */}
-          <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-slate-900 via-blue-950 to-slate-900 p-6 sm:p-8 text-white shadow-xl border border-blue-900/40">
+          <div className="relative overflow-hidden rounded-3xl bg-slate-900 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 sm:p-8 text-white shadow-xl border border-blue-800/40">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
               <div className="space-y-3 max-w-xl">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold">

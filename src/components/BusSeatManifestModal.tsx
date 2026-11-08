@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { savePdf } from "@/utils/pdfSaver";
+import { recordDownloadedDoc } from "@/utils/downloadedDocTracker";
 import {
   Dialog,
   DialogContent,
@@ -482,6 +483,16 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
     try {
       const profile = getLocalBiroProfile();
       exportManifestToWordDoc(tripInfo || {}, manifest, busStructure, profile);
+      try {
+        recordDownloadedDoc({
+          docType: "manifest",
+          nomorDokumen: `MAN-DOCX-${tripInfo?.id ? tripInfo.id.substring(0, 8) : Date.now()}`,
+          judul: `Manifest Word (.doc): ${tripInfo?.nama_trip || "Trip Pariwisata"}`,
+          namaKlienOrTrip: `${tripInfo?.nama_trip || "Trip"} (${tripInfo?.nama_kendaraan || "Bus"} - ${occupiedCount} Peserta)`,
+          statusPembayaran: "Resmi",
+          fileName: `MANIFEST_KURSI_${(tripInfo?.nama_trip || "TRIP").replace(/[^a-zA-Z0-9_-]/g, "_")}.doc`,
+        });
+      } catch {}
       toast.success("Dokumen Microsoft Word (.doc) berhasil diunduh!");
     } catch (e: any) {
       toast.error(`Gagal export Word: ${e.message}`);
@@ -647,10 +658,20 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
       margin: { left: 14, right: 14 },
     });
 
-    void savePdf(
-      doc,
-      `MANIFEST_KURSI_BUS_${tripInfo?.nama_trip?.replace(/\s+/g, "_") || "TRIP"}.pdf`
-    );
+    const pdfFilename = `MANIFEST_KURSI_BUS_${tripInfo?.nama_trip?.replace(/\s+/g, "_") || "TRIP"}.pdf`;
+    void savePdf(doc, pdfFilename);
+
+    try {
+      recordDownloadedDoc({
+        docType: "manifest",
+        nomorDokumen: `MAN-${tripInfo?.id ? tripInfo.id.substring(0, 8) : Date.now()}`,
+        judul: `Manifest Kursi Bus: ${tripInfo?.nama_trip || "Trip Pariwisata"}`,
+        namaKlienOrTrip: `${tripInfo?.nama_trip || "Trip"} (${tripInfo?.nama_kendaraan || "Bus"} - ${occupiedCount} Peserta)`,
+        statusPembayaran: "Resmi",
+        fileName: pdfFilename,
+      });
+    } catch {}
+
     toast.success("PDF Manifest kursi bus berhasil diunduh!");
   };
 

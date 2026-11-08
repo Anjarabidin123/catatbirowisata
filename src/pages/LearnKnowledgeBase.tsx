@@ -149,7 +149,7 @@ export const LearnKnowledgeBase: React.FC = () => {
 
         {/* Hero Banner Section */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-blue-700 via-indigo-700 to-slate-900 p-6 sm:p-8 text-white shadow-xl">
+          <div className="relative overflow-hidden rounded-3xl bg-slate-900 bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 p-6 sm:p-8 text-white shadow-xl">
             <div className="relative z-10 max-w-2xl space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-blue-100 text-xs font-semibold backdrop-blur-md">
                 <BookOpen className="w-3.5 h-3.5" />

@@ -3,6 +3,7 @@ import { getLocalBiroProfile, BiroProfile, formatLegalitasBiro } from "./biroPro
 import { getCurrentEntitlements } from "./licenseEntitlement";
 import { savePdf } from "./pdfSaver";
 import { terbilang } from "./terbilang";
+import { recordDownloadedDoc } from "./downloadedDocTracker";
 
 export interface InvoiceItem {
   deskripsi: string;
@@ -544,6 +545,25 @@ export async function generateInvoiceOrKwitansiPDF(
   if (autoDownload) {
     const filename = `${options.docType.toUpperCase()}_${options.nomorDokumen.replace(/[/\\?%*:|"<>]/g, "_")}.pdf`;
     void savePdf(doc, filename);
+
+    // Simpan ke riwayat arsip dokumen PDF lokal
+    try {
+      recordDownloadedDoc({
+        docType: options.docType,
+        nomorDokumen: options.nomorDokumen,
+        judul:
+          options.docType === "kwitansi"
+            ? `Kwitansi #${options.nomorDokumen} - ${options.peruntukan || "Pembayaran"}`
+            : `Invoice #${options.nomorDokumen} - ${options.peruntukan || "Tagihan"}`,
+        namaKlienOrTrip: `${options.namaKlien}${options.namaTrip ? ` (${options.namaTrip})` : ""}`,
+        nominal: options.nominal,
+        statusPembayaran: options.statusPembayaran || (isKwitansi ? "Lunas" : "Belum Lunas"),
+        fileName: filename,
+        metadata: options,
+      });
+    } catch (e) {
+      console.warn("Gagal mencatat arsip unduhan:", e);
+    }
   }
 
   return doc;

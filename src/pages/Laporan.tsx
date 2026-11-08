@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  Archive,
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -32,6 +33,8 @@ import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/utils";
 import { KwitansiInvoiceDialog } from "@/components/KwitansiInvoiceDialog";
+import { DownloadedDocArchiveDialog } from "@/components/DownloadedDocArchiveDialog";
+import { recordDownloadedDoc } from "@/utils/downloadedDocTracker";
 import { useRole } from "@/contexts/RoleContext";
 import RBACOwnerGuard from "@/components/RBACOwnerGuard";
 
@@ -50,6 +53,7 @@ const Laporan = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showKwitansiDialog, setShowKwitansiDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
   useEffect(() => {
     loadReportData();
@@ -180,6 +184,22 @@ const Laporan = () => {
 
       const fileName = `Laporan_Keuangan_Biro_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
       void savePdf(doc, fileName);
+
+      // Catat ke riwayat arsip dokumen PDF
+      try {
+        recordDownloadedDoc({
+          docType: "laporan",
+          nomorDokumen: `LAP-${format(new Date(), "yyyyMMdd-HHmm")}`,
+          judul: `Laporan Keuangan Biro (${filterMonth === "current" ? "Bulan Ini" : filterMonth === "last" ? "Bulan Lalu" : filterMonth === "year" ? "Tahun Ini" : "Semua Periode"})`,
+          namaKlienOrTrip: selectedTripId === "all" ? "Seluruh Trip Biro" : tripReports.find((t) => t.id === selectedTripId)?.nama_trip || "Trip Tertentu",
+          nominal: totals.labaBersih,
+          statusPembayaran: "Resmi",
+          fileName,
+        });
+      } catch (e) {
+        console.warn("Gagal arsipkan download laporan:", e);
+      }
+
       toast.success("Laporan PDF resmi berhasil diunduh!");
     } catch (error) {
       console.error("Gagal cetak PDF:", error);
@@ -247,6 +267,17 @@ const Laporan = () => {
 
               {/* Action Buttons: Tertata Responsif Tanpa Meluber ke Luar Layar */}
               <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+                <Button
+                  type="button"
+                  onClick={() => setShowArchiveDialog(true)}
+                  variant="outline"
+                  className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1.5"
+                  size="sm"
+                  title="Buka Riwayat & Arsip Dokumen PDF yang Pernah Diunduh"
+                >
+                  <Archive className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Arsip PDF</span>
+                </Button>
                 {isPemilik && (
                   <Button
                     type="button"
@@ -523,6 +554,12 @@ const Laporan = () => {
           <KwitansiInvoiceDialog
             open={showKwitansiDialog}
             onOpenChange={setShowKwitansiDialog}
+          />
+
+          {/* Dialog Arsip Riwayat Dokumen PDF */}
+          <DownloadedDocArchiveDialog
+            open={showArchiveDialog}
+            onOpenChange={setShowArchiveDialog}
           />
 
           <BottomNav />

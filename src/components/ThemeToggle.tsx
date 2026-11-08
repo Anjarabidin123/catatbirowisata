@@ -23,47 +23,49 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   // Mode 1: Segmented Pill (Sangat pas untuk halaman pengaturan profil / sidebar)
   if (variant === "segmented") {
     return (
-      <div className={`inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold ${className}`}>
+      <div
+        className={`w-full grid grid-cols-3 p-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 text-xs font-bold gap-0.5 ${className}`}
+      >
         <button
           type="button"
           onClick={() => setTheme("light")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+          className={`flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-lg transition-all text-[11px] font-black ${
             theme === "light"
               ? "bg-white text-blue-700 shadow-xs dark:bg-slate-900 dark:text-blue-400"
               : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
           }`}
           title="Paksa Mode Terang (Meskipun Chrome/HP Mode Gelap)"
         >
-          <Sun className="w-3.5 h-3.5 text-amber-500" />
-          <span>Terang</span>
+          <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <span className="truncate">Terang</span>
         </button>
 
         <button
           type="button"
           onClick={() => setTheme("dark")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+          className={`flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-lg transition-all text-[11px] font-black ${
             theme === "dark"
               ? "bg-white text-blue-700 shadow-xs dark:bg-slate-900 dark:text-blue-400"
               : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
           }`}
           title="Mode Gelap (Dark Mode)"
         >
-          <Moon className="w-3.5 h-3.5 text-blue-500" />
-          <span>Gelap</span>
+          <Moon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+          <span className="truncate">Gelap</span>
         </button>
 
         <button
           type="button"
           onClick={() => setTheme("system")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+          className={`flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-lg transition-all text-[11px] font-black ${
             theme === "system"
               ? "bg-white text-blue-700 shadow-xs dark:bg-slate-900 dark:text-blue-400"
               : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
           }`}
           title="Ikuti Setelan Chrome / Ponsel Otomatis"
         >
-          <Laptop className="w-3.5 h-3.5 text-slate-500" />
-          <span>Sistem</span>
+          <Laptop className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <span className="truncate">Sistem</span>
         </button>
       </div>
     );

@@ -46,7 +46,7 @@ export const ImpersonationBanner: React.FC = () => {
   return (
     <aside
       aria-label="Mode Simulasi Impersonasi Biro"
-      className="sticky top-0 z-[60] w-full bg-linear-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 px-3 sm:px-4 py-2 shadow-md border-b border-amber-600 flex flex-wrap items-center justify-between gap-2"
+      className="sticky top-0 z-[60] w-full bg-amber-500 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 px-3 sm:px-4 py-2 shadow-md border-b border-amber-600 flex flex-wrap items-center justify-between gap-2"
     >
       <div className="flex items-center gap-2 min-w-0">
         <div className="w-7 h-7 rounded-lg bg-slate-950 text-amber-400 flex items-center justify-center flex-shrink-0 shadow-xs">
