@@ -13,13 +13,18 @@ export interface BiroProfile {
   nama_bank?: string;
   nomor_rekening?: string;
   atas_nama_rekening?: string;
+  // Legalitas Resmi Biro (AHU, NIB, NPWP)
+  nomor_ahu?: string; // Contoh: "AHU-0016871-AH.0114 TH 2025"
+  nomor_nib?: string; // Contoh: "1604260107228"
+  npwp?: string; // Contoh: "01.234.567.8-123.000"
+  nama_badan_usaha?: string; // Contoh: "PT ENAM SEMBILAN WISATA MANDIRI"
 }
 
 const DEFAULT_PROFILE: BiroProfile = {
   nama_biro: "Catat Biro Wisata",
   slogan: "Biro Perjalanan Wisata & Sewa Bus Pariwisata",
   logo_url: "/pwa-icon.svg",
-  alamat: "Jl. Raya Demak - Kudus KM 4, Demak, Jawa Tengah",
+  alamat: "Jl. Stasiun No. 15, Bintoro, Demak, Jawa Tengah",
   telepon: "0812-2578-9000 / 0857-1234-5678",
   email: "operasional@birowisata.id",
   website: "www.catatbirowisata.id",
@@ -27,6 +32,8 @@ const DEFAULT_PROFILE: BiroProfile = {
   nama_bank: "Bank Mandiri / BCA",
   nomor_rekening: "136-00-1234567-8",
   atas_nama_rekening: "Catat Biro Wisata",
+  nomor_ahu: "AHU-0016871-AH.0114 TH 2025",
+  nomor_nib: "1604260107228",
 };
 
 const STORAGE_KEY = "app_biro_profile_v1";
@@ -204,6 +211,10 @@ export async function saveBiroProfile(profile: Partial<BiroProfile>): Promise<Bi
         nama_bank: updated.nama_bank,
         nomor_rekening: updated.nomor_rekening,
         atas_nama_rekening: updated.atas_nama_rekening,
+        nomor_ahu: updated.nomor_ahu,
+        nomor_nib: updated.nomor_nib,
+        npwp: updated.npwp,
+        nama_badan_usaha: updated.nama_badan_usaha,
       },
     });
   } catch (err) {
@@ -216,6 +227,32 @@ export async function saveBiroProfile(profile: Partial<BiroProfile>): Promise<Bi
   }
 
   return updated;
+}
+
+/**
+ * Format baris legalitas resmi (AHU & NIB) khas biro pariwisata Indonesia
+ * Contoh output: "AHU-0016871-AH.0114 TH 2025 . NIB 1604260107228"
+ */
+export function formatLegalitasBiro(profile?: Partial<BiroProfile> | null): string {
+  if (!profile) return "";
+  const parts: string[] = [];
+
+  if (profile.nomor_ahu && profile.nomor_ahu.trim()) {
+    const raw = profile.nomor_ahu.trim();
+    parts.push(raw.toUpperCase().startsWith("AHU") ? raw : `AHU-${raw}`);
+  }
+
+  if (profile.nomor_nib && profile.nomor_nib.trim()) {
+    const raw = profile.nomor_nib.trim();
+    parts.push(raw.toUpperCase().startsWith("NIB") ? raw : `NIB ${raw}`);
+  }
+
+  if (profile.npwp && profile.npwp.trim()) {
+    const raw = profile.npwp.trim();
+    parts.push(raw.toUpperCase().startsWith("NPWP") ? raw : `NPWP ${raw}`);
+  }
+
+  return parts.join(" . ");
 }
 
 /**

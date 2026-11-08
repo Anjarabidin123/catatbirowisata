@@ -1,5 +1,5 @@
 import type jsPDF from "jspdf";
-import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { getLocalBiroProfile, BiroProfile, formatLegalitasBiro } from "./biroProfile";
 import { getCurrentEntitlements } from "./licenseEntitlement";
 import { savePdf } from "./pdfSaver";
 import { terbilang } from "./terbilang";
@@ -90,11 +90,12 @@ const drawKopSurat = (
   }
 
   const textCenter = (textStartX + marginRight) / 2;
+  const legalitasText = formatLegalitasBiro(profile);
 
   // Nama Biro Wisata
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.setTextColor(15, 44, 89);
+  doc.setTextColor(15, 23, 42);
   doc.text((profile.nama_biro || "CATAT BIRO WISATA").toUpperCase(), textCenter, topY + 6, {
     align: "center",
   });
