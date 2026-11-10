@@ -750,11 +750,18 @@ const Dashboard = () => {
                   {section.items.map((t) => {
                     const st = getTripStatus(t);
                     return (
-                      <button
+                      <div
                         key={t.id}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => openTrip(t.id)}
-                        className={`w-full text-left p-3.5 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs active:scale-[0.99] transition-all flex items-center gap-3.5 ${
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openTrip(t.id);
+                          }
+                        }}
+                        className={`w-full text-left p-3.5 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs active:scale-[0.99] transition-all flex items-center gap-3.5 cursor-pointer ${
                           st === "berlangsung"
                             ? "border-emerald-300 dark:border-emerald-800 ring-2 ring-emerald-500/20"
                             : "border-slate-200/80 dark:border-slate-800 hover:border-blue-400/50"
@@ -810,7 +817,7 @@ const Dashboard = () => {
                           )}
                           <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </section>
