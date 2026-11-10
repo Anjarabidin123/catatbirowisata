@@ -26,7 +26,9 @@ import {
   Building2,
   CheckCircle2,
   Terminal,
+  Trash2,
 } from "lucide-react";
+import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser, clearAuthCache } from "@/utils/authHelper";
 import { clearBiroProfileCache, getLocalBiroProfile, fetchBiroProfile, BiroProfile } from "@/utils/biroProfile";
