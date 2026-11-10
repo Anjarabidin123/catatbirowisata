@@ -4,6 +4,7 @@ import { getCurrentEntitlements } from "./licenseEntitlement";
 import { savePdf } from "./pdfSaver";
 import { terbilang } from "./terbilang";
 import { recordDownloadedDoc } from "./downloadedDocTracker";
+import { drawDigitalStamp, ensureTransparentImage } from "./stampPdfHelper";
 
 export interface InvoiceItem {
   deskripsi: string;
@@ -75,30 +76,40 @@ const drawKopSurat = (
   const pageWidth = doc.internal.pageSize.getWidth();
   const marginLeft = 14;
   const marginRight = pageWidth - 14;
-  const topY = 12;
+  const topY = 4; // Margin atas kop surat dinaikkan presisi 4mm dari tepi kertas
 
-  const logoWidth = 24;
-  const logoHeight = 24;
-  let textStartX = marginLeft;
+  const maxLogoDim = 20;
+  let logoActualH = maxLogoDim;
 
   if (logoImg) {
     try {
-      doc.addImage(logoImg, "PNG", marginLeft, topY, logoWidth, logoHeight);
-      textStartX = marginLeft + logoWidth + 4;
-    } catch {
-      textStartX = marginLeft;
-    }
+      const origW = logoImg.naturalWidth || logoImg.width || 1;
+      const origH = logoImg.naturalHeight || logoImg.height || 1;
+      const aspect = origW / origH;
+      let renderW = maxLogoDim;
+      let renderH = maxLogoDim;
+      if (aspect > 1) {
+        renderH = maxLogoDim / aspect;
+      } else if (aspect < 1) {
+        renderW = maxLogoDim * aspect;
+      }
+      logoActualH = renderH;
+      const logoX = marginLeft + (maxLogoDim - renderW) / 2;
+      const logoY = topY;
+      doc.addImage(logoImg, "PNG", logoX, logoY, renderW, renderH);
+    } catch {}
   }
 
-  const textCenter = (textStartX + marginRight) / 2;
+  // Teks Kop Surat Tepat di Tengah Halaman (pageWidth / 2) & Berukuran Gagah
+  const pageCenter = pageWidth / 2;
   const legalitasText = formatLegalitasBiro(profile);
-  let curY = topY + 5;
+  let curY = topY + 4.5; // Baseline huruf 18pt agar batas atas teks persis sejajar topY (4mm)
 
-  // 1. Nama Biro Wisata
+  // 1. Nama Biro Wisata (Besar 18pt, Bold, Navy Formal)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.setTextColor(15, 23, 42);
-  doc.text((profile.nama_biro || "CATAT BIRO WISATA").toUpperCase(), textCenter, curY, {
+  doc.setFontSize(18);
+  doc.setTextColor(15, 44, 89);
+  doc.text((profile.nama_biro || "CATAT BIRO WISATA").toUpperCase(), pageCenter, curY, {
     align: "center",
   });
   curY += 4.5;
@@ -106,85 +117,47 @@ const drawKopSurat = (
   // 2. Baris Legalitas Resmi: SK Kemenkumham AHU & NIB OSS
   if (legalitasText) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
+    doc.setFontSize(8.5);
     doc.setTextColor(30, 41, 59);
-    doc.text(legalitasText.toUpperCase(), textCenter, curY, { align: "center" });
-    curY += 4;
+    doc.text(legalitasText.toUpperCase(), pageCenter, curY, { align: "center" });
+    curY += 3.8;
   } else if (profile.slogan) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
+    doc.setFontSize(8.5);
     doc.setTextColor(30, 58, 138);
-    doc.text(profile.slogan.toUpperCase(), textCenter, curY, { align: "center" });
-    curY += 4;
+    doc.text(profile.slogan.toUpperCase(), pageCenter, curY, { align: "center" });
+    curY += 3.8;
   }
 
   // 3. Alamat Kantor
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.8);
+  doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
   const alamatText = profile.alamat
     ? `Alamat : ${profile.alamat}`
     : "Alamat : Jl. Stasiun No. 15 Kelurahan Bintoro Kec. Demak Kab. Demak Jawa Tengah 59511";
-  doc.text(alamatText, textCenter, curY, { align: "center" });
-  curY += 3.8;
+  doc.text(alamatText, pageCenter, curY, { align: "center" });
+  curY += 3.6;
 
   // 4. Kontak Resmi
-  doc.setFontSize(7.3);
+  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   const kontakText = `Contact Person / WA : ${profile.telepon || "0822-2630-1433"}${
     profile.email ? `  |  Email: ${profile.email}` : ""
   }${profile.website ? `  |  Web: ${profile.website}` : ""}`;
-  doc.text(kontakText, textCenter, curY, { align: "center" });
-  curY += 3.5;
+  doc.text(kontakText, pageCenter, curY, { align: "center" });
+  curY += 3.6;
 
   // 5. Garis Ganda Resmi Kop Surat (Ciri Khas Dokumen Formal Indonesia)
-  const lineY = Math.max(curY, topY + logoHeight + 1);
-  doc.setDrawColor(15, 23, 42);
+  const lineY = Math.max(curY, topY + logoActualH + 1.2);
+  doc.setDrawColor(15, 44, 89);
   doc.setLineWidth(1.2);
   doc.line(marginLeft, lineY, marginRight, lineY);
 
   doc.setLineWidth(0.35);
-  doc.line(marginLeft, lineY + 1.2, marginRight, lineY + 1.2);
+  doc.line(marginLeft, lineY + 1.1, marginRight, lineY + 1.1);
 
-  return lineY + 6;
-};
-
-/**
- * Menggambar Stempel Digital Resmi Biro Wisata
- */
-const drawDigitalStamp = (
-  doc: jsPDF,
-  x: number,
-  y: number,
-  profile: BiroProfile,
-  status: string
-) => {
-  // Lingkaran stempel luar
-  doc.setDrawColor(37, 99, 235);
-  doc.setLineWidth(0.8);
-  doc.circle(x, y, 16);
-
-  // Lingkaran stempel dalam
-  doc.setLineWidth(0.3);
-  doc.circle(x, y, 14);
-
-  // Teks stempel melingkar / dalam
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  doc.setTextColor(37, 99, 235);
-  const biroShort = (profile.nama_biro || "BIRO WISATA").substring(0, 18).toUpperCase();
-  doc.text(biroShort, x, y - 7, { align: "center" });
-
-  // Banner status tengah (e.g. LUNAS / VERIFIED)
-  doc.setFillColor(37, 99, 235);
-  doc.rect(x - 13, y - 3, 26, 6, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7.5);
-  doc.text(status.toUpperCase(), x, y + 1.2, { align: "center" });
-
-  doc.setTextColor(37, 99, 235);
-  doc.setFontSize(5.5);
-  doc.text("OFFICIAL VERIFIED", x, y + 8, { align: "center" });
+  return lineY + 4.5;
 };
 
 /**
@@ -193,7 +166,22 @@ const drawDigitalStamp = (
 export async function generateInvoiceOrKwitansiPDF(
   options: GenerateInvoiceKwitansiOptions
 ): Promise<jsPDF> {
-  const profile = options.profile || getLocalBiroProfile();
+  let profile = options.profile || getLocalBiroProfile();
+
+  // Otomatis pastikan logo, stempel custom, dan tanda tangan bebas background putih & auto-crop (tidak kurus)
+  if (profile.logo_url && !profile.logo_url.endsWith(".svg")) {
+    const cleaned = await ensureTransparentImage(profile.logo_url);
+    if (cleaned) profile = { ...profile, logo_url: cleaned };
+  }
+  if (profile.stempel_custom_image_url) {
+    const cleaned = await ensureTransparentImage(profile.stempel_custom_image_url);
+    if (cleaned) profile = { ...profile, stempel_custom_image_url: cleaned };
+  }
+  if (profile.tanda_tangan_url) {
+    const cleaned = await ensureTransparentImage(profile.tanda_tangan_url);
+    if (cleaned) profile = { ...profile, tanda_tangan_url: cleaned };
+  }
+
   const isKwitansi = options.docType === "kwitansi";
   const autoDownload = options.autoDownload !== false;
 
@@ -484,7 +472,7 @@ export async function generateInvoiceOrKwitansiPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  const kotaPimpinan = profile.alamat?.split(",")?.[1]?.trim() || "Demak";
+  const kotaPimpinan = profile.kota_tanda_tangan || profile.alamat?.split(",")?.[1]?.trim() || "Demak";
   doc.text(`${kotaPimpinan}, ${formatTanggalIndo(options.tanggal)}`, signX, signY, {
     align: "center",
   });
@@ -496,13 +484,23 @@ export async function generateInvoiceOrKwitansiPDF(
     align: "center",
   });
 
-  // Stempel Digital
+  // Tanda Tangan Basah Gambar (Jika diunggah) - tepat di atas nama, agak ke kanan
+  if (profile.tanda_tangan_url) {
+    try {
+      doc.addImage(profile.tanda_tangan_url, "PNG", signX - 8, signY + 8, 26, 14);
+    } catch (e) {
+      console.warn("Gagal render ttd image:", e);
+    }
+  }
+
+  // Stempel Digital / Basah (Posisi di sebelah kiri menimpa separuh kiri tanda tangan, sejajar vertikal)
   drawDigitalStamp(
     doc,
-    signX - 10,
+    signX - 7,
     signY + 15,
     profile,
-    options.statusPembayaran || (isKwitansi ? "LUNAS" : "VERIFIED")
+    options.statusPembayaran || (isKwitansi ? "LUNAS" : "VERIFIED"),
+    11
   );
 
   // Garis & Nama Pimpinan
@@ -517,7 +515,7 @@ export async function generateInvoiceOrKwitansiPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
-  doc.text("Pimpinan / Manajemen Keuangan", signX, bottomSignY + 3.5, {
+  doc.text(profile.jabatan_penandatangan || "Pimpinan / Manajemen Keuangan", signX, bottomSignY + 3.5, {
     align: "center",
   });
 

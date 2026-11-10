@@ -18,22 +18,43 @@ export interface BiroProfile {
   nomor_nib?: string; // Contoh: "1604260107228"
   npwp?: string; // Contoh: "01.234.567.8-123.000"
   nama_badan_usaha?: string; // Contoh: "PT ENAM SEMBILAN WISATA MANDIRI"
+  // Pengaturan Stempel Resmi & Tanda Tangan
+  stempel_mode?: "otomatis" | "custom"; // "otomatis" (vektor stempel bulat) atau "custom" (gambar stempel basah)
+  stempel_teks_atas?: string; // Teks atas stempel melingkar (default: nama biro)
+  stempel_teks_tengah?: string; // Teks banner tengah (default: "LUNAS")
+  stempel_teks_bawah?: string; // Teks bawah stempel (default: "OFFICIAL VERIFIED")
+  stempel_warna?: string; // Warna tinta stempel (contoh: "#2563eb", "#7c3aed", "#dc2626", "#059669")
+  stempel_custom_image_url?: string | null; // Gambar scan stempel basah PNG transparan
+  tanda_tangan_url?: string | null; // Gambar scan coretan tanda tangan pimpinan PNG transparan
+  jabatan_penandatangan?: string; // Jabatan pimpinan (default: "Pimpinan / Manajemen Keuangan")
+  kota_tanda_tangan?: string; // Kota penandatanganan dokumen (default: "Demak")
 }
 
 const DEFAULT_PROFILE: BiroProfile = {
-  nama_biro: "Catat Biro Wisata",
+  nama_biro: "69 Trans & Tour",
   slogan: "Biro Perjalanan Wisata & Sewa Bus Pariwisata",
   logo_url: "/pwa-icon.svg",
   alamat: "Jl. Stasiun No. 15, Bintoro, Demak, Jawa Tengah",
   telepon: "0812-2578-9000 / 0857-1234-5678",
-  email: "operasional@birowisata.id",
-  website: "www.catatbirowisata.id",
+  email: "operasional@69trans.id",
+  website: "www.69trans.id",
   pimpinan: "H. Anjar Abidin, S.E.",
   nama_bank: "Bank Mandiri / BCA",
   nomor_rekening: "136-00-1234567-8",
-  atas_nama_rekening: "Catat Biro Wisata",
+  atas_nama_rekening: "PT ENAM SEMBILAN WISATA MANDIRI",
   nomor_ahu: "AHU-0016871-AH.0114 TH 2025",
   nomor_nib: "1604260107228",
+  npwp: "01.234.567.8-123.000",
+  nama_badan_usaha: "PT ENAM SEMBILAN WISATA MANDIRI",
+  stempel_mode: "otomatis",
+  stempel_teks_atas: "69 TRANS & TOUR",
+  stempel_teks_tengah: "LUNAS",
+  stempel_teks_bawah: "OFFICIAL VERIFIED",
+  stempel_warna: "#2563eb",
+  stempel_custom_image_url: null,
+  tanda_tangan_url: null,
+  jabatan_penandatangan: "Pimpinan / Manajemen Keuangan",
+  kota_tanda_tangan: "Demak",
 };
 
 const STORAGE_KEY = "app_biro_profile_v1";
@@ -47,7 +68,7 @@ function sanitizeLegacyProfile(raw: Partial<BiroProfile>): { profile: BiroProfil
   let wasSanitized = false;
 
   let namaBiro = raw.nama_biro || DEFAULT_PROFILE.nama_biro;
-  if (/malika/i.test(namaBiro)) {
+  if (/malika/i.test(namaBiro) || namaBiro === "Catat Biro Wisata") {
     namaBiro = DEFAULT_PROFILE.nama_biro;
     wasSanitized = true;
   }
@@ -59,13 +80,13 @@ function sanitizeLegacyProfile(raw: Partial<BiroProfile>): { profile: BiroProfil
   }
 
   let email = raw.email || DEFAULT_PROFILE.email;
-  if (email && /malika/i.test(email)) {
+  if (email && (/malika/i.test(email) || email === "operasional@birowisata.id")) {
     email = DEFAULT_PROFILE.email;
     wasSanitized = true;
   }
 
   let atasNama = raw.atas_nama_rekening || DEFAULT_PROFILE.atas_nama_rekening;
-  if (atasNama && /malika/i.test(atasNama)) {
+  if (atasNama && (/malika/i.test(atasNama) || atasNama === "Catat Biro Wisata")) {
     atasNama = DEFAULT_PROFILE.atas_nama_rekening;
     wasSanitized = true;
   }
@@ -131,6 +152,15 @@ export async function fetchBiroProfile(): Promise<BiroProfile> {
         logoUrl = current.logo_url || DEFAULT_PROFILE.logo_url;
       }
 
+      let stempelCustomUrl = meta.stempel_custom_image_url !== undefined ? meta.stempel_custom_image_url : current.stempel_custom_image_url;
+      if (meta.stempel_custom_image_url === null && current.stempel_custom_image_url?.startsWith("data:")) {
+        stempelCustomUrl = current.stempel_custom_image_url;
+      }
+      let ttdUrl = meta.tanda_tangan_url !== undefined ? meta.tanda_tangan_url : current.tanda_tangan_url;
+      if (meta.tanda_tangan_url === null && current.tanda_tangan_url?.startsWith("data:")) {
+        ttdUrl = current.tanda_tangan_url;
+      }
+
       const rawMerged: BiroProfile = {
         nama_biro: meta.nama_biro || DEFAULT_PROFILE.nama_biro,
         slogan: meta.slogan || DEFAULT_PROFILE.slogan,
@@ -143,6 +173,19 @@ export async function fetchBiroProfile(): Promise<BiroProfile> {
         nama_bank: meta.nama_bank || DEFAULT_PROFILE.nama_bank,
         nomor_rekening: meta.nomor_rekening || DEFAULT_PROFILE.nomor_rekening,
         atas_nama_rekening: meta.atas_nama_rekening || DEFAULT_PROFILE.atas_nama_rekening,
+        nomor_ahu: meta.nomor_ahu || current.nomor_ahu,
+        nomor_nib: meta.nomor_nib || current.nomor_nib,
+        npwp: meta.npwp || current.npwp,
+        nama_badan_usaha: meta.nama_badan_usaha || current.nama_badan_usaha,
+        stempel_mode: meta.stempel_mode || current.stempel_mode || "otomatis",
+        stempel_teks_atas: meta.stempel_teks_atas || current.stempel_teks_atas || meta.nama_biro || DEFAULT_PROFILE.nama_biro,
+        stempel_teks_tengah: meta.stempel_teks_tengah || current.stempel_teks_tengah || "LUNAS",
+        stempel_teks_bawah: meta.stempel_teks_bawah || current.stempel_teks_bawah || "OFFICIAL VERIFIED",
+        stempel_warna: meta.stempel_warna || current.stempel_warna || "#2563eb",
+        stempel_custom_image_url: stempelCustomUrl,
+        tanda_tangan_url: ttdUrl,
+        jabatan_penandatangan: meta.jabatan_penandatangan || current.jabatan_penandatangan || "Pimpinan / Manajemen Keuangan",
+        kota_tanda_tangan: meta.kota_tanda_tangan || current.kota_tanda_tangan || "Demak",
       };
       const { profile, wasSanitized } = sanitizeLegacyProfile(rawMerged);
       memoryProfileCache = profile;
@@ -198,6 +241,9 @@ export async function saveBiroProfile(profile: Partial<BiroProfile>): Promise<Bi
   // Sync ke Supabase auth metadata (Hanya simpan string ringan; JANGAN simpan base64 besar agar JWT token tidak tembus batas header 431)
   try {
     const logoToSync = updated.logo_url && !updated.logo_url.startsWith("data:") ? updated.logo_url : null;
+    const stempelToSync = updated.stempel_custom_image_url && !updated.stempel_custom_image_url.startsWith("data:") ? updated.stempel_custom_image_url : null;
+    const ttdToSync = updated.tanda_tangan_url && !updated.tanda_tangan_url.startsWith("data:") ? updated.tanda_tangan_url : null;
+
     await supabase.auth.updateUser({
       data: {
         nama_biro: updated.nama_biro,
@@ -215,6 +261,15 @@ export async function saveBiroProfile(profile: Partial<BiroProfile>): Promise<Bi
         nomor_nib: updated.nomor_nib,
         npwp: updated.npwp,
         nama_badan_usaha: updated.nama_badan_usaha,
+        stempel_mode: updated.stempel_mode,
+        stempel_teks_atas: updated.stempel_teks_atas,
+        stempel_teks_tengah: updated.stempel_teks_tengah,
+        stempel_teks_bawah: updated.stempel_teks_bawah,
+        stempel_warna: updated.stempel_warna,
+        stempel_custom_image_url: stempelToSync,
+        tanda_tangan_url: ttdToSync,
+        jabatan_penandatangan: updated.jabatan_penandatangan,
+        kota_tanda_tangan: updated.kota_tanda_tangan,
       },
     });
   } catch (err) {
@@ -324,6 +379,62 @@ export async function uploadBiroLogo(file: File): Promise<string> {
   if (uploadError) {
     // Jika storage bermasalah, kompresi ke Base64 via Canvas (max 256x256, quality 0.8)
     return await compressImageViaCanvas(file);
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("trip-media")
+    .getPublicUrl(fileName);
+
+  return publicUrl;
+}
+
+/**
+ * Upload gambar stempel basah biro ke Supabase Storage (bucket: trip-media) atau fallback Canvas
+ */
+export async function uploadBiroStempel(file: File): Promise<string> {
+  const user = await getActiveUser();
+  if (!user) throw new Error("Pengguna belum login");
+
+  const ext = file.name.split(".").pop() || "png";
+  const fileName = `${user.id}/stempel/${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("trip-media")
+    .upload(fileName, file, {
+      upsert: true,
+      cacheControl: "3600",
+    });
+
+  if (uploadError) {
+    return await compressImageViaCanvas(file, 400, 0.9);
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("trip-media")
+    .getPublicUrl(fileName);
+
+  return publicUrl;
+}
+
+/**
+ * Upload gambar tanda tangan pimpinan ke Supabase Storage (bucket: trip-media) atau fallback Canvas
+ */
+export async function uploadBiroTtd(file: File): Promise<string> {
+  const user = await getActiveUser();
+  if (!user) throw new Error("Pengguna belum login");
+
+  const ext = file.name.split(".").pop() || "png";
+  const fileName = `${user.id}/ttd/${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("trip-media")
+    .upload(fileName, file, {
+      upsert: true,
+      cacheControl: "3600",
+    });
+
+  if (uploadError) {
+    return await compressImageViaCanvas(file, 400, 0.9);
   }
 
   const { data: { publicUrl } } = supabase.storage

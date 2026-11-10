@@ -28,6 +28,7 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Search,
   MessageSquare,
   Receipt,
@@ -36,7 +37,17 @@ import {
   ShieldCheck,
   Menu,
   Pencil,
+  Check,
+  Clock,
+  Camera,
+  Compass,
+  Layers,
+  Download,
+  FileText,
 } from "lucide-react";
+import { exportTripRundownPDF } from "@/utils/rundownExport";
+import { generateReportPDF } from "@/utils/reportPdfGenerator";
+import { savePdf } from "@/utils/pdfSaver";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -115,6 +126,124 @@ const TripDetail = () => {
   const [kwitansiModalOpen, setKwitansiModalOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
   const [openNotes, setOpenNotes] = useState<Record<string, boolean>>({});
+
+  const handleDownloadRundownPDF = async () => {
+    if (!tripId) return;
+    try {
+      toast.loading("Menyiapkan PDF Rundown Acara...", { id: "gen-rundown" });
+      await exportTripRundownPDF(tripId);
+      toast.dismiss("gen-rundown");
+      toast.success("PDF Rundown Acara berhasil diunduh!");
+    } catch (err: any) {
+      toast.dismiss("gen-rundown");
+      toast.error(err?.message || "Gagal membuat PDF Rundown. Pastikan ada data rundown acara.");
+    }
+  };
+
+  const handleDownloadLaporanTripPDF = async () => {
+    if (!trip || !tripId) return;
+    try {
+      toast.loading("Menyiapkan PDF Laporan Trip...", { id: "gen-lap-trip" });
+      const { data: finances } = await supabase
+        .from("keuangan")
+        .select("*")
+        .eq("trip_id", tripId);
+
+      const doc = await generateReportPDF({
+        trips: [trip as any],
+        keuangan: finances || [],
+        filterTripId: tripId,
+        periodeText: `Trip ${trip.nama_trip} - ${trip.tujuan}`,
+      });
+
+      const cleanTitle = (trip.nama_trip || "Trip").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const fileName = `Laporan_Trip_${cleanTitle}_${format(new Date(), "yyyyMMdd")}.pdf`;
+      await savePdf(doc, fileName);
+
+      toast.dismiss("gen-lap-trip");
+      toast.success("PDF Laporan Trip berhasil diunduh!");
+    } catch (err: any) {
+      toast.dismiss("gen-lap-trip");
+      toast.error(err?.message || "Gagal membuat PDF Laporan.");
+    }
+  };
+
+  const tabsConfig = [
+    {
+      id: "acuan",
+      label: "Perencanaan",
+      shortLabel: "Perencanaan",
+      desc: "Destinasi wisata & rincian harga paket",
+      icon: Compass,
+      badge: null,
+      badgeColor: "",
+      show: true,
+    },
+    {
+      id: "keuangan",
+      label: "Buku Kas Biro",
+      shortLabel: "Buku Kas",
+      desc: "Pemasukan, laba & riwayat pembukuan kas",
+      icon: Wallet,
+      badge: "Owner",
+      badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
+      show: canSeeFinancials,
+    },
+    {
+      id: "operasional",
+      label: "Operasional & Kas Lapangan",
+      shortLabel: "Operasional",
+      desc: "Petty cash kru & checklist 14 poin",
+      icon: CheckSquare,
+      badge: isKru ? "Kru Utama" : null,
+      badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
+      show: true,
+    },
+    {
+      id: "kendaraan",
+      label: "Kendaraan",
+      shortLabel: "Kendaraan",
+      desc: "Armada bus, nomor polisi & pengemudi",
+      icon: Bus,
+      badge: null,
+      badgeColor: "",
+      show: true,
+    },
+    {
+      id: "rundown",
+      label: "Rundown Acara",
+      shortLabel: "Rundown",
+      desc: "Jadwal detail & timeline agenda perjalanan",
+      icon: Clock,
+      badge: null,
+      badgeColor: "",
+      show: true,
+    },
+    {
+      id: "catatan",
+      label: "Catatan",
+      shortLabel: "Catatan",
+      desc: "Briefing, notulensi & catatan kegiatan",
+      icon: StickyNote,
+      badge: null,
+      badgeColor: "",
+      show: true,
+    },
+    {
+      id: "dokumentasi",
+      label: "Dokumentasi",
+      shortLabel: "Dokumentasi",
+      desc: "Galeri foto & dokumentasi kegiatan",
+      icon: Camera,
+      badge: null,
+      badgeColor: "",
+      show: true,
+    },
+  ];
+
+  const visibleTabs = tabsConfig.filter((t) => t.show);
+  const activeTabConfig = visibleTabs.find((t) => t.id === activeTab) || visibleTabs[0] || tabsConfig[0];
+  const ActiveTabIcon = activeTabConfig.icon;
 
   const toggleNote = (id: string) => {
     setOpenNotes((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -274,79 +403,150 @@ const TripDetail = () => {
             {/* Baris Judul & Dropdown Menu di Pojok Atas */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight break-words capitalize">
+                <h1 className="text-base sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-snug capitalize break-normal hyphens-none">
                   {trip.nama_trip}
                 </h1>
               </div>
 
-              {/* Dropdown Menu Pojok Atas (Hemat Tempat) */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-bold text-xs gap-1.5 shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-700 flex-shrink-0 cursor-pointer"
-                  >
-                    <Menu className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                    <span>Menu Trip</span>
-                    <ChevronDown className="w-3 h-3 text-slate-400" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-50">
-                  <DropdownMenuLabel className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 py-1">
-                    Aksi & Operasional Trip
-                  </DropdownMenuLabel>
-                  
-                  <DropdownMenuItem
-                    onClick={() => setManifestModalOpen(true)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 transition-colors"
-                  >
-                    <Bus className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                    <span>Manifest Kursi Bus</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setBroadcastModalOpen(true)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-700 transition-colors"
-                  >
-                    <MessageSquare className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span>Broadcast WhatsApp</span>
-                  </DropdownMenuItem>
-
-                  {canPrintKwitansi && (
-                    <DropdownMenuItem
-                      onClick={() => setKwitansiModalOpen(true)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-700 transition-colors"
+              {/* Action Buttons di Pojok Kanan Atas: Unduh PDF & Aksi Cepat */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                {/* Tombol Utama: Unduh PDF Trip */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 shadow-2xs cursor-pointer"
                     >
-                      <Receipt className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                      <span>Cetak Kwitansi / Inv</span>
-                    </DropdownMenuItem>
-                  )}
-
-                  {canSeeFinancials && (
+                      <Download className="w-3.5 h-3.5 text-white" />
+                      <span className="hidden sm:inline">Unduh PDF</span>
+                      <span className="sm:hidden">PDF</span>
+                      <ChevronDown className="w-3 h-3 text-white/80" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60 p-1.5 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-50">
+                    <DropdownMenuLabel className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 py-1">
+                      Unduh Dokumen PDF Trip
+                    </DropdownMenuLabel>
+                    
                     <DropdownMenuItem
-                      onClick={() => setActiveTab("keuangan")}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-950/60 hover:text-teal-700 transition-colors"
+                      onClick={handleDownloadRundownPDF}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-700 transition-colors"
                     >
-                      <Wallet className="w-4 h-4 text-teal-600 flex-shrink-0" />
-                      <span>Buka Buku Kas Biro</span>
+                      <Clock className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <div>
+                        <div className="font-bold">PDF Rundown Acara Resmi</div>
+                        <div className="text-[10px] text-slate-400 font-normal">Jadwal kegiatan bertanda tangan</div>
+                      </div>
                     </DropdownMenuItem>
-                  )}
 
-                  {canEditNotes && (
-                    <>
-                      <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+                    <DropdownMenuItem
+                      onClick={() => setManifestModalOpen(true)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 transition-colors"
+                    >
+                      <Bus className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <div>
+                        <div className="font-bold">PDF Manifest Kursi Bus</div>
+                        <div className="text-[10px] text-slate-400 font-normal">Denah kursi & nama penumpang</div>
+                      </div>
+                    </DropdownMenuItem>
+
+                    {canPrintKwitansi && (
                       <DropdownMenuItem
-                        onClick={() => setEditTripDialogOpen(true)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 transition-colors"
+                        onClick={() => setKwitansiModalOpen(true)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-700 transition-colors"
                       >
-                        <Pencil className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                        <span>Edit Informasi Trip</span>
+                        <Receipt className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                        <div>
+                          <div className="font-bold">PDF Kwitansi / Invoice</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Kwitansi resmi dengan cap biro</div>
+                        </div>
                       </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    )}
+
+                    {canSeeFinancials && (
+                      <DropdownMenuItem
+                        onClick={handleDownloadLaporanTripPDF}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-950/60 hover:text-teal-700 transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                        <div>
+                          <div className="font-bold">PDF Laporan Keuangan Trip</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Rekap kas masuk, keluar & laba</div>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Dropdown Menu Aksi Trip */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-bold text-xs gap-1 shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                      title="Aksi Cepat Trip"
+                    >
+                      <span>Aksi</span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-50">
+                    <DropdownMenuLabel className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 py-1">
+                      Aksi & Operasional Trip
+                    </DropdownMenuLabel>
+                    
+                    <DropdownMenuItem
+                      onClick={() => setManifestModalOpen(true)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 transition-colors"
+                    >
+                      <Bus className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span>Manifest Kursi Bus</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => setBroadcastModalOpen(true)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-700 transition-colors"
+                    >
+                      <MessageSquare className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <span>Broadcast WhatsApp</span>
+                    </DropdownMenuItem>
+
+                    {canPrintKwitansi && (
+                      <DropdownMenuItem
+                        onClick={() => setKwitansiModalOpen(true)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-700 transition-colors"
+                      >
+                        <Receipt className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                        <span>Cetak Kwitansi / Inv</span>
+                      </DropdownMenuItem>
+                    )}
+
+                    {canSeeFinancials && (
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab("keuangan")}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-950/60 hover:text-teal-700 transition-colors"
+                      >
+                        <Wallet className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                        <span>Buka Buku Kas Biro</span>
+                      </DropdownMenuItem>
+                    )}
+
+                    {canEditNotes && (
+                      <>
+                        <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+                        <DropdownMenuItem
+                          onClick={() => setEditTripDialogOpen(true)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <span>Edit Informasi Trip</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             {/* Meta Badges Ringkas & Jelas */}
@@ -406,36 +606,38 @@ const TripDetail = () => {
           </div>
 
 
-          {/* Role-Adaptive Navbar Tabs */}
+          {/* Role-Adaptive Navbar Tabs (Pills Swipeable Native Style - Halus & Rapi) */}
           <Tabs key={role} value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="overflow-x-auto pb-1">
-              <TabsList className="inline-flex w-auto mb-5 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <TabsTrigger value="acuan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                  Perencanaan
-                </TabsTrigger>
-                {canSeeFinancials && (
-                  <TabsTrigger value="keuangan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                    Buku Kas Biro
-                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-extrabold">Owner</span>
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value="operasional" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                  Operasional & Kas Lapangan
-                  {isKru && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">Utama</span>}
-                </TabsTrigger>
-                <TabsTrigger value="kendaraan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                  Kendaraan
-                </TabsTrigger>
-                <TabsTrigger value="rundown" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                  Rundown
-                </TabsTrigger>
-                <TabsTrigger value="catatan" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                  Catatan
-                </TabsTrigger>
-                <TabsTrigger value="dokumentasi" className="text-xs font-bold px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs transition-all whitespace-nowrap">
-                  Dokumentasi
-                </TabsTrigger>
-              </TabsList>
+            {/* Navigasi Tab Swipeable Halus Tanpa Scrollbar Kasar */}
+            <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-1 mb-4">
+              {visibleTabs.map((tab) => {
+                const isCurrent = activeTab === tab.id;
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                      isCurrent
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isCurrent ? "text-white" : "text-blue-600"}`} />
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${
+                          isCurrent ? "bg-white/20 text-white" : tab.badgeColor
+                        }`}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab 1: Acuan / Catatan Sebelum Keberangkatan */}

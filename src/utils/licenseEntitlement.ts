@@ -77,6 +77,36 @@ const IMPERSONATED_TENANT_KEY = "catatbiro_impersonated_tenant_id_v1";
 // Mock bawaan data awal tenant untuk demo & pengujian langsung
 const DEFAULT_TENANTS: TenantRecord[] = [
   {
+    id: "tenant_069",
+    namaBiro: "69 Trans & Tour (PT Enam Sembilan Wisata Mandiri)",
+    slugBiro: "69-trans",
+    ownerNama: "H. Anjar Abidin, S.E.",
+    ownerEmail: "anjarbdn@gmail.com",
+    ownerPhone: "0812-2578-9000",
+    tier: "enterprise",
+    paymentModel: "lifetime",
+    status: "active",
+    canUseDesktopMode: true,
+    canExportCleanPdf: true,
+    canUseAI: true,
+    maxActiveTrips: 9999,
+    maxCrewMembers: 9999,
+    customBranding: true,
+    hasWebsite: true,
+    domainName: "69trans.id",
+    subdomain: "69trans.catatbiro.id",
+    vpsIp: "103.186.201.69",
+    domainExpiredAt: "2029-10-01",
+    hostingExpiredAt: "2029-10-01",
+    websiteStatus: "active",
+    nominalBayar: 3500000,
+    tanggalBayar: "2026-10-01",
+    statusPembayaran: "lunas",
+    catatan: "Biro Resmi Utama (PT Enam Sembilan Wisata Mandiri / 69 Trans) - Hak Akses Penuh Enterprise & Founder.",
+    createdAt: "2026-10-01T08:00:00Z",
+    updatedAt: "2026-10-01T08:00:00Z",
+  },
+  {
     id: "tenant_001",
     namaBiro: "Berkah Wisata Religi",
     slugBiro: "berkah-wisata",
@@ -496,14 +526,27 @@ export function getCurrentEntitlements(): EntitlementState {
  * Ambil daftar seluruh tenant dari database lokal / Supabase
  */
 export function getAllTenants(): TenantRecord[] {
-  if (typeof window === "undefined") return DEFAULT_TENANTS;
-  try {
-    const saved = localStorage.getItem(TENANTS_STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (err) {
-    console.warn("Failed to parse tenants", err);
+  let list: TenantRecord[] = DEFAULT_TENANTS;
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(TENANTS_STORAGE_KEY);
+      if (saved) {
+        list = JSON.parse(saved);
+      }
+    } catch (err) {
+      console.warn("Failed to parse tenants", err);
+    }
+
+    // Pastikan tenant_069 (69 Trans & Tour / PT Enam Sembilan) selalu ada di daftar
+    const has69 = list.some((t) => t.id === "tenant_069" || /69|enam\s*sembilan/i.test(t.namaBiro));
+    if (!has69) {
+      list.unshift(DEFAULT_TENANTS[0]);
+      try {
+        localStorage.setItem(TENANTS_STORAGE_KEY, JSON.stringify(list));
+      } catch {}
+    }
   }
-  return DEFAULT_TENANTS;
+  return list;
 }
 
 /**

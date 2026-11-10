@@ -32,7 +32,18 @@ import {
   Clock,
   Layers,
   HelpCircle,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportTripRundownPDF } from "@/utils/rundownExport";
+import { BusSeatManifestModal } from "@/components/BusSeatManifestModal";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { generateReportPDF } from "@/utils/reportPdfGenerator";
@@ -80,6 +91,8 @@ const Laporan = () => {
   const [showKwitansiDialog, setShowKwitansiDialog] = useState(false);
   const [defaultDocType, setDefaultDocType] = useState<"kwitansi" | "invoice">("invoice");
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [manifestModalOpen, setManifestModalOpen] = useState(false);
+  const [selectedManifestTrip, setSelectedManifestTrip] = useState<any | null>(null);
 
   // Arsip Dokumen Lokal (Kwitansi, Invoice, Laporan, Manifest)
   const [archivedDocs, setArchivedDocs] = useState<DownloadedDocRecord[]>([]);
@@ -337,6 +350,57 @@ const Laporan = () => {
     }
   };
 
+  const handleDownloadTripReportPDF = async (tripItem: any) => {
+    try {
+      toast.loading(`Membuat PDF Laporan ${tripItem.nama_trip}...`, { id: "gen-trip-pdf" });
+      const tripFinances = data.keuangan.filter((k: any) => k.trip_id === tripItem.id);
+      const doc = await generateReportPDF({
+        trips: [tripItem],
+        keuangan: tripFinances,
+        filterTripId: tripItem.id,
+        periodeText: `Laporan Keuangan Trip: ${tripItem.nama_trip} (${tripItem.tujuan || "-"})`,
+      });
+
+      const cleanTitle = (tripItem.nama_trip || "Trip").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const fileName = `Laporan_Trip_${cleanTitle}_${format(new Date(), "yyyyMMdd")}.pdf`;
+      await savePdf(doc, fileName);
+
+      try {
+        recordDownloadedDoc({
+          docType: "laporan",
+          nomorDokumen: `TRIP-${cleanTitle.slice(0, 10).toUpperCase()}-${format(new Date(), "yyyyMMdd")}`,
+          judul: `Laporan Finansial: ${tripItem.nama_trip}`,
+          namaKlienOrTrip: tripItem.nama_trip,
+          nominal: tripItem.saldo,
+          statusPembayaran: "Resmi",
+          fileName,
+        });
+        loadArchivedDocs();
+      } catch (e) {
+        console.warn("Gagal arsipkan download laporan trip:", e);
+      }
+
+      toast.dismiss("gen-trip-pdf");
+      toast.success(`Laporan PDF ${tripItem.nama_trip} berhasil diunduh!`);
+    } catch (err: any) {
+      toast.dismiss("gen-trip-pdf");
+      toast.error("Gagal membuat PDF: " + (err?.message || "Terjadi kesalahan"));
+    }
+  };
+
+  const handleDownloadTripRundownPDF = async (tripItem: any) => {
+    try {
+      toast.loading(`Membuat PDF Rundown ${tripItem.nama_trip}...`, { id: "gen-rundown-pdf" });
+      await exportTripRundownPDF(tripItem.id);
+      loadArchivedDocs();
+      toast.dismiss("gen-rundown-pdf");
+      toast.success(`Rundown PDF ${tripItem.nama_trip} berhasil diunduh!`);
+    } catch (err: any) {
+      toast.dismiss("gen-rundown-pdf");
+      toast.error(err?.message || "Gagal membuat PDF Rundown. Pastikan ada data rundown acara.");
+    }
+  };
+
   // Filter Kwitansi & Invoice Terbit
   const filteredInvoiceDocs = useMemo(() => {
     return archivedDocs.filter((doc) => {
@@ -432,70 +496,127 @@ const Laporan = () => {
       >
         <div className="min-h-screen bg-background pb-24 safe-top lg:pl-64 overflow-x-hidden font-sans">
           <div className="max-w-7xl mx-auto p-3.5 sm:p-5 lg:p-8 space-y-4">
-            {/* Header Laporan & Penjelasan Singkat */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600 shrink-0" />
-                    <span>Laporan & Dokumen Keuangan</span>
-                  </h1>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200">
-                    {roleName}
-                  </span>
+            {/* Header Laporan Bersih, Elegan & Jelas */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                      Laporan & Dokumen Keuangan
+                    </h1>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200">
+                      {roleName}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Rekap pembukuan laba/rugi biro, cetak dokumen PDF resmi, & penerbitan kwitansi pelanggan.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Pusat pembukuan laba rugi biro, penerbitan Kwitansi & Invoice pelanggan, serta arsip dokumen resmi.
-                </p>
-              </div>
 
-              {/* Action Buttons Header */}
-              <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
-                <Button
-                  type="button"
-                  onClick={() => setShowArchiveDialog(true)}
-                  variant="outline"
-                  className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1.5"
-                  size="sm"
-                  title="Buka Riwayat & Arsip Dokumen PDF yang Pernah Diunduh"
-                >
-                  <Archive className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Arsip PDF</span>
-                </Button>
-                {isPemilik && (
+                {/* Action Buttons Header: Rapi & Mudah Dipahami */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Dropdown Utama Unduh Dokumen PDF */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        className="h-9 px-3.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-xs cursor-pointer flex-1 sm:flex-initial"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Unduh PDF Resmi</span>
+                        <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64 p-1.5 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-50">
+                      <DropdownMenuLabel className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 py-1">
+                        Pilihan Unduh Dokumen PDF
+                      </DropdownMenuLabel>
+                      
+                      <DropdownMenuItem
+                        onClick={handleGeneratePDF}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <div>
+                          <div className="font-bold">PDF Rekap Keuangan Biro</div>
+                          <div className="text-[10px] text-slate-400 font-normal">
+                            Sesuai filter ({tripReports.length} trip aktif)
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setDefaultDocType("kwitansi");
+                          setShowKwitansiDialog(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 transition-colors"
+                      >
+                        <Receipt className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <div>
+                          <div className="font-bold">Cetak Kwitansi / Invoice</div>
+                          <div className="text-[10px] text-slate-400 font-normal">
+                            Buat bukti bayar resmi bertanda tangan
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => setShowArchiveDialog(true)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-700 transition-colors"
+                      >
+                        <Archive className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                        <div>
+                          <div className="font-bold">Riwayat Arsip PDF ({archivedDocs.length})</div>
+                          <div className="text-[10px] text-slate-400 font-normal">
+                            Buka file yang pernah diunduh
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+
+                      <DropdownMenuItem
+                        onClick={handleSharePDF}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 transition-colors"
+                      >
+                        <Share2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <span>Kirim Ringkasan ke WhatsApp</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Tombol Buat Invoice */}
+                  {isPemilik && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setDefaultDocType("invoice");
+                        setShowKwitansiDialog(true);
+                      }}
+                      variant="outline"
+                      className="h-9 px-3 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Buat KWT / Inv</span>
+                    </Button>
+                  )}
+
+                  {/* Tombol Arsip */}
                   <Button
                     type="button"
-                    onClick={() => {
-                      setDefaultDocType("invoice");
-                      setShowKwitansiDialog(true);
-                    }}
+                    onClick={() => setShowArchiveDialog(true)}
                     variant="outline"
-                    className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1.5 text-blue-600 dark:text-blue-400"
-                    size="sm"
+                    className="h-9 px-2.5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 gap-1"
+                    title="Buka Arsip PDF"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Buat Invoice / KWT</span>
+                    <Archive className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="hidden sm:inline">Arsip</span>
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  onClick={handleSharePDF}
-                  variant="outline"
-                  className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-1.5"
-                  size="sm"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Kirim WA</span>
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleGeneratePDF}
-                  className="col-span-2 sm:col-span-1 h-9 px-4 text-xs font-bold rounded-xl gradient-primary text-white gap-1.5 shadow-xs"
-                  size="sm"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Unduh PDF Resmi</span>
-                </Button>
+                </div>
               </div>
             </div>
 
@@ -853,49 +974,127 @@ const Laporan = () => {
                               </div>
                             </div>
 
-                            {/* Baris Bawah: Breakdown Omset vs Beban & Tombol Detail */}
-                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
-                              <div className="flex items-center gap-3 sm:gap-6 min-w-0 text-[11px]">
+                            {/* Baris Bawah: Breakdown Omset vs Beban & Tombol Unduh PDF Lengkap */}
+                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                              <div className="flex items-center gap-4 sm:gap-6 min-w-0 text-[11px]">
                                 <div>
-                                  <span className="text-slate-400 block text-[9px] uppercase">Omset</span>
-                                  <span className="font-bold text-emerald-600 truncate block">
+                                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Omset</span>
+                                  <span className="font-extrabold text-emerald-600 truncate block">
                                     {formatRupiah(t.pemasukan)}
                                   </span>
                                 </div>
                                 <div>
-                                  <span className="text-slate-400 block text-[9px] uppercase">Beban</span>
-                                  <span className="font-bold text-rose-600 truncate block">
+                                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Beban</span>
+                                  <span className="font-extrabold text-rose-600 truncate block">
                                     {formatRupiah(t.pengeluaran)}
                                   </span>
                                 </div>
-                                <div className="hidden sm:block">
-                                  <span className="text-slate-400 block text-[9px] uppercase">Transaksi</span>
-                                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t.trxCount} data
+                                <div>
+                                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Laba</span>
+                                  <span className={`font-black truncate block ${isProfit ? "text-emerald-600" : "text-rose-600"}`}>
+                                    {formatRupiah(t.saldo)}
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 shrink-0">
+                              {/* Action Buttons di Tiap Trip: DOWNLOAD PDF JELAS, TAGIH/KWT, BUKA TRIP */}
+                              <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap">
+                                {/* Tombol Utama Download PDF Trip */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="h-8 px-2.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-2xs cursor-pointer"
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                      <span>Unduh PDF</span>
+                                      <ChevronDown className="w-3 h-3 opacity-70" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-60 p-1.5 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-50">
+                                    <DropdownMenuLabel className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 py-1">
+                                      Unduh Dokumen PDF Trip Ini
+                                    </DropdownMenuLabel>
+                                    
+                                    <DropdownMenuItem
+                                      onClick={() => handleDownloadTripReportPDF(t)}
+                                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 transition-colors"
+                                    >
+                                      <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                      <div>
+                                        <div className="font-bold">PDF Laporan Keuangan</div>
+                                        <div className="text-[10px] text-slate-400 font-normal">Omset, beban & laba trip ini</div>
+                                      </div>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() => handleDownloadTripRundownPDF(t)}
+                                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-700 transition-colors"
+                                    >
+                                      <Clock className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                      <div>
+                                        <div className="font-bold">PDF Rundown Acara</div>
+                                        <div className="text-[10px] text-slate-400 font-normal">Jadwal kegiatan resmi</div>
+                                      </div>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedManifestTrip(t);
+                                        setManifestModalOpen(true);
+                                      }}
+                                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-700 transition-colors"
+                                    >
+                                      <Bus className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                                      <div>
+                                        <div className="font-bold">PDF Manifest Kursi Bus</div>
+                                        <div className="text-[10px] text-slate-400 font-normal">Denah kursi & nama penumpang</div>
+                                      </div>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedTripId(t.id);
+                                        setDefaultDocType("kwitansi");
+                                        setShowKwitansiDialog(true);
+                                      }}
+                                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 transition-colors"
+                                    >
+                                      <Receipt className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                      <div>
+                                        <div className="font-bold">Cetak Kwitansi / Invoice</div>
+                                        <div className="text-[10px] text-slate-400 font-normal">Kwitansi resmi bertanda tangan</div>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                {/* Tombol Kwitansi Cepat */}
                                 <Button
                                   type="button"
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => {
                                     setSelectedTripId(t.id);
-                                    setDefaultDocType("invoice");
+                                    setDefaultDocType("kwitansi");
                                     setShowKwitansiDialog(true);
                                   }}
-                                  className="h-7 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg gap-1"
+                                  className="h-8 px-2.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 gap-1"
                                 >
-                                  <Receipt className="w-3 h-3" />
-                                  <span>Tagih / KWT</span>
+                                  <Receipt className="w-3.5 h-3.5 text-amber-600" />
+                                  <span className="hidden sm:inline">Kwitansi</span>
+                                  <span className="sm:hidden">KWT</span>
                                 </Button>
+
+                                {/* Tombol Buka Detail Trip */}
                                 <Link
                                   to={`/trips/${t.id}`}
-                                  className="text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:text-blue-600 flex items-center gap-1"
+                                  className="h-8 px-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl flex items-center gap-1 transition-colors"
                                 >
-                                  <span>Buka Trip</span>
+                                  <span>Buka</span>
                                   <ArrowRight className="w-3 h-3" />
                                 </Link>
                               </div>
@@ -1308,6 +1507,22 @@ const Laporan = () => {
             open={showArchiveDialog}
             onOpenChange={setShowArchiveDialog}
           />
+
+          {/* Modal Manifest Kursi Bus dari Daftar Trip Laporan */}
+          {selectedManifestTrip && (
+            <BusSeatManifestModal
+              open={manifestModalOpen}
+              onOpenChange={setManifestModalOpen}
+              tripId={selectedManifestTrip.id}
+              tripInfo={{
+                nama_trip: selectedManifestTrip.nama_trip,
+                tujuan: selectedManifestTrip.tujuan,
+                nama_kendaraan: selectedManifestTrip.nama_kendaraan,
+                nomor_polisi: selectedManifestTrip.nomor_polisi,
+                nama_driver: selectedManifestTrip.nama_driver,
+              }}
+            />
+          )}
 
           <BottomNav />
         </div>

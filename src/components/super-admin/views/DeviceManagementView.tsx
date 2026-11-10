@@ -22,6 +22,7 @@ import {
   revokeDeviceSession,
   revokeAllTenantDevices,
   resetDefaultDevices,
+  clearMockDevices,
 } from "@/utils/superAdminDevices";
 import {
   Smartphone,
@@ -113,9 +114,17 @@ export const DeviceManagementView: React.FC<DeviceManagementViewProps> = ({
   };
 
   const handleResetSeed = () => {
-    if (confirm("Reset seluruh data perangkat ke seed awal?")) {
+    if (confirm("Reset seluruh data perangkat ke seed simulasi awal?")) {
       resetDefaultDevices();
-      toast.success("Data perangkat berhasil di-reset");
+      toast.success("Data perangkat simulasi berhasil di-reset");
+      onRefresh();
+    }
+  };
+
+  const handleClearMock = () => {
+    if (confirm("Hapus semua data simulasi (dummy)? Hanya perangkat asli Anda yang sedang login yang akan tersimpan.")) {
+      clearMockDevices();
+      toast.success("Data simulasi dihapus! Hanya perangkat asli yang ditampilkan.");
       onRefresh();
     }
   };
@@ -134,7 +143,7 @@ export const DeviceManagementView: React.FC<DeviceManagementViewProps> = ({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header Info */}
-      <div className="p-6 bg-white rounded-2xl border border-slate-200 space-y-2 shadow-xs">
+      <div className="p-6 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-200">
@@ -155,15 +164,42 @@ export const DeviceManagementView: React.FC<DeviceManagementViewProps> = ({
             </div>
           </div>
 
-          <Button
-            onClick={handleResetSeed}
-            variant="outline"
-            size="sm"
-            className="text-xs border-slate-300 bg-white hover:bg-slate-50 text-slate-700 h-9 rounded-xl flex items-center gap-1.5 shadow-xs"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Reset Data Seed
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              onClick={handleClearMock}
+              variant="outline"
+              size="sm"
+              className="text-xs border-amber-300 bg-amber-50/70 hover:bg-amber-100 text-amber-800 h-9 rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="Hapus data simulasi dummy dan sisakan hanya perangkat nyata yang login"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-amber-600" />
+              Hapus Data Dummy
+            </Button>
+
+            <Button
+              onClick={handleResetSeed}
+              variant="outline"
+              size="sm"
+              className="text-xs border-slate-300 bg-white hover:bg-slate-50 text-slate-700 h-9 rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="Kembalikan contoh simulasi multi-biro"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Reset Data Seed
+            </Button>
+          </div>
+        </div>
+
+        {/* Banner Penjelasan Data Asli vs Dummy */}
+        <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 flex items-start gap-2.5">
+          <ShieldCheck className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <div className="font-bold text-blue-950">Status Data & Keamanan Sesi:</div>
+            <div className="text-slate-600 leading-relaxed">
+              • Perangkat HP / Laptop fisik Anda saat ini <strong>otomatis terdeteksi</strong> di baris teratas dengan label <span className="inline-block px-1.5 py-0.2 bg-blue-600 text-white rounded font-bold text-[10px]">PERANGKAT ANDA SAAT INI</span>.<br />
+              • Daftar lain (Samsung S24 Ultra, Macbook Pro, Oppo Reno, dll.) adalah <strong>data simulasi/dummy</strong> bawaan untuk demonstrasi pengujian multi-biro.<br />
+              • Label merah <strong>SESI DIPUTUS</strong> pada Xiaomi Redmi 9 adalah contoh hasil tindakan <em>Revoke</em> (pemutusan sesi paksa) terhadap kru lapangan yang dicurigai.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -249,9 +285,11 @@ export const DeviceManagementView: React.FC<DeviceManagementViewProps> = ({
             <Card
               key={dev.id}
               className={`p-4 rounded-2xl border transition-all shadow-xs ${
-                dev.status === "active"
+                dev.isCurrentDevice
+                  ? "bg-blue-50/40 border-blue-400 ring-2 ring-blue-500/20 shadow-sm"
+                  : dev.status === "active"
                   ? "bg-white border-slate-200 hover:border-slate-300"
-                  : "bg-slate-50 border-rose-200 opacity-90"
+                  : "bg-rose-50/30 border-rose-200 opacity-90"
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -259,27 +297,51 @@ export const DeviceManagementView: React.FC<DeviceManagementViewProps> = ({
                 <div className="flex items-start gap-3.5">
                   <div
                     className={`p-3 rounded-xl border flex-shrink-0 ${
-                      dev.status === "active"
-                        ? "bg-slate-50 border-slate-200"
-                        : "bg-rose-50 border-rose-200"
+                      dev.isCurrentDevice
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                        : dev.status === "active"
+                        ? "bg-slate-50 border-slate-200 text-slate-700"
+                        : "bg-rose-50 border-rose-200 text-rose-600"
                     }`}
                   >
-                    {getDeviceIcon(dev.deviceType)}
+                    {dev.isCurrentDevice ? (
+                      <Laptop className="w-5 h-5 text-white" />
+                    ) : (
+                      getDeviceIcon(dev.deviceType)
+                    )}
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="text-sm font-bold text-slate-900">{dev.deviceName}</h4>
+
+                      {dev.isCurrentDevice && (
+                        <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none text-[10px] font-black px-2 py-0.5">
+                          PERANGKAT ANDA SAAT INI
+                        </Badge>
+                      )}
+
                       {dev.status === "active" ? (
                         <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] flex items-center gap-1 font-mono font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                           ONLINE AKTIF
                         </Badge>
                       ) : (
-                        <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-mono font-medium">
-                          SESI DIPUTUS
+                        <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-mono font-medium" title="Sesi perangkat ini telah diblokir/diputus oleh Super Admin">
+                          SESI DIPUTUS (AKSES BLOKIR)
                         </Badge>
                       )}
+
+                      {dev.isMockData ? (
+                        <Badge variant="outline" className="text-[10px] font-mono text-amber-700 border-amber-300 bg-amber-50">
+                          Data Simulasi
+                        </Badge>
+                      ) : !dev.isCurrentDevice ? (
+                        <Badge variant="outline" className="text-[10px] font-mono text-emerald-700 border-emerald-300 bg-emerald-50">
+                          Perangkat Real
+                        </Badge>
+                      ) : null}
+
                       <Badge variant="outline" className="text-[10px] font-mono text-slate-600 border-slate-200 bg-slate-50">
                         {dev.os} • {dev.browser}
                       </Badge>

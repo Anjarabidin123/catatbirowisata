@@ -21,9 +21,13 @@ import {
   ArrowRight,
   LogOut,
   Building2,
+  ShieldCheck,
+  UserCheck,
+  ArrowRightLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useRole } from "@/contexts/RoleContext";
 
 interface SandboxTesterViewProps {
   tenants: TenantRecord[];
@@ -32,6 +36,15 @@ interface SandboxTesterViewProps {
 
 export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, onRefresh }) => {
   const navigate = useNavigate();
+  const {
+    role,
+    toggleRole,
+    isPemilik,
+    isKru,
+    activeCrew,
+    switchActiveCrew,
+    crewList,
+  } = useRole();
   const [currentPerspective, setCurrentPerspective] = useState<TesterPerspective>(getActivePerspective());
   const impersonatedTenantId = getImpersonatedTenantId();
   const impersonatedTenant = tenants.find((t) => t.id === impersonatedTenantId);
@@ -238,6 +251,83 @@ export const SandboxTesterView: React.FC<SandboxTesterViewProps> = ({ tenants, o
           );
         })}
       </div>
+
+      {/* Simulasi Roleplay Lapangan (RBAC): Pemilik Biro vs Kru Lapangan */}
+      <Card className="p-5 sm:p-6 rounded-2xl border-2 border-amber-300 bg-amber-50/50 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-amber-100 text-amber-700 border border-amber-300">
+              {isPemilik ? (
+                <ShieldCheck className="w-6 h-6 text-amber-600" />
+              ) : (
+                <UserCheck className="w-6 h-6 text-emerald-600" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                  Simulasi Role Operasional: {isPemilik ? "Pemilik Biro (Owner)" : activeCrew.nama}
+                </h3>
+                <Badge
+                  className={`text-[10px] font-black uppercase font-mono ${
+                    isPemilik
+                      ? "bg-amber-100 text-amber-900 border-amber-300"
+                      : "bg-emerald-100 text-emerald-900 border-emerald-300"
+                  }`}
+                >
+                  {role}
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                {isPemilik
+                  ? "Akses penuh: kas & laba, invoice, monitor kru & device login"
+                  : `${activeCrew.jabatan} • Fokus lapangan, kas saku TL & checklist`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={toggleRole}
+              className={`h-9 px-4 rounded-xl text-xs font-bold gap-2 shadow-sm ${
+                isPemilik
+                  ? "bg-slate-900 hover:bg-slate-800 text-white"
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
+              }`}
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+              <span>Ganti ke Mode {isPemilik ? "Kru Lapangan" : "Pemilik Biro"}</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Pemilih Personel Kru jika sedang di mode Kru */}
+        {isKru && crewList.length > 0 && (
+          <div className="p-3 bg-white rounded-xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                Persona Kru yang Disimulasikan:
+              </span>
+              <p className="text-[11px] text-slate-500">
+                Uji pembatasan data trip dan hak akses yang hanya ditugaskan ke kru ini.
+              </p>
+            </div>
+            <select
+              value={activeCrew.crewId}
+              onChange={(e) => switchActiveCrew(e.target.value)}
+              className="h-9 px-3 rounded-lg text-xs font-bold bg-white border border-emerald-300 text-slate-900 min-w-[200px]"
+            >
+              {crewList.map((c) => (
+                <option key={c.id} value={c.id}>
+                  👤 {c.nama} ({c.jabatan})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </Card>
 
       <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-4">
         <div className="text-xs text-slate-600">

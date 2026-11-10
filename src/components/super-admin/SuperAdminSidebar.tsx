@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { SUPER_ADMIN_EMAIL } from "@/utils/licenseEntitlement";
 import { getActiveUserSync } from "@/utils/authHelper";
+import { useRole } from "@/contexts/RoleContext";
+import { ShieldCheck, UserCheck, ArrowRightLeft } from "lucide-react";
 
 export interface SuperAdminNavGroup {
   title: string;
@@ -57,6 +59,16 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
   className = "",
   onClose,
 }) => {
+  const {
+    role,
+    toggleRole,
+    isPemilik,
+    isKru,
+    activeCrew,
+    switchActiveCrew,
+    crewList,
+  } = useRole();
+
   const navGroups: SuperAdminNavGroup[] = [
     {
       title: "Pusat Kontrol",
@@ -285,6 +297,66 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
           </div>
         ))}
       </nav>
+
+      {/* Simulator Mode Role (Pemilik vs Kru Lapangan) khusus Super Admin */}
+      <div className="p-3 mx-3 my-2 rounded-2xl border-2 border-amber-300/80 bg-amber-50/70 shadow-xs">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {isPemilik ? (
+              <ShieldCheck className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            ) : (
+              <UserCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            )}
+            <span className="text-xs font-black text-slate-900 tracking-tight truncate">
+              {isPemilik ? "Pemilik Biro (Owner)" : activeCrew.nama}
+            </span>
+          </div>
+          <Badge
+            variant="outline"
+            className={`text-[9px] px-1.5 py-0 h-4 font-black border uppercase tracking-wider flex-shrink-0 ${
+              isPemilik
+                ? "bg-amber-100 text-amber-900 border-amber-300"
+                : "bg-emerald-100 text-emerald-900 border-emerald-300"
+            }`}
+          >
+            {role}
+          </Badge>
+        </div>
+
+        <p className="text-[10px] font-medium text-slate-600 leading-snug mb-2">
+          {isPemilik
+            ? "Akses penuh: kas & laba, invoice, monitor kru & device login"
+            : `${activeCrew.jabatan} • Fokus lapangan, kas saku TL & checklist`}
+        </p>
+
+        {/* Pemilih Identitas Kru saat Mode Kru aktif */}
+        {isKru && crewList.length > 0 && (
+          <div className="mb-2">
+            <select
+              value={activeCrew.crewId}
+              onChange={(e) => switchActiveCrew(e.target.value)}
+              aria-label="Pilih Personel Kru Aktif"
+              className="w-full h-7 px-2 rounded-lg text-[11px] font-bold bg-white border border-emerald-300 text-slate-800"
+            >
+              {crewList.map((c) => (
+                <option key={c.id} value={c.id}>
+                  👤 {c.nama} ({c.jabatan})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={toggleRole}
+          className="w-full h-7 text-[11px] font-bold bg-white hover:bg-amber-100/60 border-amber-300 text-slate-900 gap-1.5 shadow-xs"
+        >
+          <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600" />
+          <span>Ganti ke Mode {isPemilik ? "Kru Lapangan" : "Pemilik Biro"}</span>
+        </Button>
+      </div>
 
       {/* Bottom Footer: Back to Client App */}
       <div className="p-3 border-t-2 border-slate-200 bg-slate-50 space-y-2">

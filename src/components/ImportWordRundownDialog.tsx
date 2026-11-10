@@ -27,15 +27,17 @@ import {
   Trash2,
   FileCheck,
   AlertCircle,
-  Copy,
-  Check,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
+import { useTouchReorder } from "@/hooks/useTouchReorder";
 import {
   ParsedRundownItem,
   extractWordDocument,
-  extractTextFromWordFile,
   summarizeWordRundownWithAI,
   batchSaveRundownToTrip,
 } from "@/utils/wordRundownParser";
@@ -69,6 +71,23 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [parsedItems, setParsedItems] = useState<ParsedRundownItem[]>([]);
+
+  // Reorder hook for touch long-press & desktop drag
+  const {
+    draggingIndex,
+    moveUp,
+    moveDown,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+  } = useTouchReorder<ParsedRundownItem>({
+    items: parsedItems,
+    onReorder: (newItems) => setParsedItems(newItems),
+    longPressMs: 200,
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,9 +171,6 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
         },
         mode === "upload" ? extractedHtml : undefined
       );
-
-
-
 
       if (items.length === 0) {
         toast.warning("Tidak ditemukan jadwal waktu pada dokumen ini.");
@@ -241,9 +257,9 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 sm:p-6 font-sans">
-        <DialogHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
-          <DialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+      <DialogContent className="w-[96vw] max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl p-4 sm:p-6 font-sans">
+        <DialogHeader className="pb-3 border-b border-slate-200 dark:border-slate-800 pr-8 sm:pr-10">
+          <DialogTitle className="text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white leading-tight">
             <FileText className="w-5 h-5 text-blue-600" />
             <span>Import Rundown dari Dokumen Word (.docx)</span>
           </DialogTitle>
@@ -363,7 +379,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
               <span className="text-[11px] text-slate-500 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5 text-blue-600" />
                 Format waktu di dokumen akan dinormalisasi ke format HH:MM.
@@ -373,7 +389,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                 type="button"
                 onClick={handleProcessDocument}
                 disabled={isProcessing}
-                className="h-9 px-4 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5"
+                className="w-full sm:w-auto h-10 sm:h-9 px-4 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-sm cursor-pointer"
               >
                 {isProcessing ? (
                   <>
@@ -390,7 +406,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
             </div>
           </div>
 
-          {/* 3. Pratinjau Hasil Ekstraksi (Editable Table) */}
+          {/* 3. Pratinjau Hasil Ekstraksi (Editable Table dengan Drag & Drop Reorder) */}
           {parsedItems.length > 0 && (
             <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -416,10 +432,151 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                 </Button>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left border-collapse text-xs">
+              {/* Panduan Sentuh & Geser (Long-Press Drag & Drop) */}
+              <div className="p-2.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50/70 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-900/60 text-xs text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span className="text-[11px] leading-relaxed">
+                  <strong>Pindah Nomor Urut:</strong> Tekan agak lama kartu/gagang (⠿) lalu geser ke atas/bawah, atau gunakan tombol panah (▲ / ▼) untuk geser cepat.
+                </span>
+              </div>
+
+              {/* TAMPILAN MOBILE: Kartu Per Jadwal (100% Responsif & Drag Reorder) */}
+              <div className="sm:hidden space-y-2.5">
+                {parsedItems.map((item, idx) => {
+                  const isDragging = draggingIndex === idx;
+                  const isFirst = idx === 0;
+                  const isLast = idx === parsedItems.length - 1;
+
+                  return (
+                    <div
+                      key={item.id || idx}
+                      data-reorder-idx={idx}
+                      draggable
+                      onDragStart={(e) => handleDragStart(idx, e)}
+                      onDragOver={(e) => handleDragOver(idx, e)}
+                      onDragEnd={handleDragEnd}
+                      onTouchStart={(e) => handleTouchStart(idx, e)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      className={`p-3 rounded-2xl border transition-all duration-150 space-y-2 relative select-none ${
+                        isDragging
+                          ? "scale-[1.02] shadow-xl border-blue-500 bg-blue-50/95 dark:bg-blue-950/90 ring-2 ring-blue-400 z-20"
+                          : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1.5">
+                        {/* Gagang Sentuh & Nomor Urut */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <div
+                            className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-200/60 touch-none"
+                            title="Tekan agak lama & geser urutan"
+                          >
+                            <GripVertical className="w-4 h-4" />
+                          </div>
+                          <span className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[11px] font-black inline-flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                        </div>
+
+                        {/* Input Hari ke- */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] font-bold text-slate-500">H-</span>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={30}
+                            value={item.hari_ke}
+                            onChange={(e) =>
+                              handleItemChange(idx, "hari_ke", parseInt(e.target.value, 10) || 1)
+                            }
+                            className="h-7 w-11 text-center text-xs font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 px-1"
+                          />
+                        </div>
+
+                        {/* Input Jam Mulai - Selesai */}
+                        <div className="flex items-center gap-1">
+                          <Input
+                            value={item.jam_mulai}
+                            onChange={(e) => handleItemChange(idx, "jam_mulai", e.target.value)}
+                            className="h-7 w-14 text-center text-xs font-mono font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 px-1"
+                            placeholder="08:00"
+                          />
+                          <span className="text-xs text-slate-400 font-bold">-</span>
+                          <Input
+                            value={item.jam_selesai}
+                            onChange={(e) => handleItemChange(idx, "jam_selesai", e.target.value)}
+                            className="h-7 w-14 text-center text-xs font-mono font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 px-1"
+                            placeholder="09:00"
+                          />
+                        </div>
+
+                        {/* Tombol Geser Panah (▲ / ▼) & Hapus */}
+                        <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
+                          <button
+                            type="button"
+                            disabled={isFirst}
+                            onClick={() => moveUp(idx)}
+                            className={`p-1 rounded-md transition-colors ${
+                              isFirst
+                                ? "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                                : "text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer"
+                            }`}
+                            title="Geser ke atas"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isLast}
+                            onClick={() => moveDown(idx)}
+                            className={`p-1 rounded-md transition-colors ${
+                              isLast
+                                ? "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                                : "text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer"
+                            }`}
+                            title="Geser ke bawah"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(idx)}
+                            className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors ml-0.5 cursor-pointer"
+                            title="Hapus baris ini"
+                          >
+                            <Trash2 className="w-4 h-4 text-rose-500" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Input
+                          value={item.judul_acara}
+                          onChange={(e) => handleItemChange(idx, "judul_acara", e.target.value)}
+                          className="h-8 text-xs font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                          placeholder="Nama kegiatan / destinasi..."
+                        />
+                      </div>
+
+                      <div>
+                        <Input
+                          value={item.keterangan || ""}
+                          onChange={(e) => handleItemChange(idx, "keterangan", e.target.value)}
+                          className="h-7 text-xs text-slate-600 dark:text-slate-300 rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                          placeholder="Keterangan / instruksi rombongan (opsional)..."
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* TAMPILAN DESKTOP: Tabel Kompak Lebar */}
+              <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="w-full min-w-[650px] text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
+                      <th className="py-2.5 px-3 w-16 text-center">Urutan</th>
                       <th className="py-2.5 px-3 w-16">Hari</th>
                       <th className="py-2.5 px-3 w-24">Mulai</th>
                       <th className="py-2.5 px-3 w-24">Selesai</th>
@@ -430,7 +587,48 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {parsedItems.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                      <tr
+                        key={item.id || idx}
+                        data-reorder-idx={idx}
+                        draggable
+                        onDragStart={(e) => handleDragStart(idx, e)}
+                        onDragOver={(e) => handleDragOver(idx, e)}
+                        onDragEnd={handleDragEnd}
+                        className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
+                          draggingIndex === idx ? "bg-blue-50/90 dark:bg-blue-950/70" : ""
+                        }`}
+                      >
+                        <td className="p-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <span
+                              className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-blue-600 p-0.5"
+                              title="Tarik untuk memindahkan urutan"
+                            >
+                              <GripVertical className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="w-5 h-5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 text-[10px] font-black inline-flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <div className="flex flex-col -space-y-1">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => moveUp(idx)}
+                                className="text-slate-400 hover:text-blue-600 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ChevronUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === parsedItems.length - 1}
+                                onClick={() => moveDown(idx)}
+                                className="text-slate-400 hover:text-blue-600 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ChevronDown className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
                         <td className="p-2">
                           <Input
                             type="number"
@@ -479,7 +677,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                           <button
                             type="button"
                             onClick={() => handleDeleteItem(idx)}
-                            className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors"
+                            className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer"
                             title="Hapus baris"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -497,12 +695,12 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                   Pastikan jadwal sudah sesuai sebelum dimasukkan ke database trip.
                 </p>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => onOpenChange(false)}
-                    className="h-9 text-xs rounded-lg font-medium"
+                    className="h-10 sm:h-9 text-xs rounded-xl font-semibold order-2 sm:order-1 cursor-pointer"
                   >
                     Batal
                   </Button>
@@ -510,7 +708,7 @@ export const ImportWordRundownDialog: React.FC<ImportWordRundownDialogProps> = (
                     type="button"
                     onClick={handleSaveToTrip}
                     disabled={isSaving}
-                    className="h-9 px-5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-sm"
+                    className="h-10 sm:h-9 px-5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm order-1 sm:order-2 cursor-pointer"
                   >
                     {isSaving ? (
                       <>

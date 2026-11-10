@@ -58,6 +58,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUser } from "@/utils/authHelper";
 import { getLocalBiroProfile, formatLegalitasBiro } from "@/utils/biroProfile";
+import { drawDigitalStamp, ensureTransparentImage } from "@/utils/stampPdfHelper";
 import { logCrewActivity } from "@/utils/rbacAuditLogger";
 import { useRole } from "@/contexts/RoleContext";
 import {
@@ -540,29 +541,45 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
       import("jspdf"),
       import("jspdf-autotable"),
     ]);
-    const profile = getLocalBiroProfile();
+    let profile = getLocalBiroProfile();
+
+    // Otomatis bersihkan latar stempel & tanda tangan agar transparan murni & auto-crop (tidak kurus)
+    if (profile.logo_url && !profile.logo_url.endsWith(".svg")) {
+      const cleaned = await ensureTransparentImage(profile.logo_url);
+      if (cleaned) profile = { ...profile, logo_url: cleaned };
+    }
+    if (profile.stempel_custom_image_url) {
+      const cleaned = await ensureTransparentImage(profile.stempel_custom_image_url);
+      if (cleaned) profile = { ...profile, stempel_custom_image_url: cleaned };
+    }
+    if (profile.tanda_tangan_url) {
+      const cleaned = await ensureTransparentImage(profile.tanda_tangan_url);
+      if (cleaned) profile = { ...profile, tanda_tangan_url: cleaned };
+    }
+
     const doc = new jsPDFClass({ orientation: "portrait", unit: "mm", format: "a4" });
 
-    // Kop Resmi Biro (AHU, NIB, & Garis Ganda)
+    // Kop Resmi Biro (AHU, NIB, & Garis Ganda) - Dinaikkan presisi ke atas
     const legalitasText = formatLegalitasBiro(profile);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
+    doc.setFontSize(18); // Diperbesar dari 14 ke 18 agar gagah
     doc.setTextColor(15, 44, 89);
-    let curY = 13;
+    let curY = 5; // Dinaikkan presisi ke atas
     doc.text(profile.nama_biro.toUpperCase(), 105, curY, { align: "center" });
     curY += 4.5;
 
     if (legalitasText) {
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
+      doc.setFontSize(8.5);
       doc.setTextColor(30, 41, 59);
       doc.text(legalitasText.toUpperCase(), 105, curY, { align: "center" });
-      curY += 4;
+      curY += 3.8;
     } else if (profile.slogan) {
       doc.setFontSize(8.5);
-      doc.setFont("helvetica", "normal");
-      doc.text(profile.slogan, 105, curY, { align: "center" });
-      curY += 4;
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 58, 138);
+      doc.text(profile.slogan.toUpperCase(), 105, curY, { align: "center" });
+      curY += 3.8;
     }
 
     if (profile.alamat || profile.telepon) {
@@ -574,17 +591,17 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         profile.telepon ? `CP/WA: ${profile.telepon}` : null,
       ].filter(Boolean).join("  |  ");
       doc.text(infoKontak, 105, curY, { align: "center" });
-      curY += 3.5;
+      curY += 3.6;
     }
 
-    const lineY = curY + 1;
+    const lineY = curY + 1.2;
     doc.setLineWidth(1.2);
     doc.setDrawColor(15, 44, 89);
     doc.line(14, lineY, 196, lineY);
     doc.setLineWidth(0.35);
-    doc.line(14, lineY + 1.2, 196, lineY + 1.2);
+    doc.line(14, lineY + 1.1, 196, lineY + 1.1);
 
-    const titleY = lineY + 7;
+    const titleY = lineY + 5;
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
@@ -657,6 +674,44 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
       },
       margin: { left: 14, right: 14 },
     });
+
+    // Blok Pengesahan Resmi (Tanda Tangan & Stempel Biro)
+    const finalTableY = (doc as any).lastAutoTable?.finalY || (titleY + 100);
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let signY = finalTableY + 8;
+    if (signY > pageHeight - 40) {
+      doc.addPage();
+      signY = 20;
+    }
+
+    const tglManifest = format(new Date(), "dd MMMM yyyy", { locale: (await import("date-fns/locale")).id });
+    const kotaPimpinan = profile.kota_tanda_tangan || (profile.alamat?.includes("Demak") ? "Demak" : "Indonesia");
+    const colRight = pageWidth - 46;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`${kotaPimpinan}, ${tglManifest}`, colRight, signY, { align: "center" });
+    doc.setFont("helvetica", "bold");
+    doc.text(profile.nama_biro || "Catat Biro Wisata", colRight, signY + 4, { align: "center" });
+
+    // TTD & Stempel - posisi stempel di kiri, menimpa separuh kiri TTD, sejajar vertikal
+    if (profile.tanda_tangan_url) {
+      try {
+        doc.addImage(profile.tanda_tangan_url, "PNG", colRight - 8, signY + 7, 26, 14);
+      } catch (e) {}
+    }
+    drawDigitalStamp(doc, colRight - 7, signY + 14, profile, "VERIFIED", 11);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(profile.pimpinan || "H. Anjar Abidin, S.E.", colRight, signY + 27, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(profile.jabatan_penandatangan || "Pimpinan Operasional", colRight, signY + 31, { align: "center" });
 
     const pdfFilename = `MANIFEST_KURSI_BUS_${tripInfo?.nama_trip?.replace(/\s+/g, "_") || "TRIP"}.pdf`;
     void savePdf(doc, pdfFilename);
@@ -800,10 +855,10 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-3xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl p-3 sm:p-5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 shadow-2xl z-50">
+      <DialogContent className="w-[95vw] max-w-[calc(100vw-16px)] sm:max-w-3xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden min-w-0 rounded-2xl sm:rounded-3xl p-3 sm:p-5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 shadow-2xl z-50">
         {/* Header Modal Rapi (Dengan pr-8 agar tidak menabrak tombol X di mobile) */}
-        <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-2.5 pr-8">
-          <div className="flex items-center gap-2">
+        <DialogHeader className="text-left border-b border-slate-200 dark:border-slate-800 pb-2.5 pr-10 sm:pr-12 min-w-0 w-full">
+          <div className="flex items-center gap-2 min-w-0 w-full">
             <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
               <Bus className="w-4 h-4" />
             </div>
@@ -823,12 +878,12 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           </div>
 
           {/* Baris Selector Preset & Tombol Atur Denah */}
-          <div className="flex items-center gap-1.5 mt-2">
+          <div className="flex items-center gap-1.5 mt-2 min-w-0 w-full">
             <Select
               value={busConfig.layout}
               onValueChange={(val: any) => handlePresetChange(val)}
             >
-              <SelectTrigger className="h-8 text-xs font-bold rounded-xl flex-1 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+              <SelectTrigger className="h-8 text-xs font-bold rounded-xl flex-1 min-w-0 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 truncate">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1012,9 +1067,9 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         {/* ========================================================
             TOOLBAR COMPACT: PENCARIAN & AKSI RAPI (TIDAK PENUH DI HP)
             ======================================================== */}
-        <div className="mt-2 p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-1.5">
+        <div className="mt-2 p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-1.5 min-w-0 w-full max-w-full">
           {/* Baris 1: Pencarian & Kuota Terisi */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0 w-full">
             <div className="relative flex-1">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input
@@ -1031,7 +1086,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           </div>
 
           {/* Baris 2: Toolbar Aksi Rapi (Dropdown Dropdown/Pills) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar min-w-0 w-full max-w-full">
             {/* Input file Word tersembunyi */}
             <input
               type="file"
@@ -1154,7 +1209,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
         {/* ========================================================
             VISUAL SKETSA KABIN BUS (PAS DENGAN LORONG PROPORSIONAL)
             ======================================================== */}
-        <div className="mt-2.5 overflow-x-auto p-1 flex justify-center no-scrollbar">
+        <div className="mt-2.5 overflow-x-auto p-1 flex justify-center no-scrollbar min-w-0 w-full max-w-full">
           <div
             ref={busCabinRef}
             className="w-fit max-w-full mx-auto rounded-2xl sm:rounded-3xl border-3 sm:border-4 border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-950 p-2.5 sm:p-4 shadow-xl relative space-y-2.5 sm:space-y-3"
@@ -1387,7 +1442,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           MODAL PREVIEW IMPORT (WORD / FOTO / PASTE)
           ======================================================== */}
       <Dialog open={importPreviewOpen} onOpenChange={setImportPreviewOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-4 sm:p-6 z-[80]">
+        <DialogContent className="w-[95vw] max-w-[calc(100vw-16px)] sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-4 sm:p-6 z-[80]">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-blue-600" />
@@ -1460,7 +1515,7 @@ export const BusSeatManifestModal: React.FC<BusSeatManifestModalProps> = ({
           MODAL QUICK PASTE TEKS (DARI WHATSAPP / EXCEL)
           ======================================================== */}
       <Dialog open={quickPasteOpen} onOpenChange={setQuickPasteOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-5 z-[80]">
+        <DialogContent className="w-[95vw] max-w-[calc(100vw-16px)] sm:max-w-md rounded-3xl p-4 sm:p-5 z-[80]">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <ClipboardPaste className="w-5 h-5 text-blue-600" />

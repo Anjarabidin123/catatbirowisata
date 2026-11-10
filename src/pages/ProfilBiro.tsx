@@ -28,7 +28,6 @@ import {
   ArrowLeft,
   Save,
   FileText,
-  Wallet,
   Bus,
   UtensilsCrossed,
   Plus,
@@ -53,7 +52,15 @@ import {
   Loader2,
   ShieldAlert,
   ChevronLeft,
+  Stamp,
+  Palette,
+  Check,
+  RotateCw,
+  RotateCcw,
+  Wand2,
+  Sliders,
 } from "lucide-react";
+import { processSignatureOrStampImage } from "@/utils/imageTransparencyHelper";
 import { CreateSupportTicketModal } from "@/components/CreateSupportTicketModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { KopSuratBiro } from "@/components/KopSuratBiro";
@@ -61,13 +68,14 @@ import {
   getLocalBiroProfile,
   saveBiroProfile,
   uploadBiroLogo,
+  uploadBiroStempel,
+  uploadBiroTtd,
   BiroProfile,
 } from "@/utils/biroProfile";
 import {
   getBiroCmsData,
   saveBiroCmsData,
   BiroCmsData,
-  CmsKategoriItem,
   RekananBus,
   RekananResto,
 } from "@/utils/biroCmsStore";
@@ -82,14 +90,112 @@ import { clearAuthCache, getActiveUserSync, safeLogout } from "@/utils/authHelpe
 
 type SettingsSection =
   | "kop"
+  | "stempel"
   | "identitas"
   | "bank"
   | "bus"
   | "resto"
-  | "kategori"
   | "lisensi"
   | "ai"
   | "bantuan";
+
+export const STEMPEL_COLOR_PRESETS = [
+  { name: "Biru Dokumen Resmi", hex: "#2563eb", bg: "bg-blue-600" },
+  { name: "Ungu Kantor & Pos", hex: "#7c3aed", bg: "bg-purple-600" },
+  { name: "Merah Pelunasan Kas", hex: "#dc2626", bg: "bg-red-600" },
+  { name: "Hijau Verifikasi Sah", hex: "#059669", bg: "bg-emerald-600" },
+  { name: "Biru Dongker Navy", hex: "#1e3a8a", bg: "bg-slate-900" },
+];
+
+interface DigitalStampPreviewProps {
+  profile: BiroProfile;
+  size?: number;
+  className?: string;
+  statusOverride?: string;
+}
+
+export const DigitalStampPreview: React.FC<DigitalStampPreviewProps> = ({
+  profile,
+  size = 130,
+  className = "",
+  statusOverride,
+}) => {
+  const isCustom = profile.stempel_mode === "custom" && profile.stempel_custom_image_url;
+  const color = profile.stempel_warna || "#2563eb";
+  const teksAtas = (profile.stempel_teks_atas || profile.nama_biro || "BIRO WISATA").substring(0, 22).toUpperCase();
+  const teksTengah = (statusOverride || profile.stempel_teks_tengah || "LUNAS").toUpperCase();
+  const teksBawah = (profile.stempel_teks_bawah || "OFFICIAL VERIFIED").substring(0, 24).toUpperCase();
+
+  if (isCustom) {
+    return (
+      <div
+        className={`relative inline-flex items-center justify-center select-none ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <img
+          src={profile.stempel_custom_image_url!}
+          alt="Stempel Basah Biro"
+          className="w-full h-full object-contain drop-shadow-xs"
+        />
+      </div>
+    );
+  }
+
+  const uid = React.useId().replace(/:/g, "");
+  const topPathId = `stampTop_${uid}`;
+  const bottomPathId = `stampBottom_${uid}`;
+
+  return (
+    <div
+      className={`relative inline-flex items-center justify-center select-none drop-shadow-xs ${className}`}
+      style={{ width: size, height: size, color }}
+    >
+      <svg
+        viewBox="0 0 160 160"
+        className="w-full h-full"
+        style={{ overflow: "visible" }}
+      >
+        <defs>
+          <path id={topPathId} d="M 22,80 A 58,58 0 0,1 138,80" fill="none" />
+          <path id={bottomPathId} d="M 24,80 A 56,56 0 0,0 136,80" fill="none" />
+        </defs>
+        {/* Lingkaran Luar */}
+        <circle cx="80" cy="80" r="74" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.92" />
+        {/* Lingkaran Dalam */}
+        <circle cx="80" cy="80" r="66" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.92" />
+        {/* Teks Atas */}
+        <text fill="currentColor" fontSize="10" fontWeight="bold" letterSpacing="0.8">
+          <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">
+            {teksAtas}
+          </textPath>
+        </text>
+        {/* Bintang Dekorasi Kiri & Kanan */}
+        <text x="21" y="83" fill="currentColor" fontSize="8" textAnchor="middle">★</text>
+        <text x="139" y="83" fill="currentColor" fontSize="8" textAnchor="middle">★</text>
+        {/* Banner Status Tengah */}
+        <rect x="14" y="66" width="132" height="28" rx="4" fill="currentColor" />
+        <text
+          x="80"
+          y="85"
+          fill="#ffffff"
+          fontSize="12"
+          fontWeight="900"
+          letterSpacing="1.5"
+          textAnchor="middle"
+          dominantBaseline="middle"
+        >
+          {teksTengah}
+        </text>
+        {/* Teks Bawah */}
+        <text fill="currentColor" fontSize="8" fontWeight="bold" letterSpacing="0.8">
+          <textPath href={`#${bottomPathId}`} startOffset="50%" textAnchor="middle">
+            {teksBawah}
+          </textPath>
+        </text>
+      </svg>
+    </div>
+  );
+};
 
 export const ProfilBiro: React.FC = () => {
   const navigate = useNavigate();
@@ -113,12 +219,23 @@ export const ProfilBiro: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingStempel, setUploadingStempel] = useState(false);
+  const [uploadingTtd, setUploadingTtd] = useState(false);
+  const stempelInputRef = useRef<HTMLInputElement>(null);
+  const ttdInputRef = useRef<HTMLInputElement>(null);
+
+  // Image Editor Studio State (Pembersih Background Transparan & Rotasi TTD / Stempel)
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [editingTarget, setEditingTarget] = useState<"ttd" | "stempel">("ttd");
+  const [rawEditorSrc, setRawEditorSrc] = useState<string>("");
+  const [editorRotation, setEditorRotation] = useState<number>(0);
+  const [editorThreshold, setEditorThreshold] = useState<number>(195);
+  const [editorTintColor, setEditorTintColor] = useState<"original" | "black" | "blue">("black");
+  const [processedPreviewUrl, setProcessedPreviewUrl] = useState<string>("");
 
   // Forms
   const [newBus, setNewBus] = useState({ namaPO: "", kontakPerson: "", telepon: "", alamatGarasi: "", catatanArmada: "" });
   const [newResto, setNewResto] = useState({ namaResto: "", lokasiRute: "", kontakPerson: "", telepon: "", hargaPerPax: 30000, menuFavorit: "" });
-  const [newKatNama, setNewKatNama] = useState("");
-  const [newKatJenis, setNewKatJenis] = useState<"pemasukan" | "pengeluaran">("pengeluaran");
 
   // Gemini AI Key Security
   const [apiKey, setApiKey] = useState(getStoredApiKey() || "");
@@ -166,6 +283,147 @@ export const ProfilBiro: React.FC = () => {
     } finally {
       setUploadingLogo(false);
     }
+  };
+
+  // Upload Gambar Stempel Basah
+  const handleStempelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Harap pilih berkas gambar stempel (PNG/JPG)");
+      return;
+    }
+
+    try {
+      setUploadingStempel(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        // Buka langsung di studio agar bisa hapus background kertas & diputar
+        openImageEditor("stempel", dataUrl);
+        setUploadingStempel(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      toast.error("Gagal membaca stempel: " + (err.message || "Gagal"));
+      setUploadingStempel(false);
+    } finally {
+      if (stempelInputRef.current) stempelInputRef.current.value = "";
+    }
+  };
+
+  // Upload Coretan Tanda Tangan
+  const handleTtdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Harap pilih berkas gambar tanda tangan (PNG/JPG)");
+      return;
+    }
+
+    try {
+      setUploadingTtd(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        // Buka langsung di studio agar user bisa memutar jika menceng dan membersihkan background
+        openImageEditor("ttd", dataUrl);
+        setUploadingTtd(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      toast.error("Gagal membaca tanda tangan: " + (err.message || "Gagal"));
+      setUploadingTtd(false);
+    } finally {
+      if (ttdInputRef.current) ttdInputRef.current.value = "";
+    }
+  };
+
+  // Buka editor studio untuk TTD atau Stempel
+  const openImageEditor = (target: "ttd" | "stempel", src: string) => {
+    setEditingTarget(target);
+    setRawEditorSrc(src);
+    setEditorRotation(0);
+    setEditorThreshold(195);
+    setEditorTintColor(target === "ttd" ? "black" : "original");
+    setShowImageEditor(true);
+  };
+
+  // Efek real-time saat slider atau rotasi diubah di studio
+  useEffect(() => {
+    if (!showImageEditor || !rawEditorSrc) return;
+    let cancelled = false;
+    processSignatureOrStampImage(rawEditorSrc, {
+      rotationDeg: editorRotation,
+      threshold: editorThreshold,
+      tintColor: editorTintColor,
+    }).then((res) => {
+      if (!cancelled) setProcessedPreviewUrl(res);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showImageEditor, rawEditorSrc, editorRotation, editorThreshold, editorTintColor]);
+
+  // Rotasi bertahap (putar 90 derajat)
+  const handleRotate = (degDelta: number) => {
+    setEditorRotation((prev) => ((prev + degDelta) % 360 + 360) % 360);
+  };
+
+  // Terapkan hasil bersih & simpan
+  const handleApplyProcessedImage = async () => {
+    if (!processedPreviewUrl) return;
+    try {
+      setSaving(true);
+      let updated: BiroProfile;
+      if (editingTarget === "ttd") {
+        updated = {
+          ...profile,
+          tanda_tangan_url: processedPreviewUrl,
+        };
+      } else {
+        updated = {
+          ...profile,
+          stempel_custom_image_url: processedPreviewUrl,
+          stempel_mode: "custom",
+        };
+      }
+      setProfile(updated);
+      await saveBiroProfile(updated);
+      setShowImageEditor(false);
+      toast.success(
+        editingTarget === "ttd"
+          ? "Tanda tangan berhasil dibuat transparan dan diluruskan!"
+          : "Stempel basah berhasil dibersihkan dari latar kertas!"
+      );
+    } catch (err: any) {
+      toast.error("Gagal menyimpan hasil: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveStempelImage = async () => {
+    const updated: BiroProfile = {
+      ...profile,
+      stempel_custom_image_url: null,
+      stempel_mode: "otomatis",
+    };
+    setProfile(updated);
+    await saveBiroProfile(updated);
+    toast.success("Stempel custom dihapus. Beralih ke stempel vektor digital.");
+  };
+
+  const handleRemoveTtdImage = async () => {
+    const updated: BiroProfile = {
+      ...profile,
+      tanda_tangan_url: null,
+    };
+    setProfile(updated);
+    await saveBiroProfile(updated);
+    toast.success("Gambar tanda tangan pimpinan dihapus.");
   };
 
   // Simpan Profil
@@ -222,24 +480,6 @@ export const ProfilBiro: React.FC = () => {
     toast.success(`Rumah makan "${item.namaResto}" berhasil ditambahkan!`);
   };
 
-  // Tambah Kategori Kas
-  const handleAddKategori = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newKatNama.trim()) return;
-    const item: CmsKategoriItem = {
-      id: "kat_" + Date.now(),
-      nama: newKatNama,
-      jenis: newKatJenis,
-      deskripsi: "",
-      isDefault: false,
-    };
-    const updated = { ...cmsData, kategoriKeuangan: [...cmsData.kategoriKeuangan, item] };
-    setCmsData(updated);
-    saveBiroCmsData(updated);
-    setNewKatNama("");
-    toast.success(`Pos anggaran "${item.nama}" berhasil ditambahkan!`);
-  };
-
   // Hapus Bus
   const handleDeleteBus = (id: string) => {
     const updated = { ...cmsData, rekananBus: cmsData.rekananBus.filter((b) => b.id !== id) };
@@ -254,14 +494,6 @@ export const ProfilBiro: React.FC = () => {
     setCmsData(updated);
     saveBiroCmsData(updated);
     toast.success("Rumah makan dihapus dari katalog");
-  };
-
-  // Hapus Pos Kategori Anggaran
-  const handleDeleteKategori = (id: string) => {
-    const updated = { ...cmsData, kategoriKeuangan: cmsData.kategoriKeuangan.filter((k) => k.id !== id) };
-    setCmsData(updated);
-    saveBiroCmsData(updated);
-    toast.success("Pos anggaran berhasil dihapus");
   };
 
   // Simpan API Key AI
@@ -397,6 +629,20 @@ export const ProfilBiro: React.FC = () => {
                       onChange={handleLogoUpload}
                       className="hidden"
                     />
+                    <input
+                      ref={stempelInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleStempelUpload}
+                      className="hidden"
+                    />
+                    <input
+                      ref={ttdInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleTtdUpload}
+                      className="hidden"
+                    />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -459,6 +705,40 @@ export const ProfilBiro: React.FC = () => {
                       <div className="min-w-0">
                         <div className="text-xs font-semibold">Kop Surat & Cetak PDF</div>
                         <div className="text-[11px] text-slate-400 truncate">Pratinjau A4 dokumen resmi</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => selectSection("stempel")}
+                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                      activeSection === "stempel" && !mobileViewActive
+                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                        style={{
+                          backgroundColor: `${profile.stempel_warna || "#2563eb"}15`,
+                          color: profile.stempel_warna || "#2563eb",
+                        }}
+                      >
+                        <Stamp className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold flex items-center gap-1.5">
+                          Stempel & Tanda Tangan
+                          {profile.stempel_custom_image_url ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Stempel custom aktif" />
+                          ) : null}
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          Cap biro resmi, warna tinta & TTD
+                        </div>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -556,29 +836,6 @@ export const ProfilBiro: React.FC = () => {
                         <div className="text-xs font-semibold">Rekanan Rumah Makan</div>
                         <div className="text-[11px] text-slate-400 truncate">
                           {cmsData.rekananResto.length} Resto rute terdaftar
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => selectSection("kategori")}
-                    className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition-colors ${
-                      activeSection === "kategori" && !mobileViewActive
-                        ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-900 dark:text-white"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-                        <Wallet className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold">Pos Anggaran Kas</div>
-                        <div className="text-[11px] text-slate-400 truncate">
-                          {cmsData.kategoriKeuangan.length} kategori pemasukan/pengeluaran
                         </div>
                       </div>
                     </div>
@@ -796,6 +1053,45 @@ export const ProfilBiro: React.FC = () => {
                               <span className="font-bold text-slate-900">Rp 45.000.000 (Lunas)</span>
                             </div>
                           </div>
+
+                          {/* AREA TANDA TANGAN & STEMPEL KWITANSI CONTOH */}
+                          <div className="flex justify-end pt-2 pb-1">
+                            <div className="text-center relative min-w-[170px] select-none">
+                              <div className="text-[9px] text-slate-500 font-medium">
+                                {profile.kota_tanda_tangan || "Demak"}, {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                              </div>
+                              <div className="text-[10px] font-bold text-slate-800">
+                                {profile.nama_biro}
+                              </div>
+                              <div className="relative h-16 flex items-center justify-center my-0.5">
+                                {profile.tanda_tangan_url ? (
+                                  <img
+                                    src={profile.tanda_tangan_url}
+                                    alt="TTD"
+                                    className="max-h-12 max-w-[90px] object-contain pointer-events-none z-10"
+                                  />
+                                ) : (
+                                  <div className="text-[8px] text-slate-300 italic">
+                                    ( Tanda Tangan )
+                                  </div>
+                                )}
+                                <div
+                                  className="absolute top-1/2 left-1/2 pointer-events-none z-20 mix-blend-multiply"
+                                  style={{ transform: "translate(-56%, -48%) rotate(-8deg)" }}
+                                >
+                                  <DigitalStampPreview profile={profile} size={68} />
+                                </div>
+                              </div>
+                              <div className="border-t border-slate-300 pt-0.5">
+                                <div className="text-[9px] font-bold text-slate-800 underline">
+                                  {profile.pimpinan || "H. Anjar Abidin, S.E."}
+                                </div>
+                                <div className="text-[8px] text-slate-400">
+                                  {profile.jabatan_penandatangan || "Pimpinan / Manajemen Keuangan"}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         {/* FOOTER INFORMASI REKENING RESMI */}
@@ -960,6 +1256,503 @@ export const ProfilBiro: React.FC = () => {
                         </Button>
                       </div>
                     </form>
+                  </div>
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------- */}
+              {/* SECTION: STEMPEL RESMI & TANDA TANGAN DOKUMEN                 */}
+              {/* ------------------------------------------------------------- */}
+              {activeSection === "stempel" && (
+                <div className="space-y-6">
+                  {/* Header Workspace */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <Stamp className="w-5 h-5 text-blue-600" />
+                          Pengaturan Stempel Biro & Tanda Tangan Resmi
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Atur format cap stempel digital otomatis atau unggah file scan stempel basah asli untuk dicetak pada Kwitansi & Invoice PDF.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveProfile()}
+                        disabled={saving}
+                        className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-8 px-4 rounded-xl flex-shrink-0"
+                      >
+                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                        Simpan Pengaturan
+                      </Button>
+                    </div>
+
+                    {/* LIVE INTERACTIVE REALISTIC DOCUMENT PREVIEW */}
+                    <div className="mt-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          Pratinjau Nyata di Kertas Dokumen (Kwitansi & Invoice)
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          Simulasi Cetak PDF Asli
+                        </span>
+                      </div>
+
+                      {/* SIMULASI AREA TANDA TANGAN & STEMPEL DI ATAS KERTAS */}
+                      <div className="bg-white text-slate-900 border border-slate-300 rounded-2xl p-6 sm:p-8 shadow-sm max-w-md mx-auto text-center relative overflow-hidden">
+                        {/* Watermark grid tipis khas kertas dokumen */}
+                        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
+
+                        {/* Tanggal & Tempat Dokumen */}
+                        <div className="relative text-xs text-slate-600 font-medium">
+                          {profile.kota_tanda_tangan || "Demak"}, {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                        </div>
+
+                        {/* Nama Biro */}
+                        <div className="relative text-sm font-bold text-slate-900 mt-1 tracking-wide">
+                          {profile.nama_biro}
+                        </div>
+
+                        {/* AREA STEMPEL & TANDA TANGAN BERPADU (AUTHENTIC OVERLAY) */}
+                        <div className="relative h-32 flex items-center justify-center my-2">
+                          {/* Tanda Tangan Basah Gambar (Jika Ada) - Posisi di sisi kanan */}
+                          {profile.tanda_tangan_url ? (
+                            <img
+                              src={profile.tanda_tangan_url}
+                              alt="Tanda Tangan Pimpinan"
+                              className="max-h-24 max-w-[170px] object-contain select-none pointer-events-none z-10 translate-x-5 sm:translate-x-6"
+                            />
+                          ) : (
+                            <div className="text-xs text-slate-300 italic select-none translate-x-5 sm:translate-x-6">
+                              ( Area Tanda Tangan Pimpinan )
+                            </div>
+                          )}
+
+                          {/* Stempel Digital / Basah - Posisi di sisi kiri, menimpa separuh kiri tanda tangan secara proporsional */}
+                          <div
+                            className="absolute top-1/2 left-1/2 pointer-events-none z-20 mix-blend-multiply transition-all duration-200"
+                            style={{
+                              transform: "translate(-68%, -50%) rotate(-7deg)",
+                            }}
+                          >
+                            <DigitalStampPreview profile={profile} size={118} />
+                          </div>
+                        </div>
+
+                        {/* Garis & Nama Terang Pimpinan */}
+                        <div className="relative pt-1 border-t border-slate-300 max-w-[220px] mx-auto">
+                          <div className="text-xs font-bold text-slate-900 underline decoration-slate-400 underline-offset-4">
+                            {profile.pimpinan || "H. Anjar Abidin, S.E."}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-1">
+                            {profile.jabatan_penandatangan || "Pimpinan / Manajemen Keuangan"}
+                          </div>
+                        </div>
+
+                        <div className="relative mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[10px] text-emerald-600 font-medium">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          Dokumen Resmi Terverifikasi Sah Secara Digital
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* FORM EDIT PENGATURAN STEMPEL */}
+                    <div className="mt-8 space-y-6">
+                      {/* 1. PILIHAN TIPE STEMPEL */}
+                      <div className="space-y-3">
+                        <Label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                          1. Model / Jenis Stempel
+                        </Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setProfile({ ...profile, stempel_mode: "otomatis" })}
+                            className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                              profile.stempel_mode !== "custom"
+                                ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 ring-2 ring-blue-600/20"
+                                : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                            }`}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Sparkles className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold flex items-center gap-1.5">
+                                Stempel Vektor Otomatis
+                                {profile.stempel_mode !== "custom" && (
+                                  <Badge className="bg-blue-600 text-white text-[9px] px-1.5 py-0">Aktif</Badge>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                Digenerate otomatis sistem dengan lingkaran ganda resmi, tajam, dan teks yang bisa disesuaikan.
+                              </p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!profile.stempel_custom_image_url) {
+                                stempelInputRef.current?.click();
+                              } else {
+                                setProfile({ ...profile, stempel_mode: "custom" });
+                              }
+                            }}
+                            className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                              profile.stempel_mode === "custom"
+                                ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-600/20"
+                                : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                            }`}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Camera className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold flex items-center gap-1.5">
+                                Unggah Stempel Basah Asli
+                                {profile.stempel_mode === "custom" && (
+                                  <Badge className="bg-emerald-600 text-white text-[9px] px-1.5 py-0">Aktif</Badge>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                Unggah hasil scan/foto cap stempel fisik kantor Anda (format PNG transparan disarankan).
+                              </p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 2. PENGATURAN WARNA TINTA STEMPEL (JIKA VEKTOR) */}
+                      <div className="space-y-3 pt-2">
+                        <Label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <Palette className="w-4 h-4 text-slate-500" />
+                          2. Warna Tinta Stempel
+                        </Label>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                          {STEMPEL_COLOR_PRESETS.map((c) => {
+                            const isSelected = (profile.stempel_warna || "#2563eb").toLowerCase() === c.hex.toLowerCase();
+                            return (
+                              <button
+                                key={c.hex}
+                                type="button"
+                                onClick={() => setProfile({ ...profile, stempel_warna: c.hex })}
+                                className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all ${
+                                  isSelected
+                                    ? "border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 shadow-xs"
+                                    : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                }`}
+                              >
+                                <span
+                                  className="w-4 h-4 rounded-full flex-shrink-0 border border-black/10 flex items-center justify-center text-white text-[10px]"
+                                  style={{ backgroundColor: c.hex }}
+                                >
+                                  {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                </span>
+                                <span>{c.name.split(" ")[0]}</span>
+                              </button>
+                            );
+                          })}
+
+                          {/* Custom Color Input */}
+                          <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+                            <span className="text-[11px] text-slate-500">Kustom:</span>
+                            <input
+                              type="color"
+                              value={profile.stempel_warna || "#2563eb"}
+                              onChange={(e) => setProfile({ ...profile, stempel_warna: e.target.value })}
+                              className="w-8 h-8 rounded-lg cursor-pointer border border-slate-300 dark:border-slate-700 bg-transparent p-0.5"
+                              title="Pilih warna kustom"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. PENGATURAN TEKS STEMPEL VEKTOR */}
+                      <div className="space-y-4 pt-2">
+                        <Label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                          3. Teks Tulisan Stempel
+                        </Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">Teks Lingkar Atas</Label>
+                              <button
+                                type="button"
+                                onClick={() => setProfile({ ...profile, stempel_teks_atas: profile.nama_biro })}
+                                className="text-[10px] text-blue-600 hover:underline"
+                              >
+                                Samakan Nama Biro
+                              </button>
+                            </div>
+                            <Input
+                              value={profile.stempel_teks_atas ?? profile.nama_biro}
+                              onChange={(e) => setProfile({ ...profile, stempel_teks_atas: e.target.value })}
+                              placeholder="69 TRANS & TOUR"
+                              className="text-xs uppercase font-semibold"
+                            />
+                            <p className="text-[10px] text-slate-400">
+                              Maks 22 karakter di busur atas lingkaran
+                            </p>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Teks Kotak Tengah</Label>
+                            <Input
+                              value={profile.stempel_teks_tengah || "LUNAS"}
+                              onChange={(e) => setProfile({ ...profile, stempel_teks_tengah: e.target.value })}
+                              placeholder="LUNAS"
+                              className="text-xs uppercase font-bold"
+                            />
+                            {/* Quick selection chips */}
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {["LUNAS", "TERVERIFIKASI", "OFFICIAL", "PAID"].map((tag) => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => setProfile({ ...profile, stempel_teks_tengah: tag })}
+                                  className={`text-[9px] px-2 py-0.5 rounded-md border transition-colors ${
+                                    (profile.stempel_teks_tengah || "LUNAS") === tag
+                                      ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900"
+                                      : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                  }`}
+                                >
+                                  {tag}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Teks Lingkar Bawah</Label>
+                            <Input
+                              value={profile.stempel_teks_bawah || "OFFICIAL VERIFIED"}
+                              onChange={(e) => setProfile({ ...profile, stempel_teks_bawah: e.target.value })}
+                              placeholder="OFFICIAL VERIFIED"
+                              className="text-xs uppercase font-semibold"
+                            />
+                            {/* Quick selection chips */}
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {["OFFICIAL VERIFIED", "MANAJEMEN KEUANGAN", "DEMAK - JATENG"].map((tag) => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => setProfile({ ...profile, stempel_teks_bawah: tag })}
+                                  className={`text-[9px] px-2 py-0.5 rounded-md border transition-colors ${
+                                    (profile.stempel_teks_bawah || "OFFICIAL VERIFIED") === tag
+                                      ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900"
+                                      : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                  }`}
+                                >
+                                  {tag}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. UNGGAH STEMPEL BASAH FISIK (OPSI SCAN GAMBAR) */}
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                              <Camera className="w-4 h-4 text-slate-600 dark:text-slate-300 flex-shrink-0" />
+                              Berkas Gambar Stempel Basah (Scan PNG)
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              Jika biro Anda memiliki cap stempel fisik, unggah fotonya di sini.
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            {profile.stempel_custom_image_url && (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openImageEditor("stempel", profile.stempel_custom_image_url!)}
+                                  className="text-xs h-8 px-2.5 font-bold border-blue-300 text-blue-700 bg-blue-50/60 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 flex-1 sm:flex-none gap-1"
+                                  title="Bersihkan latar belakang kertas stempel agar transparan"
+                                >
+                                  <Wand2 className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>Bersihkan</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleRemoveStempelImage}
+                                  className="text-xs h-8 px-2.5 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40 flex-1 sm:flex-none gap-1"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Hapus</span>
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => stempelInputRef.current?.click()}
+                              disabled={uploadingStempel}
+                              className="text-xs h-8 px-3 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 flex-1 sm:flex-none gap-1"
+                            >
+                              {uploadingStempel ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Camera className="w-3.5 h-3.5" />
+                              )}
+                              <span>{profile.stempel_custom_image_url ? "Ganti" : "Unggah Stempel"}</span>
+                            </Button>
+                          </div>
+                        </div>
+
+                        {profile.stempel_custom_image_url && (
+                          <div className="flex items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <div className="relative w-12 h-12 flex-shrink-0 bg-[repeating-conic-gradient(#e2e8f0_0%_25%,#ffffff_0%_50%)] [background-size:8px_8px] rounded-lg p-1 border border-slate-300 flex items-center justify-center overflow-hidden">
+                              <img
+                                src={profile.stempel_custom_image_url}
+                                alt="Thumbnail Stempel"
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            <div className="text-xs text-slate-600 dark:text-slate-300 min-w-0 flex-1">
+                              <span className="font-semibold text-emerald-600 flex items-center gap-1 truncate">
+                                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" /> Berkas Stempel Terunggah
+                              </span>
+                              <span className="text-[11px] text-slate-400 block truncate">
+                                Mode: {profile.stempel_mode === "custom" ? "Menggunakan Stempel Gambar Ini" : "Menggunakan Stempel Vektor"}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 5. PENGATURAN TANDA TANGAN & PIMPINAN */}
+                      <div className="space-y-4 pt-2">
+                        <Label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                          4. Identitas Penandatangan & Tanda Tangan Digital
+                        </Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Nama Terang Penandatangan *</Label>
+                            <Input
+                              value={profile.pimpinan || ""}
+                              onChange={(e) => setProfile({ ...profile, pimpinan: e.target.value })}
+                              placeholder="H. Anjar Abidin, S.E."
+                              className="text-xs font-semibold"
+                              required
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Jabatan Penandatangan</Label>
+                            <Input
+                              value={profile.jabatan_penandatangan || "Pimpinan / Manajemen Keuangan"}
+                              onChange={(e) => setProfile({ ...profile, jabatan_penandatangan: e.target.value })}
+                              placeholder="Pimpinan / Manajemen Keuangan"
+                              className="text-xs"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Kota Penerbitan Dokumen</Label>
+                            <Input
+                              value={profile.kota_tanda_tangan || "Demak"}
+                              onChange={(e) => setProfile({ ...profile, kota_tanda_tangan: e.target.value })}
+                              placeholder="Demak"
+                              className="text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Opsi Unggah Coretan Tanda Tangan */}
+                        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 flex flex-col gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {profile.tanda_tangan_url ? (
+                              <div className="relative w-16 h-12 flex-shrink-0 bg-[repeating-conic-gradient(#e2e8f0_0%_25%,#ffffff_0%_50%)] [background-size:8px_8px] rounded-lg p-1 border border-slate-300 flex items-center justify-center overflow-hidden">
+                                <img
+                                  src={profile.tanda_tangan_url}
+                                  alt="Coretan TTD"
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 flex-shrink-0">
+                                ✍️
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                Coretan Tanda Tangan Asli (Opsional)
+                              </div>
+                              <p className="text-[11px] text-slate-500 line-clamp-2">
+                                {profile.tanda_tangan_url
+                                  ? "Tanda tangan aktif. Jika menceng atau masih ada latar kertas, klik tombol 'Bersihkan & Putar'."
+                                  : "Foto tanda tangan di atas kertas. Sistem akan otomatis membersihkan background kertas dan meluruskannya."}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 w-full pt-1">
+                            {profile.tanda_tangan_url && (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openImageEditor("ttd", profile.tanda_tangan_url!)}
+                                  className="flex-1 sm:flex-none text-xs h-8 px-3 font-bold border-blue-400 text-blue-700 bg-blue-50/80 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950/60 dark:text-blue-300 gap-1.5 shadow-2xs"
+                                  title="Putar tanda tangan yang menceng dan hapus background kertas menjadi transparan"
+                                >
+                                  <Wand2 className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>Bersihkan & Putar TTD</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleRemoveTtdImage}
+                                  className="text-xs h-8 px-2.5 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40 flex-1 sm:flex-none gap-1"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Hapus TTD</span>
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => ttdInputRef.current?.click()}
+                              disabled={uploadingTtd}
+                              className="text-xs h-8 px-3 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 flex-1 sm:flex-none gap-1"
+                            >
+                              {uploadingTtd ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Camera className="w-3.5 h-3.5" />
+                              )}
+                              <span>{profile.tanda_tangan_url ? "Ganti Tanda Tangan" : "Unggah Tanda Tangan"}</span>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tombol Simpan Bawah */}
+                      <div className="flex flex-col sm:flex-row justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <Button
+                          type="button"
+                          onClick={() => handleSaveProfile()}
+                          disabled={saving}
+                          className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs h-9 px-5 rounded-xl shadow-xs"
+                        >
+                          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                          Simpan Pengaturan Stempel & TTD
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1458,91 +2251,6 @@ export const ProfilBiro: React.FC = () => {
               )}
 
               {/* ------------------------------------------------------------- */}
-              {/* 6. SECTION: POS ANGGARAN KAS                                  */}
-              {/* ------------------------------------------------------------- */}
-              {activeSection === "kategori" && (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
-                  <div className="border-b border-slate-100 dark:border-slate-800 pb-5">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Wallet className="w-5 h-5 text-emerald-600" />
-                      Kategori Pos Kas Laba & Biaya Operasional
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Kustomisasi pos anggaran yang muncul saat kru atau admin mencatat kas operasional trip (tol, parkir, konsumsi, tiket masuk, dll).
-                    </p>
-                  </div>
-
-                  {/* FORM TAMBAH POS */}
-                  <form onSubmit={handleAddKategori} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                    <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
-                      + Tambah Pos Anggaran Baru
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Input
-                        required
-                        placeholder="Nama Pos (Contoh: Tol Trans Jawa, Kas TL, Tiket Masuk)"
-                        value={newKatNama}
-                        onChange={(e) => setNewKatNama(e.target.value)}
-                        className="text-xs flex-1"
-                      />
-                      <select
-                        value={newKatJenis}
-                        onChange={(e: any) => setNewKatJenis(e.target.value)}
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200"
-                      >
-                        <option value="pengeluaran">Pengeluaran Operasional</option>
-                        <option value="pemasukan">Pemasukan / Uang Muka</option>
-                      </select>
-                      <Button type="submit" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9 px-4 rounded-lg flex-shrink-0">
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Tambah Pos
-                      </Button>
-                    </div>
-                  </form>
-
-                  {/* LIST KATEGORI */}
-                  <div className="space-y-3">
-                    <div className="text-xs font-semibold text-slate-500">
-                      Daftar Pos Anggaran Aktif ({cmsData.kategoriKeuangan.length})
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {cmsData.kategoriKeuangan.map((kat) => (
-                        <div
-                          key={kat.id}
-                          className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center gap-3"
-                        >
-                          <span className="font-semibold text-xs text-slate-800 dark:text-slate-200">
-                            {kat.nama}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="secondary"
-                              className={`text-[10px] font-medium uppercase ${
-                                kat.jenis === "pemasukan"
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
-                                  : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
-                              }`}
-                            >
-                              {kat.jenis}
-                            </Badge>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteKategori(kat.id)}
-                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-7 w-7 p-0 flex-shrink-0"
-                              title="Hapus Kategori"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ------------------------------------------------------------- */}
               {/* 7. SECTION: STATUS PAKET LISENSI & KUOTA                      */}
               {/* ------------------------------------------------------------- */}
               {activeSection === "lisensi" && (
@@ -1867,6 +2575,177 @@ export const ProfilBiro: React.FC = () => {
             >
               Salin Tautan Profil
             </Button>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* MODAL STUDIO PEMBERSIH & ROTASI TANDA TANGAN / STEMPEL BASAH              */}
+        {/* ========================================================================= */}
+        <Dialog open={showImageEditor} onOpenChange={setShowImageEditor}>
+          <DialogContent className="w-[95vw] max-w-lg rounded-2xl p-4 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 max-h-[92vh] overflow-y-auto">
+            <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <DialogTitle className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Wand2 className="w-4 h-4 text-blue-600" />
+                {editingTarget === "ttd"
+                  ? "Studio Pembersih Tanda Tangan"
+                  : "Studio Pembersih Stempel Basah"}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Luruskan tanda tangan yang menceng dan hilangkan latar belakang kertas menjadi transparan murni.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* PREVIEW KOTAK TRANSPARANSI DENGAN MOTIF PAPAN CATUR */}
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1">
+                <span className="text-[11px] font-semibold text-slate-500">
+                  Pratinjau Hasil Bersih (Background Transparan):
+                </span>
+                <div className="relative rounded-2xl border border-slate-300 dark:border-slate-700 overflow-hidden flex items-center justify-center p-4 bg-[repeating-conic-gradient(#cbd5e1_0%_25%,#f8fafc_0%_50%)] dark:bg-[repeating-conic-gradient(#1e293b_0%_25%,#0f172a_0%_50%)] [background-size:16px_16px] min-h-[170px] max-h-[220px]">
+                  {processedPreviewUrl ? (
+                    <img
+                      src={processedPreviewUrl}
+                      alt="Hasil Transparan"
+                      className="max-h-[160px] max-w-full object-contain drop-shadow-sm select-none transition-transform duration-150"
+                    />
+                  ) : (
+                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sedang memproses transparansi...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* KONTROL ROTASI (UNTUK LURUSKAN YANG MENCENG / MIRING) */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <RotateCw className="w-3.5 h-3.5 text-blue-600" />
+                    Luruskan Posisi ({editorRotation}°)
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Klik tombol untuk memutar bila foto terbalik / menceng
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRotate(-90)}
+                    className="h-8 px-2.5 text-xs font-semibold gap-1 rounded-xl"
+                    title="Putar 90° ke kiri"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>-90°</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRotate(90)}
+                    className="h-8 px-3 text-xs font-bold gap-1 rounded-xl bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 shadow-2xs"
+                    title="Putar 90° ke kanan"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Putar 90°</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* SLIDER SENSITIVITAS HAPUS KERTAS */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                    Sensitivitas Pembersih Latar Kertas
+                  </span>
+                  <span className="font-mono text-blue-600 font-bold bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                    {editorThreshold}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="130"
+                  max="240"
+                  step="5"
+                  value={editorThreshold}
+                  onChange={(e) => setEditorThreshold(Number(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400">
+                  <span>Pertahankan Garis Tipis</span>
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">Standar (195)</span>
+                  <span>Hapus Bayangan Gelap</span>
+                </div>
+              </div>
+
+              {/* PILIHAN WARNA TINTA */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Warna Tinta yang Diinginkan:
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditorTintColor("black")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
+                      editorTintColor === "black"
+                        ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900 shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    Hitam Pekat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorTintColor("blue")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
+                      editorTintColor === "blue"
+                        ? "border-blue-600 bg-blue-600 text-white shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    Biru Pulpen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorTintColor("original")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
+                      editorTintColor === "original"
+                        ? "border-emerald-600 bg-emerald-600 text-white shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    Warna Asli
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER MODAL */}
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImageEditor(false)}
+                className="w-full sm:w-auto text-xs h-9 px-4 rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleApplyProcessedImage}
+                disabled={saving || !processedPreviewUrl}
+                className="w-full sm:w-auto text-xs h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1.5 shadow-xs"
+              >
+                <Check className="w-4 h-4" />
+                <span>Gunakan Hasil Bersih & Transparan</span>
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 

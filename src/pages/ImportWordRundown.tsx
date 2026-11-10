@@ -343,7 +343,7 @@ const ImportWordRundown: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
               <span className="text-xs text-slate-500 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5 text-blue-600" />
                 Format jam (07.00 WIB / 07:00) akan dinormalisasi ke format HH:MM.
@@ -353,7 +353,7 @@ const ImportWordRundown: React.FC = () => {
                 type="button"
                 onClick={handleProcessDocument}
                 disabled={isProcessing}
-                className="h-9 px-4 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5"
+                className="w-full sm:w-auto h-10 sm:h-9 px-4 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-sm cursor-pointer"
               >
                 {isProcessing ? (
                   <>
@@ -396,8 +396,78 @@ const ImportWordRundown: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left border-collapse text-xs">
+              {/* TAMPILAN MOBILE: Kartu Per Jadwal */}
+              <div className="sm:hidden space-y-2.5">
+                {parsedItems.map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 relative"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-slate-500">Hari ke-</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={item.hari_ke}
+                          onChange={(e) =>
+                            handleItemChange(idx, "hari_ke", parseInt(e.target.value, 10) || 1)
+                          }
+                          className="h-7 w-12 text-center text-xs font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 px-1"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={item.jam_mulai}
+                          onChange={(e) => handleItemChange(idx, "jam_mulai", e.target.value)}
+                          className="h-7 w-16 text-center text-xs font-mono font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 px-1"
+                          placeholder="08:00"
+                        />
+                        <span className="text-xs text-slate-400 font-bold">-</span>
+                        <Input
+                          value={item.jam_selesai}
+                          onChange={(e) => handleItemChange(idx, "jam_selesai", e.target.value)}
+                          className="h-7 w-16 text-center text-xs font-mono font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 px-1"
+                          placeholder="09:00"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(idx)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors ml-auto cursor-pointer"
+                        title="Hapus baris ini"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <Input
+                        value={item.judul_acara}
+                        onChange={(e) => handleItemChange(idx, "judul_acara", e.target.value)}
+                        className="h-8 text-xs font-bold rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                        placeholder="Nama kegiatan / destinasi..."
+                      />
+                    </div>
+
+                    <div>
+                      <Input
+                        value={item.keterangan || ""}
+                        onChange={(e) => handleItemChange(idx, "keterangan", e.target.value)}
+                        className="h-7 text-xs text-slate-600 dark:text-slate-300 rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                        placeholder="Keterangan / instruksi rombongan (opsional)..."
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* TAMPILAN DESKTOP: Tabel Kompak Lebar */}
+              <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="w-full min-w-[650px] text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-semibold">
                       <th className="py-2.5 px-3 w-16">Hari</th>

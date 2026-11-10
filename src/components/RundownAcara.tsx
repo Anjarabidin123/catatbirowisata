@@ -474,8 +474,13 @@ export const RundownAcara = ({
             </div>
 
             <div className="space-y-2.5">
-              {items.map((item) => (
-                <div key={item.id} className="flex items-start gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl transition-all hover:border-blue-400">
+              {items.map((item, idx) => (
+                <div key={item.id} className="flex items-start gap-2.5 sm:gap-3 p-3 sm:p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl transition-all hover:border-blue-400">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <span className="w-5 h-5 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-black inline-flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 text-xs font-black font-mono">
                       <Clock className="w-3 h-3 text-blue-600" />

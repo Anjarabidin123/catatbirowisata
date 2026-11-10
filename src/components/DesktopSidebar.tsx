@@ -297,71 +297,7 @@ export const DesktopSidebar: React.FC = () => {
         </div>
       </Link>
 
-      {/* RBAC Role Card & Identity Switcher */}
-      <div
-        className={`p-3 mx-3 my-2 rounded-2xl border shadow-xs ${
-          isPemilik
-            ? "bg-amber-50/60 dark:bg-slate-800/90 border-amber-200/90 dark:border-amber-800/50"
-            : "bg-emerald-50/70 dark:bg-slate-800/90 border-emerald-200/90 dark:border-emerald-800/50"
-        }`}
-      >
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {isPemilik ? (
-              <ShieldCheck className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            ) : (
-              <UserCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            )}
-            <span className="text-xs font-black text-slate-950 dark:text-white tracking-tight truncate">
-              {isPemilik ? "Pemilik Biro (Owner)" : activeCrew.nama}
-            </span>
-          </div>
-          <Badge
-            variant="outline"
-            className={`text-[9px] px-1.5 py-0 h-4 font-black border uppercase tracking-wider flex-shrink-0 ${
-              isPemilik
-                ? "bg-amber-100 text-amber-900 border-amber-300"
-                : "bg-emerald-100 text-emerald-900 border-emerald-300"
-            }`}
-          >
-            {role}
-          </Badge>
-        </div>
 
-        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 leading-snug mb-2">
-          {isPemilik
-            ? "Akses penuh: kas & laba, invoice, monitor kru & device login"
-            : `${activeCrew.jabatan} • Fokus lapangan, kas saku TL & checklist`}
-        </p>
-
-        {/* Pemilih Identitas Kru saat Mode Kru aktif */}
-        {isKru && crewList.length > 0 && (
-          <div className="mb-2">
-            <select
-              value={activeCrew.crewId}
-              onChange={(e) => switchActiveCrew(e.target.value)}
-              aria-label="Pilih Personel Kru Aktif"
-              className="w-full h-7 px-2 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-900 border border-emerald-300 dark:border-slate-700 text-slate-800 dark:text-slate-100"
-            >
-              {crewList.map((c) => (
-                <option key={c.id} value={c.id}>
-                  👤 {c.nama} ({c.jabatan})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={toggleRole}
-          className="w-full h-7 text-[11px] font-black bg-white/90 dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100 gap-1.5 shadow-2xs"
-        >
-          <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
-          <span>Ganti ke Mode {isPemilik ? "Kru Lapangan" : "Pemilik Biro"}</span>
-        </Button>
-      </div>
 
       {/* AI Automation Copilot Button */}
       <div className="px-3 mb-2">

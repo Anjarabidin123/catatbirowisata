@@ -1,7 +1,8 @@
 import type jsPDF from "jspdf";
-import { getLocalBiroProfile, BiroProfile } from "./biroProfile";
+import { getLocalBiroProfile, BiroProfile, formatLegalitasBiro } from "./biroProfile";
 import { getCurrentEntitlements } from "./licenseEntitlement";
 import { savePdf } from "./pdfSaver";
+import { drawDigitalStamp, ensureTransparentImage } from "./stampPdfHelper";
 
 export interface RundownItem {
   hari_ke?: number;
@@ -114,67 +115,85 @@ const drawKopSurat = (
   const pageWidth = doc.internal.pageSize.getWidth();
   const marginLeft = 14;
   const marginRight = pageWidth - 14;
-  const topY = 12;
+  const topY = 4; // Margin atas kop surat dinaikkan presisi 4mm dari tepi kertas
 
-  // 1. Gambar Logo di sisi kiri Kop (jika ada)
-  const logoWidth = 24;
-  const logoHeight = 24;
-  let textStartX = marginLeft;
+  // 1. Gambar Logo di sisi kiri Kop (jika ada) dengan aspect ratio asli (tidak gepeng/kurus)
+  const maxLogoDim = 20;
+  let logoActualH = maxLogoDim;
 
   if (logoImg) {
     try {
-      doc.addImage(logoImg, "PNG", marginLeft, topY, logoWidth, logoHeight);
-      textStartX = marginLeft + logoWidth + 4;
-    } catch {
-      textStartX = marginLeft;
-    }
+      const origW = logoImg.naturalWidth || logoImg.width || 1;
+      const origH = logoImg.naturalHeight || logoImg.height || 1;
+      const aspect = origW / origH;
+      let renderW = maxLogoDim;
+      let renderH = maxLogoDim;
+      if (aspect > 1) {
+        renderH = maxLogoDim / aspect;
+      } else if (aspect < 1) {
+        renderW = maxLogoDim * aspect;
+      }
+      logoActualH = renderH;
+      const logoX = marginLeft + (maxLogoDim - renderW) / 2;
+      const logoY = topY;
+      doc.addImage(logoImg, "PNG", logoX, logoY, renderW, renderH);
+    } catch {}
   }
 
-  // 2. Teks Kop Surat Resmi
-  const textCenter = (textStartX + marginRight) / 2;
+  // 2. Teks Kop Surat Resmi - Tepat di Tengah Halaman (pageWidth / 2) & Berukuran Gagah
+  const pageCenter = pageWidth / 2;
+  const legalitasText = formatLegalitasBiro(profile);
+  let curY = topY + 4.5; // Baseline huruf 18pt agar batas atas teks persis sejajar topY (4mm)
 
-  // Nama Biro (Besar, Bold, Navy Formal)
+  // Nama Biro (Besar, Bold, Gagah 18pt, Navy Formal)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setTextColor(15, 44, 89);
-  doc.text((profile.nama_biro || "CATAT BIRO WISATA").toUpperCase(), textCenter, topY + 6, {
+  doc.text((profile.nama_biro || "CATAT BIRO WISATA").toUpperCase(), pageCenter, curY, {
     align: "center",
   });
+  curY += 4.5;
 
-  // Slogan / Bidang Usaha
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(30, 58, 138);
-  doc.text(
-    (profile.slogan || "Biro Perjalanan Wisata & Sewa Bus Pariwisata").toUpperCase(),
-    textCenter,
-    topY + 11,
-    { align: "center" }
-  );
+  // Legalitas Resmi: AHU & NIB OSS (atau Slogan jika belum diisi)
+  if (legalitasText) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(legalitasText.toUpperCase(), pageCenter, curY, { align: "center" });
+    curY += 3.8;
+  } else if (profile.slogan) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text(profile.slogan.toUpperCase(), pageCenter, curY, { align: "center" });
+    curY += 3.8;
+  }
 
   // Alamat Kantor
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
   const alamatText = profile.alamat || "Jl. Raya Demak - Kudus KM 4, Demak, Jawa Tengah";
-  doc.text(alamatText, textCenter, topY + 16, { align: "center" });
+  doc.text(alamatText, pageCenter, curY, { align: "center" });
+  curY += 3.6;
 
   // Kontak Resmi
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   const kontakText = `Telp/WA: ${profile.telepon || "0812-2578-9000"}  |  Email: ${profile.email || "operasional@birowisata.id"}  |  Web: ${profile.website || "www.catatbirowisata.id"}`;
-  doc.text(kontakText, textCenter, topY + 20.5, { align: "center" });
+  doc.text(kontakText, pageCenter, curY, { align: "center" });
+  curY += 3.6;
 
   // 3. Garis Ganda Resmi Kop Surat (Ciri Khas Dokumen Formal Indonesia)
-  const lineY = topY + 24;
+  const lineY = Math.max(curY, topY + logoActualH + 1.2);
   doc.setDrawColor(15, 44, 89);
   doc.setLineWidth(1.2);
   doc.line(marginLeft, lineY, marginRight, lineY);
 
-  doc.setLineWidth(0.4);
-  doc.line(marginLeft, lineY + 1.2, marginRight, lineY + 1.2);
+  doc.setLineWidth(0.35);
+  doc.line(marginLeft, lineY + 1.1, marginRight, lineY + 1.1);
 
-  return lineY + 6;
+  return lineY + 4.5;
 };
 
 /**
@@ -228,7 +247,21 @@ export const generateRundownPDF = async (
     customProfile = opts.profile;
   }
 
-  const profile = customProfile || getLocalBiroProfile();
+  let profile = customProfile || getLocalBiroProfile();
+
+  // Otomatis pastikan logo, stempel custom, dan tanda tangan bebas background putih & auto-crop (tidak kurus)
+  if (profile.logo_url && !profile.logo_url.endsWith(".svg")) {
+    const cleaned = await ensureTransparentImage(profile.logo_url);
+    if (cleaned) profile = { ...profile, logo_url: cleaned };
+  }
+  if (profile.stempel_custom_image_url) {
+    const cleaned = await ensureTransparentImage(profile.stempel_custom_image_url);
+    if (cleaned) profile = { ...profile, stempel_custom_image_url: cleaned };
+  }
+  if (profile.tanda_tangan_url) {
+    const cleaned = await ensureTransparentImage(profile.tanda_tangan_url);
+    if (cleaned) profile = { ...profile, tanda_tangan_url: cleaned };
+  }
 
   // Load logo jika ada
   let logoImg: HTMLImageElement | null = null;
@@ -516,34 +549,57 @@ export const generateRundownPDF = async (
   currentY = (doc as any).lastAutoTable.finalY + 8;
 
   // 7. Blok Tanda Tangan & Pengesahan Dokumen (Dual Signature Box)
-  if (currentY > pageHeight - 45) {
+  if (currentY > pageHeight - 55) {
     doc.addPage();
     currentY = 25;
   }
 
   const tglPengesahan = formatTanggalIndo(new Date().toISOString());
+  const kotaPimpinan = profile.kota_tanda_tangan || (profile.alamat?.includes("Demak") ? "Demak" : "Kantor Operasional");
+
+  // Pusat koordinat kolom kiri & kanan
+  const colLeftCenter = 46;
+  const colRightCenter = pageWidth - 46;
+
+  // Kolom Kanan: Tempat & Tanggal
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
+  doc.text(`${kotaPimpinan}, ${tglPengesahan}`, colRightCenter, currentY, { align: "center" });
 
-  // Kolom Kiri: Tour Leader
-  const colLeft = 20;
-  doc.text("Dikoordinasikan oleh,", colLeft, currentY);
-  doc.text("Tour Leader / Koordinator Lapangan,", colLeft, currentY + 4.5);
-  doc.text("( ..................................................... )", colLeft, currentY + 23);
+  // Header Kolom Kiri: Tour Leader
+  doc.text("Dikoordinasikan oleh,", colLeftCenter, currentY + 4.5, { align: "center" });
+  doc.text("Tour Leader / Koordinator Lapangan,", colLeftCenter, currentY + 9, { align: "center" });
+
+  // Header Kolom Kanan: Pimpinan Biro Wisata
+  doc.text("Mengetahui & Menyetujui,", colRightCenter, currentY + 4.5, { align: "center" });
+  doc.text(profile.jabatan_penandatangan || "Pimpinan Biro Wisata", colRightCenter, currentY + 9, { align: "center" });
+
+  const signY = currentY + 34;
+
+  // Garis & Nama Tour Leader (Kiri)
+  doc.text("( ..................................................... )", colLeftCenter, signY, { align: "center" });
   doc.setFont("helvetica", "bold");
-  doc.text(tripInfo.tour_leader || "Tour Leader Lapangan", colLeft, currentY + 27.5);
+  doc.text(tripInfo.tour_leader || "Tour Leader Lapangan", colLeftCenter, signY + 4.5, { align: "center" });
 
-  // Kolom Kanan: Pimpinan Biro Wisata
-  const colRight = pageWidth - 75;
+  // Tanda Tangan Coretan Gambar (Kanan) - posisi tepat di atas nama, agak ke kanan
+  if (profile.tanda_tangan_url) {
+    try {
+      doc.addImage(profile.tanda_tangan_url, "PNG", colRightCenter - 8, currentY + 14, 26, 14);
+    } catch (e) {
+      console.warn("Gagal render ttd di rundown:", e);
+    }
+  }
+
+  // Stempel Resmi Biro (Kanan) - di sebelah kiri menimpa separuh kiri tanda tangan, sejajar vertikal
+  drawDigitalStamp(doc, colRightCenter - 7, currentY + 21, profile, "VERIFIED", 11);
+
+  // Garis & Nama Pimpinan (Kanan)
+  doc.setFont("helvetica", "bold");
+  doc.text(`( ${profile.pimpinan || "H. Anjar Abidin, S.E."} )`, colRightCenter, signY, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.text(`Tempat : Kantor Operasional`, colRight, currentY);
-  doc.text(`Tanggal: ${tglPengesahan}`, colRight, currentY + 4.5);
-  doc.text("Mengetahui & Menyetujui,", colRight, currentY + 9);
-  doc.text("Pimpinan Biro Perjalanan Wisata,", colRight, currentY + 13.5);
-  doc.text("( ..................................................... )", colRight, currentY + 23);
-  doc.setFont("helvetica", "bold");
-  doc.text(profile.pimpinan || "H. Anjar Abidin, S.E.", colRight, currentY + 27.5);
+  doc.setFontSize(7.5);
+  doc.text(profile.jabatan_penandatangan || "Pimpinan Operasional", colRightCenter, signY + 4.5, { align: "center" });
 
   // 8. Watermark Footer di Semua Halaman
   const totalPages = doc.getNumberOfPages();
