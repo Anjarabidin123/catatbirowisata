@@ -24,7 +24,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Flag,
+  Trash2,
 } from "lucide-react";
+import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import {
   format,
   addMonths,
@@ -79,6 +81,7 @@ const Trips = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
+  const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
 
   const loadTrips = async () => {
     try {
@@ -119,8 +122,14 @@ const Trips = () => {
       )
       .subscribe();
 
+    const handleTripsUpdate = () => {
+      loadTrips();
+    };
+    window.addEventListener("catatbiro-trips-updated", handleTripsUpdate);
+
     return () => {
       supabase.removeChannel(tripsChannel);
+      window.removeEventListener("catatbiro-trips-updated", handleTripsUpdate);
     };
   }, [isPemilik, activeCrew?.crewId]);
 
@@ -657,15 +666,28 @@ const Trips = () => {
                               </div>
                             </div>
 
-                            {/* Tombol Aksi Buka Rundown */}
-                            <Button
-                              size="sm"
-                              onClick={() => openTripDetail(trip.id)}
-                              className="w-full h-9 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5 shadow-sm"
-                            >
-                              <FileText className="w-4 h-4" />
-                              <span>Buka Rundown Acara</span>
-                            </Button>
+                            {/* Tombol Aksi Buka Rundown & Hapus */}
+                            <div className="flex items-center gap-2">
+                              {canManageTrips && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setTripToDelete(trip)}
+                                  className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                                  title="Hapus Trip Ini"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => openTripDetail(trip.id)}
+                                className="flex-1 h-9 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5 shadow-sm"
+                              >
+                                <FileText className="w-4 h-4" />
+                                <span>Buka Rundown Acara</span>
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}
@@ -749,14 +771,27 @@ const Trips = () => {
                           </div>
                         </div>
 
-                        <Button
-                          size="sm"
-                          onClick={() => openTripDetail(trip.id)}
-                          className="w-full h-9 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5 shadow-sm"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span>Buka Rundown Acara</span>
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {canManageTrips && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setTripToDelete(trip)}
+                              className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                              title="Hapus Trip Ini"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => openTripDetail(trip.id)}
+                            className="flex-1 h-9 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white gap-1.5 shadow-sm"
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span>Buka Rundown Acara</span>
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -768,6 +803,12 @@ const Trips = () => {
       </div>
 
       <BottomNav />
+      <DeleteTripDialog
+        open={!!tripToDelete}
+        onOpenChange={(open) => !open && setTripToDelete(null)}
+        trip={tripToDelete}
+        onSuccess={loadTrips}
+      />
     </AuthGuard>
   );
 };

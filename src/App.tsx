@@ -12,7 +12,6 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
-import { DesktopModeLockOverlay } from "@/components/DesktopModeLockOverlay";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { initAuthListener } from "@/utils/authHelper";
 
@@ -90,7 +89,6 @@ const App = () => {
             <RoleProvider>
               <ImpersonationBanner />
               <DesktopSidebar />
-              <DesktopModeLockOverlay />
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   <Route path="/" element={<Index />} />

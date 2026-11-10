@@ -184,6 +184,7 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<BiroProfile>(() => getLocalBiroProfile());
   const [cmsData, setCmsData] = useState<BiroCmsData>(() => getBiroCmsData());
   const [activeWallpaper, setActiveWallpaper] = useState(() => getActiveTravelWallpaper());
+  const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
 
   useEffect(() => {
     const handleWallpaperChange = () => {
@@ -272,14 +273,19 @@ const Dashboard = () => {
     const onCmsUpdate = (e: any) => {
       if (e.detail) setCmsData(e.detail);
     };
+    const onTripsUpdate = () => {
+      loadData();
+    };
 
     window.addEventListener("biro-profile-updated", onProfileUpdate);
     window.addEventListener("biro-cms-updated", onCmsUpdate);
+    window.addEventListener("catatbiro-trips-updated", onTripsUpdate);
 
     return () => {
       supabase.removeChannel(channel);
       window.removeEventListener("biro-profile-updated", onProfileUpdate);
       window.removeEventListener("biro-cms-updated", onCmsUpdate);
+      window.removeEventListener("catatbiro-trips-updated", onTripsUpdate);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -788,7 +794,22 @@ const Dashboard = () => {
                             </span>
                           </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {canManageTrips && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTripToDelete(t);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                              title="Hapus Trip Ini"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                        </div>
                       </button>
                     );
                   })}
@@ -1216,12 +1237,27 @@ const Dashboard = () => {
                             <span className={`text-[11px] px-2.5 py-0.5 rounded-full ${STATUS_STYLE[st].className}`}>
                               {STATUS_STYLE[st].label}
                             </span>
-                            {t.jumlah_penumpang && (
-                              <span className="flex items-center gap-1.5 text-xs font-extrabold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 rounded-full">
-                                <Users className="w-3.5 h-3.5 text-blue-600" />
-                                {t.jumlah_penumpang} Pax
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5">
+                              {t.jumlah_penumpang && (
+                                <span className="flex items-center gap-1.5 text-xs font-extrabold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 rounded-full">
+                                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                                  {t.jumlah_penumpang} Pax
+                                </span>
+                              )}
+                              {canManageTrips && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTripToDelete(t);
+                                  }}
+                                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Hapus Trip Ini"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Title & Destinasi */}
@@ -1470,6 +1506,12 @@ const Dashboard = () => {
         <BottomNav />
       </div>
       <ReminderDialog open={showReminder} onOpenChange={setShowReminder} />
+      <DeleteTripDialog
+        open={!!tripToDelete}
+        onOpenChange={(open) => !open && setTripToDelete(null)}
+        trip={tripToDelete}
+        onSuccess={loadData}
+      />
     </AuthGuard>
   );
 };

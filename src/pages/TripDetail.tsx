@@ -44,6 +44,7 @@ import {
   Layers,
   Download,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { exportTripRundownPDF } from "@/utils/rundownExport";
 import { generateReportPDF } from "@/utils/reportPdfGenerator";
@@ -60,6 +61,7 @@ import { TripCrewAssignmentCard } from "@/components/TripCrewAssignmentCard";
 import { PettyCashTracker } from "@/components/PettyCashTracker";
 import { KwitansiInvoiceDialog } from "@/components/KwitansiInvoiceDialog";
 import { EditTripDialog } from "@/components/EditTripDialog";
+import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,6 +112,7 @@ const TripDetail = () => {
   const canSeeFinancials = hasPermission("rule_buku_kas_laba");
   const canPrintKwitansi = hasPermission("rule_kwitansi_invoice");
   const canEditNotes = hasPermission("rule_rundown_catatan");
+  const canManageTrips = hasPermission("rule_hapus_buat_trip");
   const [activeTab, setActiveTab] = useState<string>(() => initialTab || (isKru ? "operasional" : "acuan"));
   const [trip, setTrip] = useState<Trip | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -125,6 +128,7 @@ const TripDetail = () => {
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [kwitansiModalOpen, setKwitansiModalOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [openNotes, setOpenNotes] = useState<Record<string, boolean>>({});
 
   const handleDownloadRundownPDF = async () => {
@@ -543,6 +547,16 @@ const TripDetail = () => {
                           <span>Edit Informasi Trip</span>
                         </DropdownMenuItem>
                       </>
+                    )}
+
+                    {canManageTrips && (
+                      <DropdownMenuItem
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-700 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                        <span>Hapus Trip Ini</span>
+                      </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -966,6 +980,17 @@ const TripDetail = () => {
             onOpenChange={setEditTripDialogOpen}
             trip={trip}
             onSuccess={loadTripData}
+          />
+        )}
+
+        {trip && (
+          <DeleteTripDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            trip={trip}
+            onSuccess={() => {
+              navigate("/dashboard", { replace: true });
+            }}
           />
         )}
 

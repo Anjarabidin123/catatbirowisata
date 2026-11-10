@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { RupiahInput } from "@/components/RupiahInput";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, UserPlus } from "lucide-react";
+import { Users, UserPlus, Trash2 } from "lucide-react";
+import { DeleteTripDialog } from "./DeleteTripDialog";
 import { AddCrewDialog } from "./AddCrewDialog";
 import { useRole } from "@/contexts/RoleContext";
 import { logCrewActivity, assignTripToMultipleCrewDB } from "@/utils/rbacAuditLogger";
@@ -36,6 +37,8 @@ interface EditTripDialogProps {
 export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTripDialogProps) => {
   const { hasPermission, crewList, isPemilik } = useRole();
   const canSeeFinancials = hasPermission("rule_buku_kas_laba");
+  const canManageTrips = hasPermission("rule_hapus_buat_trip");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [formData, setFormData] = useState({
     nama_trip: "",
     tanggal: "",
@@ -322,9 +325,22 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
             </div>
           )}
 
-          <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
+          <div className="flex items-center gap-2 pt-2">
+            {canManageTrips && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDeleteModal(true)}
+                className="border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 h-10 px-3 rounded-xl font-bold text-xs"
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" />
+                Hapus
+              </Button>
+            )}
+            <Button type="submit" className="flex-1 gradient-primary text-white h-10 rounded-xl font-bold text-xs" disabled={loading}>
             {loading ? "Menyimpan..." : "Simpan Perubahan"}
           </Button>
+          </div>
         </form>
         <AddCrewDialog
           open={showAddCrewModal}
@@ -334,6 +350,15 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onSuccess }: EditTrip
           defaultTripId={trip.id}
           onCrewAdded={(newCrew) => {
             setSelectedCrewIds((prev) => [...prev, newCrew.id]);
+          }}
+        />
+        <DeleteTripDialog
+          open={showDeleteModal}
+          onOpenChange={setShowDeleteModal}
+          trip={trip}
+          onSuccess={() => {
+            onOpenChange(false);
+            onSuccess();
           }}
         />
       </DialogContent>
