@@ -44,7 +44,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SystemBroadcastBanner } from "@/components/SystemBroadcastBanner";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -516,12 +515,6 @@ const Dashboard = () => {
                     <span className="text-[11px]">AI</span>
                   </Button>
 
-                  {/* Mode Terang / Gelap Fast Button */}
-                  <ThemeToggle
-                    variant="button"
-                    className="h-8 w-8 rounded-xl bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-xs backdrop-blur-xs"
-                  />
-
                   {/* Pengingat / Notifikasi Bell */}
                   <Button
                     variant="ghost"
@@ -868,8 +861,6 @@ const Dashboard = () => {
                   </Badge>
                 )}
               </Button>
-
-              <ThemeToggle variant="dropdown" />
 
               <Button
                 variant="outline"

@@ -952,16 +952,16 @@ export const ProfilBiro: React.FC = () => {
               </div>
 
               {/* PENGATURAN TEMA TAMPILAN SISTEM */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-3">
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">
                     Mode Tampilan Aplikasi
                   </div>
-                  <div className="text-[11px] text-slate-500 truncate">
-                    Paksa mode terang jika browser/ponsel mode gelap
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Pilih tampilan aplikasi: Terang, Gelap, atau ikuti pengaturan HP
                   </div>
                 </div>
-                <ThemeToggle variant="segmented" />
+                <ThemeToggle variant="segmented" className="w-full" />
               </div>
 
               {/* LOGOUT BUTTON */}

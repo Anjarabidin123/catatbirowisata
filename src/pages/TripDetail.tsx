@@ -729,9 +729,9 @@ const TripDetail = () => {
                                       });
                                       setPriceNoteDialogOpen(true);
                                     }}
-                                    className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl gap-1.5 shadow-2xs"
+                                    className="w-full h-auto min-h-[36px] py-2 px-3 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl gap-1.5 shadow-2xs whitespace-normal text-center leading-snug cursor-pointer"
                                   >
-                                    <Plus className="w-3.5 h-3.5" />
+                                    <Plus className="w-3.5 h-3.5 flex-shrink-0" />
                                     <span>Masukkan Catatan Ini ke Rincian Harga Resmi</span>
                                   </Button>
                                 )}
