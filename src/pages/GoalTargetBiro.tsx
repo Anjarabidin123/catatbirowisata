@@ -104,24 +104,30 @@ export const GoalTargetBiro: React.FC = () => {
         // Cek offline cache
         const cachedTrips = localStorage.getItem("catatbiro_cached_trips");
         if (cachedTrips) setTripsList(JSON.parse(cachedTrips));
+        const cachedKeu = localStorage.getItem("catatbiro_cached_keuangan");
+        if (cachedKeu) setKeuanganList(JSON.parse(cachedKeu));
         setLoading(false);
         return;
       }
 
+      // Ambil transaksi keuangan & trip biro (tanpa batasan user_id agar sinkron dengan Dashboard)
       const [keuRes, tripRes] = await Promise.all([
         supabase
           .from("keuangan")
-          .select("*")
-          .eq("user_id", user.id)
+          .select("*, trips (nama_trip, tanggal)")
           .order("tanggal", { ascending: false }),
         supabase
           .from("trips")
           .select("*")
-          .eq("user_id", user.id)
           .order("tanggal", { ascending: false }),
       ]);
 
-      if (keuRes.data) setKeuanganList(keuRes.data);
+      if (keuRes.data) {
+        setKeuanganList(keuRes.data);
+        try {
+          localStorage.setItem("catatbiro_cached_keuangan", JSON.stringify(keuRes.data));
+        } catch {}
+      }
       if (tripRes.data) {
         setTripsList(tripRes.data);
         try {
@@ -142,11 +148,26 @@ export const GoalTargetBiro: React.FC = () => {
 
   // Filter data by selected month
   const monthData = useMemo(() => {
+    // 1. Filter transaksi kas pemasukan
     const pemasukanList = keuanganList.filter((k) => {
-      const isPemasukan = k.jenis === "pemasukan";
-      const rawDate = k.tanggal || k.created_at || "";
-      const matchesMonth = rawDate.startsWith(selectedMonth);
-      return isPemasukan && matchesMonth;
+      const isPemasukan = (k.jenis || "").toLowerCase().trim() === "pemasukan";
+      if (!isPemasukan) return false;
+
+      // Ambil tanggal transaksi, created_at, atau tanggal trip induk jika k.tanggal null
+      let txDateStr = k.tanggal || k.created_at;
+      if (!txDateStr && k.trip_id) {
+        const parentTrip = tripsList.find((t) => t.id === k.trip_id);
+        if (parentTrip?.tanggal) txDateStr = parentTrip.tanggal;
+      }
+
+      if (!txDateStr) return false;
+      try {
+        const d = new Date(txDateStr);
+        if (!isNaN(d.getTime())) {
+          return format(d, "yyyy-MM") === selectedMonth;
+        }
+      } catch {}
+      return String(txDateStr).startsWith(selectedMonth);
     });
 
     const totalRealitasOmset = pemasukanList.reduce(
@@ -154,11 +175,25 @@ export const GoalTargetBiro: React.FC = () => {
       0
     );
 
+    // 2. Filter trip yang berlangsung pada bulan terpilih
     const tripBulanIni = tripsList.filter((t) => {
-      return t.tanggal && t.tanggal.startsWith(selectedMonth);
+      if (!t.tanggal) return false;
+      try {
+        const d = new Date(t.tanggal);
+        if (!isNaN(d.getTime())) {
+          return format(d, "yyyy-MM") === selectedMonth;
+        }
+      } catch {}
+      return String(t.tanggal).startsWith(selectedMonth);
     });
 
     const realisasiTrips = tripBulanIni.length;
+
+    // Total estimasi nilai kontrak / budget paket trip bulan ini
+    const totalEstimasiKontrak = tripBulanIni.reduce(
+      (acc, curr) => acc + (Number(curr.budget_estimasi) || 0),
+      0
+    );
 
     // Progress calculations
     const pctOmset = targetOmset > 0 ? Math.min(Math.round((totalRealitasOmset / targetOmset) * 100), 999) : 0;
@@ -170,6 +205,7 @@ export const GoalTargetBiro: React.FC = () => {
     return {
       pemasukanList,
       totalRealitasOmset,
+      totalEstimasiKontrak,
       tripBulanIni,
       realisasiTrips,
       pctOmset,
@@ -415,7 +451,12 @@ export const GoalTargetBiro: React.FC = () => {
                   {formatRupiah(monthData.totalRealitasOmset)}
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Dari {monthData.pemasukanList.length} transaksi pemasukan
+                  Dari {monthData.pemasukanList.length} transaksi kas masuk
+                  {monthData.totalRealitasOmset === 0 && monthData.totalEstimasiKontrak > 0 && (
+                    <span className="block text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                      Estimasi Paket Trip: {formatRupiah(monthData.totalEstimasiKontrak)}
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="space-y-1 pt-1">
@@ -423,7 +464,11 @@ export const GoalTargetBiro: React.FC = () => {
                   <span className="text-slate-500">Target: {formatRupiah(targetOmset)}</span>
                   <span className="text-emerald-600">{monthData.pctOmset}%</span>
                 </div>
-                <Progress value={Math.min(monthData.pctOmset, 100)} className="h-2" />
+                <Progress
+                  value={Math.min(monthData.pctOmset, 100)}
+                  indicatorClassName="bg-emerald-500"
+                  className="h-2 bg-slate-100 dark:bg-slate-800"
+                />
               </div>
             </div>
 
@@ -452,7 +497,11 @@ export const GoalTargetBiro: React.FC = () => {
                   <span className="text-slate-500">Target Armada</span>
                   <span className="text-blue-600">{monthData.pctTrips}%</span>
                 </div>
-                <Progress value={Math.min(monthData.pctTrips, 100)} className="h-2" />
+                <Progress
+                  value={Math.min(monthData.pctTrips, 100)}
+                  indicatorClassName="bg-blue-600"
+                  className="h-2 bg-slate-100 dark:bg-slate-800"
+                />
               </div>
             </div>
 
